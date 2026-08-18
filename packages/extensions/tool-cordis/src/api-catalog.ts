@@ -882,6 +882,37 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'memory',
+    summary: 'The long-term memory service: owns the durable record store, consolidates duplicate writes, ranks recall, and exposes the per-session prompt section.',
+    description: 'The long-term memory service: owns the durable record store, consolidates duplicate writes, ranks recall, and exposes the per-session prompt section.',
+    methods: [
+      {
+        signature: 'remember(kind: MemoryKind, text: string, scope: MemoryScope): MemoryRecord',
+        description: 'Store one memory. A write that restates an existing record (same kind, text, and scope) consolidates into it instead of duplicating: the existing record\'s `updatedAt` refreshes and the new hits reset is skipped.',
+        parameters: [{ name: 'kind', description: 'what the record says about its subject.' }, { name: 'text', description: 'the remembered statement; trimmed, must be non-empty.' }, { name: 'scope', description: 'where the record applies.' }],
+        returns: 'the stored (new or consolidated) record.',
+      },
+      {
+        signature: 'forget(id: string): boolean',
+        description: 'Remove one record by id.',
+        parameters: [{ name: 'id', description: 'the record id from a previous remember or search result.' }],
+        returns: 'whether a record was removed.',
+      },
+      {
+        signature: 'search(query: string, options: { cwd?: string; limit?: number } = {}): MemoryRecord[]',
+        description: 'Rank and return the records matching a query in one workspace.',
+        parameters: [{ name: 'query', description: 'free-text query; an empty query returns the freshest records.' }, { name: 'options', description: '`cwd` scopes workspace records in, `limit` caps the result.' }],
+        returns: 'matching records, best score first, ties by most recent update.',
+      },
+      {
+        signature: 'recallText(cwd: string | undefined): string',
+        description: 'Render the recall prompt section for one workspace: the highest-ranked records under a fixed instruction, or the empty string with none.',
+        parameters: [{ name: 'cwd', description: 'the session workspace root, when known.' }],
+        returns: 'the model-facing section text.',
+      },
+    ],
+  },
+  {
     key: 'messageFeedback',
     summary: 'Storage-domain sidecar service.',
     description: 'Storage-domain sidecar service. It inspects persisted Session history and never creates or resumes an Agent or Session.',
@@ -2398,6 +2429,14 @@ export const EVENT_API: readonly EventApiEntry[] = [
     parameters: [{ name: 'options', description: 'the full request. A LOOP-built request carries the process-local {@link markAgentLoopRequest} identity and arrives deep-frozen (mutation throws): its content is a pure function of the session log (the reconstructability Agent Note), so listeners read it, never rewrite it. Hand-built calls do not carry that marker; their messages already obey the immutable creation contract.' }],
   },
   {
+    name: 'prompt-budget/breakdown',
+    mode: 'emit',
+    signature: '\'prompt-budget/breakdown\'(breakdown: PromptBudgetBreakdown): void',
+    summary: 'One assembled system prompt priced into a per-part token breakdown.',
+    description: 'One assembled system prompt priced into a per-part token breakdown. Emitted after the assembly waterfall resolves; the assembly itself is returned unchanged to the caller.',
+    parameters: [{ name: 'breakdown', description: 'the priced parts of the assembly.' }],
+  },
+  {
     name: 'session-telemetry/record',
     mode: 'waterfall',
     signature: '\'session-telemetry/record\'(record: SessionTelemetryRecord, next: () => SessionTelemetryRecord): SessionTelemetryRecord',
@@ -3362,6 +3401,18 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface ManualCompactAgentContext extends CompactionAgentContext {\n    runMaintenance<T>(task: (signal: AbortSignal) => Promise<T>): Promise<T>;\n}',
   },
   {
+    name: 'MemoryKind',
+    declaration: 'export type MemoryKind = \'fact\' | \'preference\' | \'lesson\';',
+  },
+  {
+    name: 'MemoryRecord',
+    declaration: 'export interface MemoryRecord {\n    readonly id: string;\n    readonly kind: MemoryKind;\n    readonly text: string;\n    readonly scope: MemoryScope;\n    readonly createdAt: number;\n    readonly updatedAt: number;\n    readonly hits: number;\n}',
+  },
+  {
+    name: 'MemoryScope',
+    declaration: 'export type MemoryScope = \'global\' | {\n    readonly cwd: string;\n};',
+  },
+  {
     name: 'Message',
     declaration: 'export interface Message {\n    readonly id: MessageId;\n    readonly role: \'system\' | \'user\' | \'assistant\';\n    readonly content: ContentBlock[];\n    readonly source: MessageSource;\n}',
   },
@@ -3511,7 +3562,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'PreToolDecision',
-    declaration: 'export type PreToolDecision = {\n    kind: \'allow\';\n} | {\n    kind: \'deny\';\n    reason: string;\n} | {\n    kind: \'ask\';\n    reason?: string;\n};',
+    declaration: 'export type PreToolDecision = {\n    kind: \'allow\';\n    updatedInput?: unknown;\n} | {\n    kind: \'deny\';\n    reason: string;\n} | {\n    kind: \'ask\';\n    reason?: string;\n    updatedInput?: unknown;\n};',
   },
   {
     name: 'ProjectionChangeListener',
@@ -3536,6 +3587,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'PromptAssembly',
     declaration: 'export interface PromptAssembly {\n    sections: AssembledSection[];\n    contexts: AssembledContext[];\n    tools: ToolSchema[];\n    variables: Record<string, string | undefined>;\n}',
+  },
+  {
+    name: 'PromptBudgetBreakdown',
+    declaration: 'export interface PromptBudgetBreakdown {\n    readonly sections: readonly PromptBudgetPart[];\n    readonly contexts: readonly PromptBudgetPart[];\n    readonly tools: readonly PromptBudgetPart[];\n    readonly variables: readonly PromptBudgetPart[];\n    readonly total: number;\n}',
+  },
+  {
+    name: 'PromptBudgetPart',
+    declaration: 'export interface PromptBudgetPart {\n    readonly name: string;\n    readonly tokens: number;\n}',
   },
   {
     name: 'PromptContext',

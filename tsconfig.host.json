@@ -293,6 +293,11 @@
     { "path": "./packages/lsp/lsp" },
     { "path": "./packages/lsp/lsp-stdio" },
     { "path": "./packages/lsp/tool-lsp" },
+    { "path": "./packages/interaction/permission-rules" },
+    { "path": "./packages/context/context-rules" },
+    { "path": "./packages/memory/memory" },
+    { "path": "./packages/memory/tool-memory" },
+    { "path": "./packages/guard/prompt-budget" },
     { "path": "./apps/cli" }
   ]
 }

@@ -139,11 +139,25 @@ export const SUBAGENT_DELEGATION_CONTEXT
     + 'limitation in your reply so the delegating agent can handle it.'
 
 /**
+ * Model-facing skills-usage statement for every in-process child: consult the
+ * session skill catalog and load every matching skill before writing or
+ * modifying code, and treat loaded skills as instructions that never widen the
+ * fixed delegation scope. Children inherit the skill tool and catalog from
+ * their parent's preset, so the statement's condition matches a child without
+ * them harmlessly.
+ */
+export const SUBAGENT_SKILLS_CONTEXT
+  = 'Before you write or modify code, check the session skill catalog for skills matching the task — '
+    + 'workspace skills under `.agents/skills/` and `.dsh/skills/` carry mandatory local conventions. '
+    + 'Load each matching skill with the `skill` tool before starting the task and follow it for the '
+    + 'entire task; a skill is instructions only and never widens your fixed permission scope.'
+
+/**
  * Compose one child inside its creation window: join its parent's preset,
- * register the fixed delegation-scope statement, then apply the child's own
- * shadowing persona section and tool restriction, all owned by the child's
- * scope and therefore invisible to its parent and siblings. Creation and cold
- * resume both pass through here.
+ * register the fixed delegation-scope and skills-usage statements, then apply
+ * the child's own shadowing persona section and tool restriction, all owned by
+ * the child's scope and therefore invisible to its parent and siblings.
+ * Creation and cold resume both pass through here.
  *
  * The join comes first and the child's own registrations second, which is the
  * order the layering already implies — the nearest scope wins a name, and a
@@ -168,6 +182,8 @@ export function applyChildComposition(
   childCtx.get('agentPresets')?.composeFrom(childCtx, parent.ctx)
   // Order 120: after the sandbox:policy (110) and approval:policy (115) sentences.
   childCtx.systemPrompt.context({ name: 'subagent:delegation', order: 120, text: SUBAGENT_DELEGATION_CONTEXT })
+  // Order 121: directly after the delegation-scope statement it qualifies.
+  childCtx.systemPrompt.context({ name: 'subagent:skills', order: 121, text: SUBAGENT_SKILLS_CONTEXT })
   if (composition.persona !== undefined) {
     childCtx.systemPrompt.section({ name: 'deployment:persona', order: 0, text: composition.persona })
   }

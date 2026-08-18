@@ -158,6 +158,29 @@ async assemble(context: AssembleContext = {}): Promise<PromptAssembly>
 
 Source: [`packages/core/system-prompt/src/index.ts:338`](../../packages/core/system-prompt/src/index.ts)
 
+<a id="prompt-budget-events"></a>
+
+### `prompt-budget/*` events
+
+<a id="prompt-budgetbreakdown--emit"></a>
+
+#### `prompt-budget/breakdown` — emit
+
+One assembled system prompt priced into a per-part token breakdown. Emitted after the assembly waterfall resolves; the assembly itself is returned unchanged to the caller.
+
+```ts cordis-catalog
+/**
+ * One assembled system prompt priced into a per-part token breakdown.
+ * Emitted after the assembly waterfall resolves; the assembly itself is
+ * returned unchanged to the caller.
+ * @param breakdown - the priced parts of the assembly.
+ * @mode emit
+ */
+'prompt-budget/breakdown'(breakdown: PromptBudgetBreakdown): void
+```
+
+Source: [`packages/guard/prompt-budget/src/index.ts:30`](../../packages/guard/prompt-budget/src/index.ts)
+
 <a id="system-prompt-events"></a>
 
 ### `system-prompt/*` events

@@ -126,6 +126,7 @@ describe('in-process policy inheritance', () => {
       expect(contextText).toContain('Approval prompts are disabled')
       // The statement rides runtime context; the system prompt stays uniform.
       expect(contextText).toContain('You are a delegated subagent')
+      expect(contextText).toContain('check the session skill catalog')
       expect(request.data.header.system).not.toContain('Approval prompts are disabled')
       expect(request.data.header.system).not.toContain('You are a delegated subagent')
       expect(parent.session.events).toHaveLength(parentLogLength)

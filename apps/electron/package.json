@@ -1,0 +1,48 @@
+{
+  "name": "@deepseek-ai/dsh-electron",
+  "description": "DeepSeek Harness — Electron desktop app",
+  "version": "0.1.0-rc.5",
+  "private": true,
+  "license": "MIT",
+  "type": "commonjs",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "npm run build && electron .",
+    "dist": "npm run build && electron-builder",
+    "dist:mac": "npm run build && electron-builder --mac"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "electron": "^37.0.0",
+    "electron-builder": "^26.0.0",
+    "typescript": "^6.0.3"
+  },
+  "build": {
+    "appId": "com.deepseek-ai.dsh",
+    "productName": "DeepSeek Harness",
+    "copyright": "Copyright © 2025 DeepSeek AI",
+    "mac": {
+      "target": [{ "target": "dmg", "arch": ["arm64", "x64"] }],
+      "category": "public.app-category.developer-tools",
+      "icon": "../../assets/icon.icns"
+    },
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "../../apps/web/dist/**/*",
+      "../../apps/cli/**/*",
+      "../../packages/**/*",
+      "../../node_modules/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "../../apps/web/dist",
+        "to": "web-dist",
+        "filter": ["**/*"]
+      }
+    ]
+  }
+}

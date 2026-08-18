@@ -3,13 +3,15 @@
  * extension points. It supports SessionStart, prompt/tool pre/post, Stop, and subagent
  * start/stop. It owns Claude payloads, environment, substitution, and decision
  * mapping; shared execution and parsing live in `dsh-hook-protocol`.
- * `updatedInput` is logged and warned but not honored. Bespoke behavior should
+ * `updatedInput` on a `PreToolUse` hook is forwarded as `PreToolDecision.updatedInput`
+ * and applied by the tool pipeline before dispatch. Bespoke behavior should
  * use typed native plugins on the same extension points; see the
  * [hook-bridges Agent Note](../../../../.agents/notes/implemented/feature/2026-06-30-hook-bridges.md).
  * @module @deepseek-ai/dsh-hooks-claude-code
  */
 
-import { readFileSync } from 'node:fs'
+import { readFileSync, existsSync } from 'node:fs'
+import { join } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type { Agent, PreStepDecision } from '@deepseek-ai/dsh-agent'
@@ -46,11 +48,16 @@ export interface Config {
   /**
    * Path to a `hooks.json` or a settings file whose `hooks` key holds the config.
    * Process-level: read once at load, a relative path resolves against the process
-   * launch cwd, so one config applies to the whole process.
-   * TODO(per-session-hook-config): per-session discovery of a project-local
-   * `hooks.json` from each `session/new.cwd`.
+   * launch cwd, so one config applies to the whole process. Optional when
+   * `discoverSessionLocal` is true, so the bridge works without a global config.
    */
-  configPath: string
+  configPath?: string
+  /**
+   * When true (the default), each session also loads `.claude/hooks.json` from
+   * `session.header.cwd` at session-start, layered after the global configPath
+   * config. Local configs are never cached: each new session re-reads the file.
+   */
+  discoverSessionLocal?: boolean
   /**
    * Replaces `${CLAUDE_PLUGIN_ROOT}` in command strings (the plugin's root dir).
    */
@@ -70,7 +77,8 @@ export interface Config {
 }
 
 export const Config: z<Config> = z.object({
-  configPath: z.string().required(),
+  configPath: z.string(),
+  discoverSessionLocal: z.boolean().default(true),
   pluginRoot: z.string(),
   projectDir: z.string(),
   defaultTimeoutMs: z.number().default(DEFAULT_HOOK_TIMEOUT_MS),
@@ -93,27 +101,68 @@ function assertPositiveInteger(name: string, value: number): void {
   }
 }
 
+/**
+ * Parse a hooks config file and warn on unsupported entries. Returns an empty
+ * config instead of throwing so the bridge degrades gracefully on bad files.
+ */
+function loadHooksFile(
+  ctx: Context,
+  filePath: string,
+  vars: { pluginRoot?: string; projectDir?: string },
+): ClaudeCodeHookConfig {
+  try {
+    if (!existsSync(filePath)) return {}
+    const raw: unknown = JSON.parse(readFileSync(filePath, 'utf8'))
+    const result = parseClaudeCodeConfig(raw, vars)
+    for (const s of result.skipped) {
+      ctx.logger.warn(`hooks-claude-code: skipping unsupported "${s.type}" hook on ${s.event} (only command hooks run) in ${filePath}`)
+    }
+    return result.config
+  } catch (error: unknown) {
+    ctx.logger.warn(`hooks-claude-code: could not load hook config "${filePath}": ${String(error)}`)
+    return {}
+  }
+}
+
+/** Merge two configs by concatenating matcher groups per event. */
+function mergeConfigs(base: ClaudeCodeHookConfig, override: ClaudeCodeHookConfig): ClaudeCodeHookConfig {
+  const merged: ClaudeCodeHookConfig = { ...base }
+  for (const [event, groups] of Object.entries(override)) {
+    merged[event] = [...(merged[event] ?? []), ...groups]
+  }
+  return merged
+}
+
 export function apply(ctx: Context, config: Config): void {
   // Validate before config parsing so a bad value cannot be hidden by its early return.
   const stderrSummaryMaxChars = config.stderrSummaryMaxChars ?? DEFAULT_STDERR_SUMMARY_MAX_CHARS
   assertPositiveInteger('stderrSummaryMaxChars', stderrSummaryMaxChars)
   const defaultTimeoutMs = config.defaultTimeoutMs ?? DEFAULT_HOOK_TIMEOUT_MS
-  // Parse once at load. A read or parse failure logs and registers nothing.
-  let parsed: ClaudeCodeHookConfig = {}
-  try {
-    const raw: unknown = JSON.parse(readFileSync(config.configPath, 'utf8'))
-    const result = parseClaudeCodeConfig(raw, {
-      ...config.pluginRoot !== undefined ? { pluginRoot: config.pluginRoot } : {},
-      ...config.projectDir !== undefined ? { projectDir: config.projectDir } : {},
-    })
-    parsed = result.config
-    for (const s of result.skipped) {
-      ctx.logger.warn(`hooks-claude-code: skipping unsupported "${s.type}" hook on ${s.event} (only command hooks run)`)
-    }
-  } catch (error: unknown) {
-    ctx.logger.warn(`hooks-claude-code: could not load hook config "${config.configPath}": ${String(error)} — no hooks registered`)
-    return
+  const vars = {
+    ...config.pluginRoot !== undefined ? { pluginRoot: config.pluginRoot } : {},
+    ...config.projectDir !== undefined ? { projectDir: config.projectDir } : {},
   }
+  // Global process-level config (optional).
+  const globalParsed: ClaudeCodeHookConfig = config.configPath !== undefined
+    ? loadHooksFile(ctx, config.configPath, vars)
+    : {}
+
+  // Per-session config merged at session-start from session.header.cwd.
+  // The resolved combination is stored per-agent-session so each session
+  // maintains its own hook set while sharing the global base.
+  const sessionConfigs = new WeakMap<object, ClaudeCodeHookConfig>()
+
+  /**
+   * Resolve the effective config for a session: global + local merged.
+   * Falls back to globalParsed when no session key is present yet.
+   */
+  function configForSession(sessionKey: object | undefined): ClaudeCodeHookConfig {
+    if (sessionKey === undefined) return globalParsed
+    return sessionConfigs.get(sessionKey) ?? globalParsed
+  }
+
+  // Discover per-session local hooks at session start.
+  const discoverLocal = config.discoverSessionLocal ?? true
 
   // Emit-shaped points run detached, so track their chains; disposal aborts
   // active hooks and drains continuations before resolving.
@@ -140,7 +189,8 @@ export function apply(ctx: Context, config: Config): void {
     payload: unknown,
     opts: { agent?: Agent; turn?: number; readonly signal: AbortSignal },
   ): Promise<MergedHookOutcome> {
-    const groups: MatcherGroup[] = parsed[point] ?? []
+    const effectiveConfig = configForSession(opts.agent?.session)
+    const groups: MatcherGroup[] = effectiveConfig[point] ?? []
     const outputs: HookOutput[] = []
     // Run the hook in the agent's session workspace (the `session/new` cwd on the session
     // header), not the executor or entry-point process's launch dir.
@@ -172,8 +222,8 @@ export function apply(ctx: Context, config: Config): void {
           expectedEventName: point,
         }, () => performance.now())
         outputs.push(output)
-        if (output.updatedInput !== undefined) {
-          ctx.logger.warn(`hooks-claude-code: ${point} hook requested updatedInput, which is not yet honored (ignored)`)
+        if (output.updatedInput !== undefined && point !== 'PreToolUse') {
+          ctx.logger.warn(`hooks-claude-code: ${point} hook requested updatedInput (only honored on PreToolUse; ignored here)`)
         }
         if (output.systemMessage !== undefined) {
           ctx.logger.warn(`hooks-claude-code: ${point} hook emitted a systemMessage, which is not yet surfaced (ignored)`)
@@ -200,10 +250,26 @@ export function apply(ctx: Context, config: Config): void {
     return [ours, ...theirs ?? []]
   }
 
-  // SessionStart injects context when its detached hook resolves; a slow hook
-  // may miss the first request.
-  // TODO(session-start-gating): add a startup gate before promising first-turn delivery.
+  // SessionStart: load local hooks first, then fire the hook.
   ctx.on('agent/session-start', ({ agent, source }) => {
+    // Discover session-local hooks from the session workspace.
+    if (discoverLocal) {
+      const cwd = agent.session.header.cwd
+      if (cwd !== undefined) {
+        // Check both .claude/hooks.json (CC-compatible) and .dsh/hooks.json (DSH-native).
+        const candidates = [
+          join(cwd, '.claude', 'hooks.json'),
+          join(cwd, '.dsh', 'hooks.json'),
+        ]
+        let localConfig: ClaudeCodeHookConfig = {}
+        for (const candidate of candidates) {
+          const loaded = loadHooksFile(ctx, candidate, vars)
+          localConfig = mergeConfigs(localConfig, loaded)
+        }
+        // Always store so configForSession finds the merged result even if empty.
+        sessionConfigs.set(agent.session, mergeConfigs(globalParsed, localConfig))
+      }
+    }
     detached.track(runPoint('SessionStart', source, sessionStartPayload(ctx, agent, source), { agent, signal: detached.signal })
       .then((merged) => {
         const context = contextFrom(merged)
@@ -239,7 +305,10 @@ export function apply(ctx: Context, config: Config): void {
     const turn = lastTurn(exec.agent)
     const merged = await runPoint('PreToolUse', exec.name, preToolPayload(ctx, exec), { ...exec.agent ? { agent: exec.agent } : {}, turn, signal: exec.signal })
     if (merged.decision === 'deny') return { kind: 'deny', reason: merged.reason ?? 'blocked by PreToolUse hook' }
-    if (merged.decision === 'ask') return { kind: 'ask', ...merged.reason !== undefined ? { reason: merged.reason } : {} }
+    if (merged.decision === 'ask') return { kind: 'ask', ...merged.reason !== undefined ? { reason: merged.reason } : {}, ...merged.updatedInput !== undefined ? { updatedInput: merged.updatedInput } : {} }
+    if (merged.updatedInput !== undefined) {
+      return { kind: 'allow', updatedInput: merged.updatedInput }
+    }
     return next()
   })
 
@@ -264,15 +333,25 @@ export function apply(ctx: Context, config: Config): void {
     }
   })
 
-  // A blocking Stop hook steers at the stopping boundary, which makes the
-  // machine observe pending input and run another step.
-  // TODO(stop-loop-guard): cap consecutive forced continuations; hooks must self-limit meanwhile.
+  // A blocking Stop hook steers at the stopping boundary, capped by the stop-loop guard.
+  const stopBlockCounts = new WeakMap<Agent, number>()
+  const MAX_CONSECUTIVE_STOP_BLOCKS = 3
+
   ctx.on('agent/turn-stopping', async ({ agent, turn, signal }): Promise<void> => {
+    const count = stopBlockCounts.get(agent) ?? 0
+    if (count >= MAX_CONSECUTIVE_STOP_BLOCKS) {
+      ctx.logger.warn(`hooks-claude-code: Stop hook exceeded max consecutive blocks (${MAX_CONSECUTIVE_STOP_BLOCKS}); permitting stop`)
+      stopBlockCounts.delete(agent)
+      return
+    }
     const merged = await runPoint('Stop', '', stopPayload(ctx, agent), { agent, turn, signal })
     if (merged.decision === 'deny') {
+      stopBlockCounts.set(agent, count + 1)
       // A blocking Stop hook forces continuation.
       const text = merged.reason ?? 'continue: blocked by Stop hook'
       agent.steer(createUserMessage({ content: [{ type: 'text', text }], source: PLUGIN_SOURCE }))
+    } else {
+      stopBlockCounts.delete(agent)
     }
   })
 

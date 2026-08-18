@@ -531,6 +531,30 @@ export interface ToolResultPruneConfig {
 
 Source: [`packages/compaction/compaction-tool-result-pruner/src/types.ts:4`](../packages/compaction/compaction-tool-result-pruner/src/types.ts)
 
+<a id="deepseek-aidsh-context-rules"></a>
+
+## `@deepseek-ai/dsh-context-rules`
+
+Requires: `systemPrompt`
+
+```ts config-catalog
+/** Plugin config. */
+export interface Config {
+  /**
+   * Extra rule directories to scan beyond the standard locations.
+   * Each entry is an absolute path to a directory containing `*.md` files.
+   */
+  extraDirs?: string[]
+  /**
+   * Maximum number of rules to inject per system-prompt assembly. Excess rules
+   * (sorted by name) are silently truncated. Default: 20.
+   */
+  maxRules?: number
+}
+```
+
+Source: [`packages/context/context-rules/src/index.ts:57`](../packages/context/context-rules/src/index.ts)
+
 <a id="deepseek-aidsh-cordis-host-runner"></a>
 
 ## `@deepseek-ai/dsh-cordis-host-runner`
@@ -668,11 +692,16 @@ export interface Config {
   /**
    * Path to a `hooks.json` or a settings file whose `hooks` key holds the config.
    * Process-level: read once at load, a relative path resolves against the process
-   * launch cwd, so one config applies to the whole process.
-   * TODO(per-session-hook-config): per-session discovery of a project-local
-   * `hooks.json` from each `session/new.cwd`.
+   * launch cwd, so one config applies to the whole process. Optional when
+   * `discoverSessionLocal` is true, so the bridge works without a global config.
    */
-  configPath: string
+  configPath?: string
+  /**
+   * When true (the default), each session also loads `.claude/hooks.json` from
+   * `session.header.cwd` at session-start, layered after the global configPath
+   * config. Local configs are never cached: each new session re-reads the file.
+   */
+  discoverSessionLocal?: boolean
   /**
    * Replaces `${CLAUDE_PLUGIN_ROOT}` in command strings (the plugin's root dir).
    */
@@ -692,7 +721,7 @@ export interface Config {
 }
 ```
 
-Source: [`packages/hooks/hooks-claude-code/src/index.ts:45`](../packages/hooks/hooks-claude-code/src/index.ts)
+Source: [`packages/hooks/hooks-claude-code/src/index.ts:47`](../packages/hooks/hooks-claude-code/src/index.ts)
 
 <a id="deepseek-aidsh-hooks-codex"></a>
 
@@ -1277,6 +1306,29 @@ export interface ReconnectConfig {
 
 Source: [`packages/mcp/mcp-client/src/index.ts:98`](../packages/mcp/mcp-client/src/index.ts)
 
+<a id="deepseek-aidsh-memory"></a>
+
+## `@deepseek-ai/dsh-memory`
+
+Requires: `systemPrompt`
+
+```ts config-catalog
+/** Plugin config. */
+export interface Config {
+  /**
+   * Store file location. Default: `memory.jsonl` under `$DSH_HOME` (or
+   * `~/.dsh`), created on first write.
+   */
+  storePath?: string
+  /**
+   * Maximum records rendered into the system prompt per assembly. Default: 12.
+   */
+  maxRecall?: number
+}
+```
+
+Source: [`packages/memory/memory/src/index.ts:54`](../packages/memory/memory/src/index.ts)
+
 <a id="deepseek-aidsh-message-feedback"></a>
 
 ## `@deepseek-ai/dsh-message-feedback`
@@ -1331,6 +1383,50 @@ export interface PresetSpec {
 Depends on: [`ApprovalPolicy`](subsystems/approval.md) · [`SandboxMode`](subsystems/sandbox.md)
 
 Source: [`packages/interaction/permission-presets/src/index.ts:140`](../packages/interaction/permission-presets/src/index.ts)
+
+<a id="deepseek-aidsh-permission-rules"></a>
+
+## `@deepseek-ai/dsh-permission-rules`
+
+```ts config-catalog
+/** Plugin config. */
+export interface Config {
+  /**
+   * Ordered list of permission rules. The first matching rule wins; later rules
+   * are ignored. Evaluated before the next waterfall listener.
+   */
+  rules?: PermissionRule[]
+  /**
+   * When `true` (default), bash commands are passed through the danger heuristic
+   * linter even when no rule matched. A detected dangerous pattern upgrades the
+   * decision to `ask` (never silently allows it).
+   */
+  dangerLinter?: boolean
+}
+
+/**
+ * One permission rule applied during `tools/pre-execute`.
+ * Rules match by `toolPattern` and optionally by `commandPattern` for bash.
+ */
+export interface PermissionRule {
+  /**
+   * A JavaScript regex string matched against the tool name.
+   * Use `'^bash$'` to target only bash calls.
+   */
+  toolPattern: string
+  /**
+   * When present, also matched against the command argument (bash only).
+   * Only evaluated when `toolPattern` matches.
+   */
+  commandPattern?: string
+  /** Decision to apply when this rule matches. */
+  decision: 'allow' | 'deny' | 'ask'
+  /** Human-readable reason surfaced on `deny` or `ask`. */
+  reason?: string
+}
+```
+
+Source: [`packages/interaction/permission-rules/src/index.ts:79`](../packages/interaction/permission-rules/src/index.ts)
 
 <a id="deepseek-aidsh-persona"></a>
 
@@ -2499,6 +2595,26 @@ export interface Config {
 
 Source: [`packages/lsp/tool-lsp/src/index.ts:58`](../packages/lsp/tool-lsp/src/index.ts)
 
+<a id="deepseek-aidsh-tool-memory"></a>
+
+## `@deepseek-ai/dsh-tool-memory`
+
+Requires: `tools` · `memory`
+
+```ts config-catalog
+/** Model-facing memory tool configuration. */
+export interface Config {
+  /**
+   * Default scope for a write that does not pass `scope`: `workspace` bounds
+   * the record to the calling session's cwd and `global` applies it
+   * everywhere. Default: `workspace` when the caller has a cwd, else `global`.
+   */
+  defaultScope?: 'workspace' | 'global'
+}
+```
+
+Source: [`packages/memory/tool-memory/src/index.ts:19`](../packages/memory/tool-memory/src/index.ts)
+
 <a id="deepseek-aidsh-tool-pwsh"></a>
 
 ## `@deepseek-ai/dsh-tool-pwsh`
@@ -2794,7 +2910,7 @@ export interface Config {
 export type ToolPresentationMode = 'native' | 'code' | 'both'
 ```
 
-Source: [`packages/core/tools/src/index.ts:654`](../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:653`](../packages/core/tools/src/index.ts)
 
 <a id="deepseek-aidsh-typert-loader"></a>
 
@@ -3073,6 +3189,7 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 - `@deepseek-ai/dsh-host-plugin-inventory` — requires `loader` ([`packages/host/plugin-inventory/src/index.ts`](../packages/host/plugin-inventory/src/index.ts))
 - `@deepseek-ai/dsh-llm` ([`packages/llm/llm/src/index.ts`](../packages/llm/llm/src/index.ts))
 - `@deepseek-ai/dsh-lsp` ([`packages/lsp/lsp/src/index.ts`](../packages/lsp/lsp/src/index.ts))
+- `@deepseek-ai/dsh-prompt-budget` — requires `systemPrompt` ([`packages/guard/prompt-budget/src/index.ts`](../packages/guard/prompt-budget/src/index.ts))
 - `@deepseek-ai/dsh-schedule` — requires `agents` · `sessions` · `tools` · `sessionPersistence` ([`packages/schedule/schedule/src/index.ts`](../packages/schedule/schedule/src/index.ts))
 - `@deepseek-ai/dsh-session` ([`packages/core/session/src/index.ts`](../packages/core/session/src/index.ts))
 - `@deepseek-ai/dsh-session-checkpoint-policy` — requires `llm` · `sessionPersistence` · `sessions` · `tools` ([`packages/session/session-checkpoint-policy/src/index.ts`](../packages/session/session-checkpoint-policy/src/index.ts))

@@ -131,7 +131,7 @@ Every in-process child's runtime-context snapshot carries the `subagent:delegati
 ##### The delegation-scope statement
 
 ```markdown
-You are a delegated subagent: your permission scope was fixed when you were started and cannot be widened from inside this session — operations that require approval are rejected automatically. When the job needs access beyond that scope, do not retry the denied operation; state the limitation in your reply so the delegating agent can handle it.
+You are a delegated subagent: your permission scope was fixed when you were started and cannot be widened from inside this session — operations that require approval are rejected automatically. When the task needs access beyond that scope, do not retry the denied operation; state the limitation in your reply so the delegating agent can handle it.
 ```
 
 #### Token effect
@@ -141,6 +141,26 @@ One fixed statement in each child's runtime-context snapshot; none in the parent
 #### KV Cache effect
 
 Prefix-stable within a child: the statement never changes during the child's lifetime, so it is written once into the first runtime-context snapshot. Parent-side, no direct invalidation; the named tool consumers own any request-prefix changes.
+
+### Child skills-usage statement
+
+#### What the model sees
+
+Every in-process child's runtime-context snapshot carries the `subagent:skills` statement below, directly after the delegation-scope statement. Children inherit the skill tool and the session skill catalog from their parent's preset; a child composed without them finds no catalog and the statement's condition stays unmatched.
+
+##### The skills-usage statement
+
+```markdown
+Before you write or modify code, check the session skill catalog for skills matching the task — workspace skills under `.agents/skills/` and `.dsh/skills/` carry mandatory local conventions. Load each matching skill with the `skill` tool before starting the task and follow it for the entire task; a skill is instructions only and never widens your fixed permission scope.
+```
+
+#### Token effect
+
+One fixed statement in each child's runtime-context snapshot; none in the parent's requests.
+
+#### KV Cache effect
+
+Prefix-stable within a child for the same reason as the delegation-scope statement.
 
 ## Known Limitations and Deferred Work
 

@@ -377,15 +377,14 @@ Each interception waterfall returns a typed **Decision** (the idiom shared with 
 
 ```ts type-equiv
 /**
- * Pre-dispatch decision. `allow` runs the call; `deny` materializes an error;
- * `ask` runs only after an approval service returns `allowed-once` and otherwise
- * denies. Input rewriting is excluded because arguments are already logged and
- * presented.
+ * Pre-dispatch decision. `allow` runs the call (optionally with rewritten `updatedInput`);
+ * `deny` materializes an error; `ask` runs only after an approval service returns `allowed-once`
+ * and otherwise denies.
  */
 type PreToolDecision =
-  | { kind: 'allow' }
+  | { kind: 'allow'; updatedInput?: unknown }
   | { kind: 'deny'; reason: string }
-  | { kind: 'ask'; reason?: string }
+  | { kind: 'ask'; reason?: string; updatedInput?: unknown }
 ```
 
 ```ts type-equiv
@@ -571,7 +570,7 @@ async execute(exec: ToolExecutionInput): Promise<ToolExecutionResult>
 
 Types: [ScopeKey](scope.md)
 
-Source: [`packages/core/tools/src/index.ts:787`](../../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:786`](../../packages/core/tools/src/index.ts)
 
 <a id="tools-events"></a>
 

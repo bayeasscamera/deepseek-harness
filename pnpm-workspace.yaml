@@ -40,6 +40,8 @@ peerDependencyRules:
 allowBuilds:
   esbuild: true
   lefthook: true
+  electron: true
+  electron-winstaller: true
   # Cross-platform boundary for the persistent PTY backend, including ConPTY on Windows.
   node-pty: true
   # Pulled in by @earendil-works/pi-ai (optional LLM API backend). pnpm lists

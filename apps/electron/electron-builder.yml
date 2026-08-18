@@ -1,0 +1,59 @@
+appId: com.deepseek-ai.dsh
+productName: DeepSeek Harness
+copyright: "Copyright © 2025 DeepSeek AI"
+
+# Files to bundle
+files:
+  - dist/**/*
+  - build-resources/**/*
+  - package.json
+
+# Extra files copied into resources/ (accessible via process.resourcesPath)
+extraResources:
+  - from: build-resources
+    to: build-resources
+    filter:
+      - "**/*"
+
+directories:
+  output: release
+
+# macOS
+mac:
+  icon: build-resources/icon.icns
+  target:
+    - target: dir
+      arch:
+        - arm64
+    - target: dmg
+      arch:
+        - arm64
+  category: public.app-category.developer-tools
+  hardenedRuntime: false
+  gatekeeperAssess: false
+
+dmg:
+  title: "DeepSeek Harness ${version}"
+  window:
+    width: 540
+    height: 380
+
+# Windows
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: build-resources/icon.ico
+
+# Linux
+linux:
+  target:
+    - AppImage
+  category: Development
+
+# Publish (optional — fill in for auto-update)
+# publish:
+#   provider: github
+#   owner: deepseek-ai
+#   repo: deepseek-harness

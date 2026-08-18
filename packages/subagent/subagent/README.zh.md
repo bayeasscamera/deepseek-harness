@@ -131,7 +131,7 @@ subagent seam 允许一个 agent（智能体）通过具名提供方把工作委
 ##### 委派范围声明
 
 ```markdown
-You are a delegated subagent: your permission scope was fixed when you were started and cannot be widened from inside this session — operations that require approval are rejected automatically. When the job needs access beyond that scope, do not retry the denied operation; state the limitation in your reply so the delegating agent can handle it.
+You are a delegated subagent: your permission scope was fixed when you were started and cannot be widened from inside this session — operations that require approval are rejected automatically. When the task needs access beyond that scope, do not retry the denied operation; state the limitation in your reply so the delegating agent can handle it.
 ```
 
 #### Token 影响
@@ -141,6 +141,26 @@ You are a delegated subagent: your permission scope was fixed when you were star
 #### KV Cache 影响
 
 子级内部前缀稳定：该声明在子 agent 生命周期内绝不变化，因此只写入第一份运行时上下文快照一次。父级侧不会直接使缓存失效；具名工具消费方共同负责请求前缀的任何变化。
+
+### 子级技能使用声明
+
+#### 模型看到的内容
+
+每个进程内子 agent 的运行时上下文快照都携带下方的 `subagent:skills` 声明，紧随委派范围声明之后。子 agent 从父级的 preset 继承 `skill` 工具与会话技能目录；未组合该能力的子 agent 看不到目录，声明的条件随之不成立。
+
+##### 技能使用声明
+
+```markdown
+Before you write or modify code, check the session skill catalog for skills matching the task — workspace skills under `.agents/skills/` and `.dsh/skills/` carry mandatory local conventions. Load each matching skill with the `skill` tool before starting the task and follow it for the entire task; a skill is instructions only and never widens your fixed permission scope.
+```
+
+#### Token 影响
+
+每个子 agent 的运行时上下文快照中一条固定声明；父级请求中没有任何新增。
+
+#### KV Cache 影响
+
+与委派范围声明同理，子级内部前缀稳定。
 
 ## 已知限制与暂缓事项
 

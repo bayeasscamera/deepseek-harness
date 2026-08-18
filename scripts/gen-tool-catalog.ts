@@ -36,6 +36,8 @@ import type { SubagentProvider, SubagentReportDelivery } from '@deepseek-ai/dsh-
 import * as ToolSubagentControl from '@deepseek-ai/dsh-tool-subagent-control'
 import * as ToolSubagentListAgents from '@deepseek-ai/dsh-tool-subagent-control/list-agents'
 import * as ToolSubagentReport from '@deepseek-ai/dsh-tool-subagent-report'
+import * as MemoryPlugin from '@deepseek-ai/dsh-memory'
+import * as ToolMemory from '@deepseek-ai/dsh-tool-memory'
 import SkillRegistry from '@deepseek-ai/dsh-skill'
 import * as SkillFileSystem from '@deepseek-ai/dsh-skill-filesystem'
 import LocalJobRegistry from '@deepseek-ai/dsh-jobs-local'
@@ -404,6 +406,21 @@ const TOOL_PACKAGES: ToolPackage[] = [
     },
     note:
       'A fixed foreground workflow starts one fresh structured child per round; the model selects only the immutable objective and an optional round cap.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-tool-memory',
+    dir: 'tool-memory',
+    source: 'packages/memory/tool-memory/src/index.ts',
+    requires: ['ctx.tools', 'ctx.memory'],
+    writes: ['tool/call', 'tool/result'],
+    async mount(ctx) {
+      await ctx.plugin(MemoryPlugin, {
+        storePath: resolve(root, '.tmp/tool-catalog/memory.jsonl'),
+      })
+      await ctx.plugin(ToolMemory)
+    },
+    note:
+      'The recall section itself is owned by `@deepseek-ai/dsh-memory`, not a tool schema; memory_write consolidates restatements instead of duplicating them.',
   },
   {
     pkg: '@deepseek-ai/dsh-tool-skill',

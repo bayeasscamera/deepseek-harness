@@ -106,6 +106,15 @@ const SERVICE_ROLES: ServiceRole[] = [
     note: 'The host commits accepted images before session events; provider adapters resolve authorized durable references into provider-native content.',
   },
   {
+    key: 'memory',
+    pkg: 'memory',
+    title: 'Long-term memory store and recall',
+    mode: 'seam',
+    implementations: [],
+    consumers: ['tool-memory'],
+    note: 'The service owns the durable cross-session record store, lexical recall ranking, and the memory:recall prompt section; the model-facing tools own logged writes, searches, and forgets.',
+  },
+  {
     key: 'llm',
     pkg: 'llm',
     title: 'LLM adapter registry',

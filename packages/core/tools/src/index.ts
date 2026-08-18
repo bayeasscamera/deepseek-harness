@@ -421,7 +421,7 @@ export interface ToolRunContext extends ToolExecution {
 }
 
 /** Registry-owned live execution object; public pipeline views stay readonly. */
-type MutableToolRunContext = Omit<ToolRunContext, 'signal'> & { signal: AbortSignal }
+type MutableToolRunContext = Omit<ToolRunContext, 'signal' | 'arguments'> & { signal: AbortSignal; arguments: unknown }
 
 /**
  * Scheduler-only result after ordered pre-execute and guards. A `post-result`
@@ -580,15 +580,14 @@ export interface ToolExecutionFailure {
 export type ToolExecutionResult = ToolExecutionSuccess | ToolExecutionFailure
 
 /**
- * Pre-dispatch decision. `allow` runs the call; `deny` materializes an error;
- * `ask` runs only after an approval service returns `allowed-once` and otherwise
- * denies. Input rewriting is excluded because arguments are already logged and
- * presented.
+ * Pre-dispatch decision. `allow` runs the call (optionally with rewritten `updatedInput`);
+ * `deny` materializes an error; `ask` runs only after an approval service returns `allowed-once`
+ * and otherwise denies.
  */
 export type PreToolDecision =
-  | { kind: 'allow' }
+  | { kind: 'allow'; updatedInput?: unknown }
   | { kind: 'deny'; reason: string }
-  | { kind: 'ask'; reason?: string }
+  | { kind: 'ask'; reason?: string; updatedInput?: unknown }
 
 /**
  * Post-dispatch decision: accept, replace one projection, attach context for the
@@ -1497,6 +1496,13 @@ export class ToolRuntime extends Service {
           }),
         })
       }
+      if (decision.kind === 'allow' && decision.updatedInput !== undefined) {
+        const detached = snapshotJsonValue(decision.updatedInput)
+        if (detached === undefined) {
+          throw new TypeError('updatedInput must be losslessly JSON-serializable')
+        }
+        exec.arguments = deepFreeze(detached)
+      }
       if (this.callerCancelled(exec)) {
         return await next({ kind: 'post-result', exec, result: toolAbortedBeforeDispatchResult() })
       }
@@ -1711,7 +1717,10 @@ export class ToolRuntime extends Service {
       signal: exec.signal,
     })
     switch (outcome) {
-      case 'allowed-once': return { decision: { kind: 'allow' }, approvalCancelled: false }
+      case 'allowed-once': return {
+        decision: { kind: 'allow', ...ask.updatedInput !== undefined ? { updatedInput: ask.updatedInput } : {} },
+        approvalCancelled: false,
+      }
       case 'rejected': return {
         decision: { kind: 'deny', reason: `the user rejected tool "${exec.name}"` },
         approvalCancelled: false,
