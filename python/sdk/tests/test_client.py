@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import inspect
 import sys
-import threading
 import time
 from pathlib import Path
 
@@ -587,46 +586,23 @@ def test_session_subscription_preserves_reused_child_ancestry_after_late_finish(
     assert client._notifications.qsize() == 0
 
 
-def test_client_contains_notification_filter_failure_to_its_subscription(tmp_path: Path) -> None:
-    script = tmp_path / "fake_bridge.py"
-    script.write_text(
-        """
-import json
-import sys
-
-for line in sys.stdin:
-    msg = json.loads(line)
-    method = msg.get("method")
-    if method == "initialize":
-        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "fake-dsh"}}}), flush=True)
-    elif method in {"emit-first", "emit-second"}:
-        print(json.dumps({"jsonrpc": "2.0", "method": "tick", "params": {"source": method}}), flush=True)
-    elif method == "session/prompt":
-        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"messageId": "message-1"}}), flush=True)
-    elif method == "shutdown":
-        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {}}), flush=True)
-        break
-""".strip()
-    )
-
+def test_client_contains_notification_filter_failure_to_its_subscription() -> None:
     def broken_filter(_notification: object) -> bool:
         raise RuntimeError("bad notification filter")
 
-    with HarnessClient(HarnessConfig(launch_args_override=(sys.executable, str(script)))) as client:
-        client.initialize(provider="deepseek-official", cwd="/workspace", model="dsagent")
-        with (
-            client.subscribe_notifications(broken_filter) as broken,
-            client.subscribe_notifications(lambda notification: notification.method == "tick") as healthy,
-        ):
-            client.notify("emit-first")
-            with pytest.raises(RuntimeError, match="bad notification filter"):
-                broken.next()
-            assert healthy.next().payload == {"source": "emit-first"}
-            assert client._notifications.qsize() == 0
+    client = HarnessClient()
+    with (
+        client.subscribe_notifications(broken_filter) as broken,
+        client.subscribe_notifications(lambda notification: notification.method == "tick") as healthy,
+    ):
+        client._handle_message({"jsonrpc": "2.0", "method": "tick", "params": {"source": "first"}})
+        with pytest.raises(RuntimeError, match="bad notification filter"):
+            broken.next()
+        assert healthy.next().payload == {"source": "first"}
+        assert client._notifications.qsize() == 0
 
-            client.session_prompt("main", [{"type": "text", "text": "reader still works"}])
-            client.notify("emit-second")
-            assert healthy.next().payload == {"source": "emit-second"}
+        client._handle_message({"jsonrpc": "2.0", "method": "tick", "params": {"source": "second"}})
+        assert healthy.next().payload == {"source": "second"}
 
 
 def test_client_rejects_unaccepted_session_prompt_response(tmp_path: Path) -> None:
@@ -653,43 +629,6 @@ for line in sys.stdin:
         client.initialize(provider="deepseek-official", cwd="/workspace", model="dsagent")
         with pytest.raises(ValueError):
             client.session_prompt("main", [{"type": "text", "text": "fix it"}])
-
-
-def test_client_routes_bridge_requests_and_sends_responses(tmp_path: Path) -> None:
-    script = tmp_path / "fake_bridge.py"
-    script.write_text(
-        """
-import json
-import sys
-
-for line in sys.stdin:
-    msg = json.loads(line)
-    method = msg.get("method")
-    if method == "initialize":
-        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "fake-dsh"}}}), flush=True)
-        print(json.dumps({"jsonrpc": "2.0", "id": "bridge-req-1", "method": "llm.request", "params": {"requestId": "req-1", "sessionId": "main", "model": "dsagent", "messages": []}}), flush=True)
-    elif "id" in msg and "method" not in msg:
-        print(json.dumps({"jsonrpc": "2.0", "method": "response/seen", "params": {"result": msg.get("result")}}), flush=True)
-    elif method == "shutdown":
-        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {}}), flush=True)
-        break
-""".strip()
-    )
-
-    with HarnessClient(
-        HarnessConfig(launch_args_override=(sys.executable, str(script)))
-    ) as client:
-        client.initialize(provider="deepseek-official", cwd="/workspace", model="dsagent")
-
-        request = client.next_request()
-        assert request.id == "bridge-req-1"
-        assert request.method == "llm.request"
-        assert request.payload["requestId"] == "req-1"
-
-        client.respond(request.id, {"content_blocks": [{"type": "text", "text": "done"}]})
-        notification = client.next_notification()
-        assert notification.method == "response/seen"
-        assert notification.payload["result"]["content_blocks"][0]["text"] == "done"
 
 
 def test_client_ignores_non_json_stdout_lines(tmp_path: Path) -> None:
@@ -871,48 +810,6 @@ sys.exit(42)
     ) as client:
         with pytest.raises(Exception, match="fatal bridge exploded"):
             client.initialize(provider="deepseek-official", cwd="/workspace", model="dsagent")
-
-
-def test_client_serializes_concurrent_writes(tmp_path: Path) -> None:
-    script = tmp_path / "fake_bridge.py"
-    output = tmp_path / "seen.jsonl"
-    script.write_text(
-        """
-import json
-import os
-import sys
-
-with open(os.environ["SEEN"], "w") as seen:
-    for line in sys.stdin:
-        seen.write(line)
-        seen.flush()
-        msg = json.loads(line)
-        if "id" in msg and msg.get("method") == "initialize":
-            print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "fake-dsh"}}}), flush=True)
-        elif "id" in msg and msg.get("method") == "shutdown":
-            print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {}}), flush=True)
-            break
-""".strip()
-    )
-
-    with HarnessClient(
-        HarnessConfig(
-            launch_args_override=(sys.executable, str(script)),
-            env={"SEEN": str(output)},
-        )
-    ) as client:
-        client.initialize(provider="deepseek-official", cwd="/workspace", model="dsagent")
-        threads = [
-            threading.Thread(target=client.notify, args=(f"notice-{index}", {"index": index}))
-            for index in range(50)
-        ]
-        for thread in threads:
-            thread.start()
-        for thread in threads:
-            thread.join()
-
-    for line in output.read_text().splitlines():
-        json.loads(line)
 
 
 def _install_fake_bundled_runtime(

@@ -3,13 +3,12 @@
  * Scripted stand-in for the DeepSeek Harness SDK runtime, driven entirely by
  * env vars — no model, no network, no harness imports. Speaks the runtime's
  * newline-delimited JSON-RPC protocol on stdio: answers `initialize`,
- * `session/prompt` (streaming scripted `session.event` notifications, then
- * `session.finished`, then the response), and `shutdown`.
+ * `session/prompt` (streaming scripted `session.event` notifications, then the
+ * response), and `shutdown`.
  *
  * Script vocabulary (all optional):
  * - `FAKE_TEXT`: assistant text for each turn (default `hello from fake runtime`).
- * - `FAKE_STATUS`: the `session.finished` status (default `ok`).
- * - `FAKE_REASON_KIND`: the `session.finished` reason kind (default `completed`; `none` omits the reason).
+ * - `FAKE_REASON_KIND`: the `turn/end` reason kind (default `completed`; `none` omits the reason).
  * - `FAKE_SUBAGENT`: also emit a child session (subagent.started + child event + subagent.finished).
  * - `FAKE_ECHO_CWD`: prefix the assistant text with the process cwd.
  * - `FAKE_ECHO_ENV`: comma-separated env names to echo as `name=value` lines in the assistant text.
@@ -24,8 +23,7 @@
  * - `FAKE_MALFORMED_EVENT`: the turn's `session.event` carries a number as
  *   the event; `FAKE_MALFORMED_MESSAGE`: assistant/message content is not an
  *   array; `FAKE_MESSAGE_WITHOUT_DATA`: assistant/message with no data
- *   member; `FAKE_MALFORMED_REASON`: `session.finished` reason is a bare
- *   string (wire-validation probes).
+ *   member.
  * - `FAKE_EMPTY_MESSAGE`: the turn streams a text chunk, then records an empty
  *   assistant/message for a usage-only max-tokens step.
  * - `FAKE_HANG_INIT`: never answer `initialize` (mid-handshake cancel probe).

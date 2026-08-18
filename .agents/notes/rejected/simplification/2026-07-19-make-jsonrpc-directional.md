@@ -1,6 +1,6 @@
 # Agent Note: Make JSON-RPC completion and transport directional
 
-Status: proposed
+Status: rejected — obsolete at write time; production already returns an immediate `{ messageId }` enqueue receipt from `session/prompt` and streams `session.event`/`session.status` asynchronously, so the proposed settlement change would regress the streaming model. The only still-valid part (the Python client's unused server-request plumbing) was applied separately as [2026-08-18-prune-sdk-client-server-request-plumbing](../../implemented/simplification/2026-08-18-prune-sdk-client-server-request-plumbing.md).
 
 English | [中文](2026-07-19-make-jsonrpc-directional.zh.md)
 
