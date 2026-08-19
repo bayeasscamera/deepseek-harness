@@ -8,7 +8,7 @@
  * @module dsh-llm-deepseek/adapter
  */
 
-import { attributionHeaders, CONTEXT_WINDOW_EXCEEDED_CODE, isContextWindowExceededError, isQuotaExceededError, LlmAdapter, LlmError, ProviderRequestId, QUOTA_EXCEEDED_CODE, ReasoningEffortId } from '@deepseek-ai/dsh-llm'
+import { attributionHeaders, CONTEXT_WINDOW_EXCEEDED_CODE, isContextWindowExceededError, isQuotaExceededError, LlmAdapter, LlmError, ProviderRequestId, QUOTA_EXCEEDED_CODE, ReasoningEffortId, watchdogStream } from '@deepseek-ai/dsh-llm'
 import type {
   GenerateOptions,
   LlmModelInfo,
@@ -233,15 +233,9 @@ export class DeepSeekAdapter extends LlmAdapter {
       userId,
       () => { watchdog.pulse() },
     )[Symbol.asyncIterator]()
-    let exhausted = false
     try {
-      while (true) {
-        const result = await watchdog.next(iterator)
-        if (result.done) {
-          exhausted = true
-          return
-        }
-        yield result.value
+      for await (const chunk of watchdogStream({ watchdog, watchdogCode: STREAM_IDLE_TIMEOUT_CODE, iterator })) {
+        yield chunk
       }
     } catch (error: unknown) {
       if (timeoutOf(watchdog.signal, STREAM_IDLE_TIMEOUT_CODE) !== undefined) {
@@ -258,13 +252,6 @@ export class DeepSeekAdapter extends LlmAdapter {
       throw new LlmError(`DeepSeek API stream from ${connection.baseURL} failed`, 'TRANSPORT', { cause: error })
     } finally {
       consumer.abort('DeepSeek stream consumer stopped')
-      if (!exhausted && iterator.return !== undefined) {
-        try {
-          await iterator.return()
-        } catch (_abortedTransportTeardown) {
-          // The consumer controller already owns termination; a return-time abort cannot add a second outcome.
-        }
-      }
     }
   }
 

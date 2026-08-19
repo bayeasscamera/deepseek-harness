@@ -37,6 +37,7 @@ import {
   LlmAdapter,
   LlmError,
   ReasoningEffortId,
+  watchdogStream,
 } from '@deepseek-ai/dsh-llm'
 import type {
   GenerateOptions,
@@ -321,27 +322,8 @@ export class PiAiAdapter extends LlmAdapter {
         headers: requestHeaders(profile.headers),
       })
       const iterator = toStreamChunks(events, model.contextWindow)[Symbol.asyncIterator]()
-      let exhausted = false
-      try {
-        while (true) {
-          const result = await watchdog.next(iterator)
-          const timeout = timeoutOf(watchdog.signal, 'LLM_STREAM_IDLE_TIMEOUT')
-          if (timeout !== undefined) throw timeout
-          if (result.done) {
-            exhausted = true
-            return
-          }
-          yield result.value
-        }
-      } finally {
-        if (!exhausted) {
-          consumer.abort('pi-ai stream consumer stopped')
-          try {
-            await iterator.return(undefined)
-          } catch (_abortedSdkTeardown) {
-            // The stable signal already owns SDK termination; return-time abort cannot add an outcome.
-          }
-        }
+      for await (const chunk of watchdogStream({ watchdog, watchdogCode: 'LLM_STREAM_IDLE_TIMEOUT', iterator })) {
+        yield chunk
       }
     } catch (error: unknown) {
       if (timeoutOf(watchdog.signal, 'LLM_STREAM_IDLE_TIMEOUT') !== undefined) {
