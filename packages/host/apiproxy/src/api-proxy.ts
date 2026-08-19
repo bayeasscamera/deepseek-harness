@@ -635,6 +635,14 @@ function directoryError(error: unknown): RpcError {
 /** Resolved Agent model and project-directory defaults consumed by the API implementation. */
 export interface ApiProxyDefaults {
   /**
+   * The harness version reported by `host.describe`. The gateway plugin reads
+   * it from this package's own manifest — every workspace package shares the
+   * monorepo version, so this equals the app version without the gateway
+   * reaching into an app's manifest. Omitted only by test harnesses, which
+   * fall back to the `0.0.0` sentinel resolved in {@link createApiProxy}.
+   */
+  version?: string
+  /**
    * The model selection a session starts from when its own log names none. Read on
    * every access rather than captured, so a default saved during this process
    * reaches the sessions that have not run a turn yet.
@@ -1104,6 +1112,7 @@ function changedWorkspaceView(workspaceId: string, value: unknown): WorkspaceVie
  * @returns the ApiProxy implementation.
  */
 export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiProxy {
+  const version = defaults.version ?? '0.0.0'
   const sessionExportCompressionLevel = defaults.sessionExportCompressionLevel
     ?? DEFAULT_SESSION_LOG_COMPRESSION_LEVEL
   const coldBlankProbeMaxBytes = defaults.coldBlankProbeMaxBytes
@@ -2922,10 +2931,9 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
 
     host: {
       describe(request) {
-        // TODO: version should read apps/cli's package.json; placeholder for now.
         const selection = defaults.defaultModelSelection()
         return Promise.resolve(ok(request, {
-          version: '0.0.1',
+          version,
           // Same source as session.create's fallback: the UI's default project
           // must match where an unspecified-cwd session actually lands.
           cwd: defaults.cwd,

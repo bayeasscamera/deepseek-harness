@@ -12,6 +12,8 @@
  * service; sessions that have already logged a selection remain unchanged.
  */
 
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { Context, Service } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type {} from '@deepseek-ai/dsh-agent-default-model'
@@ -29,6 +31,20 @@ export { AbstractApiClient, InProcessApiClient } from './fetch/client.ts'
 export type { IApiClient } from './fetch/client.ts'
 export { createApiProxy } from './api-proxy.ts'
 export type { ApiProxyDefaults } from './api-proxy.ts'
+
+/**
+ * This package's version, read from its checked-in manifest. Every workspace
+ * package shares the monorepo version, so this is the harness version the
+ * gateway reports — no app-manifest read and no packages→apps dependency.
+ * Both the source tree (`src/`) and the bundled artifact (`lib/`) sit one
+ * directory under the package root, so the same relative hop resolves either.
+ */
+function readVersion(): string {
+  const manifest = JSON.parse(
+    readFileSync(fileURLToPath(new URL('../package.json', import.meta.url)), 'utf8'),
+  ) as { version?: unknown }
+  return typeof manifest.version === 'string' ? manifest.version : '0.0.0'
+}
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -96,6 +112,7 @@ export class ApiProxyService extends Service implements ApiProxy {
   constructor(ctx: Context, config: Config) {
     super(ctx, 'apiProxy')
     const api = createApiProxy(ctx, {
+      version: readVersion(),
       defaultModelSelection: () => ctx.agentDefaultModel.currentSelection(),
       saveDefaultModelSelection: selection => ctx.agentDefaultModel.saveSelection(selection),
       cwd: process.cwd(),

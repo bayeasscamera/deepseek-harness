@@ -785,7 +785,7 @@ export interface Config {
 }
 ```
 
-来源：[`packages/host/apiproxy/src/index.ts:41`](../packages/host/apiproxy/src/index.ts)
+来源：[`packages/host/apiproxy/src/index.ts:57`](../packages/host/apiproxy/src/index.ts)
 
 <a id="deepseek-aidsh-host-directory-picker-browse"></a>
 
@@ -1429,7 +1429,7 @@ export interface PermissionRule {
 }
 ```
 
-Source: [`packages/interaction/permission-rules/src/index.ts:79`](../packages/interaction/permission-rules/src/index.ts)
+Source: [`packages/interaction/permission-rules/src/index.ts:83`](../packages/interaction/permission-rules/src/index.ts)
 
 <a id="deepseek-aidsh-persona"></a>
 

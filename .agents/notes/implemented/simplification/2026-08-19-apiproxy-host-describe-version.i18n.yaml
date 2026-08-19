@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/simplification/2026-08-19-apiproxy-host-describe-version.md
+2026-08-19-apiproxy-host-describe-version.md: 6ff17160d8ffeb77bc2f24721def94db41f83af5
+2026-08-19-apiproxy-host-describe-version.zh.md: 92752bf7ea17fc0894bee4593eff79e08ab731b8
