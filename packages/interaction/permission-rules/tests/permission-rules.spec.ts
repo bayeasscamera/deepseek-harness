@@ -24,6 +24,14 @@ describe('dsh-permission-rules', () => {
     expect(PermissionRules.dangerousCommandHeuristic('git push origin master --force')).toBeDefined()
   })
 
+  it('detects decode-and-execute obfuscation piped into a shell', () => {
+    expect(PermissionRules.dangerousCommandHeuristic('echo cGF5bG9hZA== | base64 -d | sh')).toBeDefined()
+    expect(PermissionRules.dangerousCommandHeuristic('base64 -d payload.b64 | bash')).toBeDefined()
+    // Encoding/decoding for data work without shell execution stays safe.
+    expect(PermissionRules.dangerousCommandHeuristic('base64 -d payload.b64 > out.bin')).toBeUndefined()
+    expect(PermissionRules.dangerousCommandHeuristic('cat file | base64')).toBeUndefined()
+  })
+
   it('evaluates fine-grained rules and upgrades dangerous commands to ask', async () => {
     const ctx = new Context()
     await ctx.plugin(PermissionRules, {

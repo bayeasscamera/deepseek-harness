@@ -28,6 +28,10 @@ const DANGER_PATTERNS: readonly RegExp[] = [
   /\brm\s+(-[a-zA-Z]*r[a-zA-Z]*f|--recursive|--force)\b/,
   /\bgit\s+push\b.*--force(?:-with-lease)?\b/,
   /\b(curl|wget)\b.*\|\s*(ba)?sh\b/,
+  // Decode-and-execute obfuscation: piping a decoded payload into a shell is
+  // the same remote-execution class as `curl | sh`, just with an encoding step
+  // in front of it.
+  /\bbase64\b.*\|\s*(ba|z)?sh\b/,
   /\bchmod\s+-R\s+777\b/,
   /\bdd\s+.*of=\/dev\/(sd|hd|nvme|disk)/,
   />\s*\/dev\/(sd|hd|nvme|disk)/,
