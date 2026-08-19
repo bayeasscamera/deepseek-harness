@@ -13,6 +13,7 @@
     { "path": "../../core/session" },
     { "path": "../../core/system-prompt" },
     { "path": "../../core/tools" },
-    { "path": "../../llm/llm" }
+    { "path": "../../llm/llm" },
+    { "path": "../../runtime-diagnostics/invariants" }
   ]
 }

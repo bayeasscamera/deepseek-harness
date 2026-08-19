@@ -11,6 +11,7 @@
     { "path": "../../../vendor/schemastery" },
     { "path": "../../core/agent" },
     { "path": "../../core/tools" },
-    { "path": "../../shell/shell" }
+    { "path": "../../shell/shell" },
+    { "path": "../../runtime-diagnostics/invariants" }
   ]
 }
