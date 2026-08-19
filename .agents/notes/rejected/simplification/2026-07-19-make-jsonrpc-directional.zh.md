@@ -1,6 +1,6 @@
 # Agent Note: 让 JSON-RPC 完成结果与传输方向单一化
 
-Status: proposed
+Status: rejected — 撰写时已过时；生产环境的 `session/prompt` 已立即返回 `{ messageId }` 入队回执并异步流式推送 `session.event`/`session.status`，因此提案中的结算变更会使流式模型倒退。唯一仍然有效的部分（Python 客户端未使用的服务端请求管线）已单独落地为 [2026-08-18-prune-sdk-client-server-request-plumbing](../../implemented/simplification/2026-08-18-prune-sdk-client-server-request-plumbing.md)。
 
 [English](2026-07-19-make-jsonrpc-directional.md) | 中文
 

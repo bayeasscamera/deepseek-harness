@@ -9,19 +9,21 @@ import type { WebSearchProvider, WebSearchResult } from '@deepseek-ai/dsh-web'
 import * as ToolWeb from '@deepseek-ai/dsh-tool-web'
 import {
   formatSearchOutput,
-  formatFetchOutput,
   parseSearchArgs,
-  parseFetchArgs,
   presentSearchCall,
-  presentFetchCall,
   presentSearchResult,
-  presentFetchResult,
   searchMetaFromValue,
   searchMetaFromResult,
+  WEB_SEARCH_MAX_RESULTS,
+} from '../src/search.ts'
+import {
+  formatFetchOutput,
+  parseFetchArgs,
+  presentFetchCall,
+  presentFetchResult,
   fetchMetaFromValue,
   fetchMetaFromResult,
-  WEB_SEARCH_MAX_RESULTS,
-} from '@deepseek-ai/dsh-tool-web'
+} from '../src/fetch.ts'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm'
 import type { ToolResult } from '@deepseek-ai/dsh-tools'
 

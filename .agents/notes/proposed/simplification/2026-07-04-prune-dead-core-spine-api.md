@@ -39,7 +39,7 @@ The production corpus is `packages/*/*/src`, example sources/config, and runtime
 - `dsh-fs-local`: `applyLiteralEdit`, `listDirectory`, `probe`, `readForEdit`, `readTextForDiff`, `readWholeText`, `resolveLocalTarget`, `restoreLineEndings`, `streamWholeText`, and `writeFileAtomic`.
 - `dsh-web-fetch-http`: `classifyContentType`, `decoderForCharset`, `isSameOrigin`, `parseCharset`, and `validateFetchUrl`; `dsh-web-search-exa`: `mapExaResponse` and `mapExaResult`; `dsh-web-search-deepseek`: `citationSnippets` and `mapAnthropicResponse`; `dsh-web-search-perplexity`: `mapPerplexityResponse` and `mapPerplexityResult`.
 - `dsh-tool-fs`: `READ_LIMIT`, `STREAM_MIN_SIZE`, `READ_MAX_BYTES`, `READ_MAX_LINE_LENGTH`, `DIFF_CONTEXT`, `applyReadTool`, `parseReadArgs`, `applyWriteTool`, `formatWriteOutput`, `parseWriteArgs`, `applyEditTool`, `formatEditOutput`, `parseEditArgs`, `buildWindow`, `formatReadOutput`, `computeHunkDiffs`, and `diffsFromMeta`.
-- `dsh-tool-web`: `WEB_SEARCH_MAX_RESULTS`, `applyWebSearchTool`, `formatSearchOutput`, `parseSearchArgs`, `presentSearchCall`, `applyWebFetchTool`, `formatFetchOutput`, `parseFetchArgs`, `presentFetchCall`, `renderBody`, and `htmlToMarkdown`; `dsh-tool-call-timeout-policy`: `toolTimeoutResult`; `dsh-compaction-basic`: `resolveConfig`; `dsh-tool-bash`: `renderResult`.
+- `dsh-tool-web`: done except `WEB_SEARCH_MAX_RESULTS`, retained as the `searchMaxResults` config default with an outside-package consumer ([2026-08-18-tool-web-helper-demotion](../../implemented/simplification/2026-08-18-tool-web-helper-demotion.md)); `dsh-tool-call-timeout-policy`: `toolTimeoutResult`; `dsh-compaction-basic`: `resolveConfig`; `dsh-tool-bash`: `renderResult`.
 
 ## Proposal
 
