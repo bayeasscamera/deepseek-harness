@@ -33,36 +33,6 @@ import { GLOB_MAX_RESULTS, applyGlobTool } from './glob.ts'
 import { GREP_MAX_LINE_BYTES, GREP_MAX_MATCHES, applyGrepTool } from './grep.ts'
 import { RAW_OUTPUT_MAX_BYTES, SEARCH_GRACE_MS, SEARCH_META_MAX_BYTES, SEARCH_STDERR_MAX_BYTES, SEARCH_TIMEOUT_MS } from './search-core.ts'
 
-export { GLOB_MAX_RESULTS, GLOB_VCS_EXCLUDES, applyGlobTool, buildGlobCommand, formatGlobOutput, parseGlobArgs, presentGlobCall, presentGlobResult, sampleAcrossTopLevel } from './glob.ts'
-export type { GlobInput, GlobSample, GlobToolCaps } from './glob.ts'
-export {
-  GREP_MAX_LINE_BYTES,
-  GREP_MAX_MATCHES,
-  applyGrepTool,
-  buildGrepCommand,
-  formatGrepMatches,
-  formatGrepOutput,
-  parseGrepArgs,
-  parseGrepMatches,
-  presentGrepCall,
-  presentGrepResult,
-} from './grep.ts'
-export type { GrepInput, GrepToolCaps } from './grep.ts'
-export {
-  RAW_OUTPUT_MAX_BYTES,
-  SEARCH_GRACE_MS,
-  SEARCH_META_MAX_BYTES,
-  SEARCH_STDERR_MAX_BYTES,
-  SEARCH_TIMEOUT_MS,
-  SearchError,
-  previewLine,
-  resolveRgPath,
-  runRipgrep,
-  toWorkdirRelative,
-  trySaveFormattedResult,
-} from './search-core.ts'
-export type { GrepMatch, RipgrepRun, SearchErrorCode } from './search-core.ts'
-
 /** Cordis plugin name used by loader diagnostics. */
 export const name = 'tool-fs-search'
 

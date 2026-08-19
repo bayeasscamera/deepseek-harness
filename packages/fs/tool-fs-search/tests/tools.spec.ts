@@ -23,21 +23,9 @@ import { rgPath } from '@vscode/ripgrep'
 import { SpillLocator, SpillStore } from '@deepseek-ai/dsh-spill'
 import type { SaveTextSpill, SpillRef } from '@deepseek-ai/dsh-spill'
 import * as ToolFsSearch from '@deepseek-ai/dsh-tool-fs-search'
-import {
-  buildGlobCommand,
-  buildGrepCommand,
-  formatGrepMatches,
-  parseGrepMatches,
-  presentGlobCall,
-  presentGlobResult,
-  presentGrepCall,
-  presentGrepResult,
-  previewLine,
-  resolveRgPath,
-  runRipgrep,
-  sampleAcrossTopLevel,
-  toWorkdirRelative,
-} from '@deepseek-ai/dsh-tool-fs-search'
+import { buildGlobCommand, presentGlobCall, presentGlobResult, sampleAcrossTopLevel } from '../src/glob.ts'
+import { buildGrepCommand, formatGrepMatches, parseGrepMatches, presentGrepCall, presentGrepResult } from '../src/grep.ts'
+import { previewLine, resolveRgPath, runRipgrep, toWorkdirRelative } from '../src/search-core.ts'
 
 const testToolSignal = new AbortController().signal
 

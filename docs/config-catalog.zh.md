@@ -2526,7 +2526,7 @@ export interface Config {
 }
 ```
 
-来源：[`packages/fs/tool-fs-search/src/index.ts:73`](../packages/fs/tool-fs-search/src/index.ts)
+来源：[`packages/fs/tool-fs-search/src/index.ts:43`](../packages/fs/tool-fs-search/src/index.ts)
 
 <a id="deepseek-aidsh-tool-goal"></a>
 

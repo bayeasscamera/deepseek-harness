@@ -2523,7 +2523,7 @@ export interface Config {
 }
 ```
 
-Source: [`packages/fs/tool-fs-search/src/index.ts:73`](../packages/fs/tool-fs-search/src/index.ts)
+Source: [`packages/fs/tool-fs-search/src/index.ts:43`](../packages/fs/tool-fs-search/src/index.ts)
 
 <a id="deepseek-aidsh-tool-goal"></a>
 
