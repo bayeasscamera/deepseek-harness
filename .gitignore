@@ -40,3 +40,6 @@ apps/electron/release/
 worktrees/
 .agents/worktrees/
 .typert-*/
+# typert generator test artifacts (mkdtempSync in tests/; leak when a run is interrupted before afterEach cleanup)
+packages/typert/generator/tests/.generated-model-*/
+packages/typert/generator/tests/.generated-tools-*/
