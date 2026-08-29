@@ -69,7 +69,12 @@
   border: 1px solid var(--dsw-alias-border-l2-darkmode-thin);
   border-radius: 22px;
   background: var(--dsw-specific-input-major);
-  box-shadow: var(--dsw-shadow-lv2);
+  /* The one surface that floats highest in the chat column: l3 lift plus the
+     crisp hairline edge. */
+  box-shadow:
+    var(--dsw-layer-shadow-l3),
+    var(--dsw-layer-edge-hairline);
+  transition: box-shadow var(--dsw-motion-quick) var(--ds-ease-in-out);
   font-size: 16px;
   line-height: 24px;
   /* Elevated surface in dark, same as the menus: the draft scrollport inside
@@ -79,6 +84,15 @@
      (see ui-theme styles/scrollbar.css for the rebinding contract). */
   --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
   --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
+}
+
+/* Brand-tinted halo marks composer focus for keyboard and pointer users
+   alike without moving the border. */
+.card:focus-within {
+  box-shadow:
+    var(--dsw-layer-shadow-l3),
+    var(--dsw-layer-edge-hairline),
+    0 0 0 3px var(--dsw-focus-ring-color);
 }
 
 /* No-workspace trigger state: dashed l4 stroke marks the card as a pick-a-

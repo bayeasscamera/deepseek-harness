@@ -17,5 +17,10 @@ export function ConnectionBanner({ reconnecting, label = '连接已断开，正�
   label?: string | undefined
 }) {
   if (!reconnecting) return null
-  return <div className={css.banner}>{label}</div>
+  return (
+    <div className={css.banner} role="status">
+      <span className={css.dot} aria-hidden="true" />
+      {label}
+    </div>
+  )
 }

@@ -13,6 +13,8 @@
   cursor: pointer;
   user-select: none;
   color: var(--dsw-alias-label-primary);
+  position: relative;
+  transition: background-color var(--dsw-motion-quick) var(--ds-ease-in-out);
 }
 
 .projectRow:hover,
@@ -20,11 +22,25 @@
   background: var(--dsw-alias-interactive-bg-hover);
 }
 
+/* Selected row: the hover fill plus a 2px brand bar riding the row's left
+   inset — the bar alone distinguishes selection from hover. */
 .sessionRow.selected {
   background: var(--dsw-alias-interactive-bg-hover);
 }
 
+.sessionRow.selected::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--dsw-alias-brand-primary-new-colorprimary-new-color);
+}
+
 .searchResultRow {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -38,6 +54,7 @@
   cursor: pointer;
   text-align: left;
   color: var(--dsw-alias-label-primary);
+  transition: background-color var(--dsw-motion-quick) var(--ds-ease-in-out);
 }
 
 .searchResultRow:hover {
@@ -46,6 +63,17 @@
 
 .searchResultRow.selected {
   background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.searchResultRow.selected::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--dsw-alias-brand-primary-new-colorprimary-new-color);
 }
 
 .searchResultHeading {

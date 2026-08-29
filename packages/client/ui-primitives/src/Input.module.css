@@ -7,10 +7,16 @@
   border: 1px solid var(--dsw-alias-border-l2);
   border-radius: 8px;
   background: var(--dsw-alias-bg-layer-1);
+  transition:
+    border-color var(--dsw-motion-quick) var(--ds-ease-in-out),
+    box-shadow var(--dsw-motion-quick) var(--ds-ease-in-out);
 }
 
+/* Focus glow: the capsule border turns brand while a soft 3px halo follows;
+   the halo uses the same focus token as the global ring, at half alpha. */
 .wrap:focus-within {
   border-color: var(--dsw-alias-brand-primary);
+  box-shadow: 0 0 0 3px var(--dsw-focus-ring-color);
 }
 
 .icon {

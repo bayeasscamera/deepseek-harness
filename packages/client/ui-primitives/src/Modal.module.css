@@ -31,7 +31,22 @@
   border: 1px solid var(--dsw-alias-border-inverted);
   border-radius: 24px;
   background: var(--dsw-alias-bg-layer-2);
-  box-shadow: var(--dsw-shadow-lv3);
+  box-shadow: var(--dsw-layer-shadow-l4), var(--dsw-layer-edge-hairline);
+  /* Spring-in: the card settles from 96% with a slight overshoot. */
+  animation: dsh-dialog-in var(--dsw-motion-settle) var(--dsw-motion-spring);
+}
+
+@keyframes dsh-dialog-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dialog {
+    animation: none;
+  }
 }
 
 .content {

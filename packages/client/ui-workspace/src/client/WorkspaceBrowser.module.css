@@ -32,10 +32,19 @@
   background: transparent;
   cursor: pointer;
   color: var(--dsw-alias-label-secondary);
+  transition:
+    background-color var(--dsw-motion-quick) var(--ds-ease-in-out),
+    color var(--dsw-motion-quick) var(--ds-ease-in-out),
+    transform var(--dsw-motion-quick) var(--ds-ease-in-out);
 }
 
 .iconButton:hover {
   background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+}
+
+.iconButton:active {
+  transform: scale(0.92);
 }
 
 /* Section header: title, an inline search control, and the two trailing
@@ -160,10 +169,11 @@
   height: 30px;
   margin-inline: -2px;
   padding: 0 4px 0 0;
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 1px solid var(--dsw-alias-brand-primary);
   border-radius: 10px;
-  background: transparent;
+  background: var(--dsw-alias-bg-layer-1);
   color: var(--dsw-alias-label-caption);
+  box-shadow: 0 0 0 3px var(--dsw-focus-ring-color);
 }
 
 .searchButton {

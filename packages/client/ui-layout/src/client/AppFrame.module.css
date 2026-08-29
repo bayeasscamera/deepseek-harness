@@ -1,3 +1,9 @@
+/* Shell frame: three-column grid (sidebar | center | details) with
+ * drag-resizable side columns. Refined surfaces: the sidebar rides on a
+ * distinct layer-1 fill with a soft backdrop blur (glass sidebar), the
+ * details pane floats on layer-2, and the drag pill is an elevated
+ * floating control that widens its hover halo. */
+
 .frame {
   position: relative; /* anchors the drag handles, which straddle column borders */
   display: grid;
@@ -25,8 +31,11 @@
 .sidebarCol {
   min-width: 0;
   overflow: hidden;
-  background: var(--dsw-specific-sidebar-fill);
+  background: var(--dsw-alias-bg-layer-1);
   border-right: 1px solid var(--dsw-alias-border-l1);
+  /* Glass: content scrolling under a translucent sidebar edge stays legible
+     when the browser composites the blur across the column border. */
+  backdrop-filter: blur(14px) saturate(1.1);
 }
 
 .centerCol {
@@ -39,6 +48,7 @@
 .detailsCol {
   min-width: 0;
   overflow: hidden;
+  background: var(--dsw-alias-bg-layer-1);
   border-left: 1px solid var(--dsw-alias-border-l2);
 }
 
@@ -87,12 +97,15 @@
   box-sizing: border-box;
   background: var(--dsw-alias-button-floating-fill);
   border: 1px solid var(--dsw-alias-border-l2-darkmode-thin);
+  box-shadow: var(--dsw-layer-shadow-l2);
   /* Hover affordance: the details pill hides until the pointer is over its
      column, the strip itself, or a drag. */
   opacity: 0;
   transition:
     opacity var(--ds-transition-duration-slow) var(--ds-ease-in-out),
-    background var(--ds-transition-duration-slow) var(--ds-ease-in-out);
+    background var(--ds-transition-duration-slow) var(--ds-ease-in-out),
+    box-shadow var(--ds-transition-duration-slow) var(--ds-ease-in-out),
+    transform var(--ds-transition-duration-slow) var(--dsw-motion-spring);
 }
 
 .detailsCol:hover ~ .handle[data-side='details']::after,
@@ -105,6 +118,12 @@
 .handle[data-side='details'][data-dragging='true']::after {
   background: var(--dsw-alias-button-floating-hover);
   border-color: var(--dsw-alias-border-l3);
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+.handle[data-side='details'][data-dragging='true']::after {
+  box-shadow: var(--dsw-layer-shadow-l3);
+  transform: translate(-50%, -50%) scale(1.12);
 }
 
 .overlayLayer {

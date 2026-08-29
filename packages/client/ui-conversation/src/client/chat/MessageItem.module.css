@@ -26,6 +26,8 @@
   font-size: 16px;
   line-height: 24px;
   color: var(--dsw-alias-label-primary);
+  box-shadow: var(--dsw-layer-shadow-l1);
+  transition: box-shadow var(--dsw-motion-quick) var(--ds-ease-in-out);
 }
 
 .contextRow {

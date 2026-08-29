@@ -18,6 +18,10 @@
   /* Sides = composer clearance + 16px: on narrow viewports the transcript
      stays exactly 32px narrower than the input card (the shared width rule). */
   padding: 16px calc(var(--dsh-composer-side-clearance) + 16px);
+  /* iOS momentum + smooth programmatic scrolls. */
+  scroll-behavior: smooth;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 :global([data-conversation-scroll]) .root {
@@ -48,6 +52,21 @@
    measurement/mount unit for a virtualizer without changing the column gap. */
 .flowItem {
   min-width: 0;
+  /* Settled items fade in once: the spring curve keeps it organic. */
+  animation: dsh-message-in var(--dsw-motion-settle) var(--dsw-motion-spring) both;
+}
+
+@keyframes dsh-message-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flowItem {
+    animation: none;
+  }
 }
 
 /* A keyed renderer may intentionally decline its row after dispatch (the

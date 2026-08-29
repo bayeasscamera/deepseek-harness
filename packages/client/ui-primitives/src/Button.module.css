@@ -1,6 +1,10 @@
 /* Capsule geometry from the figma Button component (1:155 instances:
  * h36, pad 14/7, gap 4, r18; the wide New Session form is r24 at h38 —
- * owners with the wide form set their own radius/width). */
+ * owners with the wide form set their own radius/width).
+ *
+ * Motion: every interactive state rides --dsw-motion-quick on the standard
+ * ease-out curve; :active compresses the capsule 1px for tactile feedback.
+ * Focus is the global :focus-visible ring (elevation.css), not restated. */
 .button {
   display: inline-flex;
   align-items: center;
@@ -14,11 +18,26 @@
   color: var(--dsw-alias-label-primary);
   background: transparent;
   padding: 0 14px;
+  transition:
+    background-color var(--dsw-motion-quick) var(--ds-ease-in-out),
+    border-color var(--dsw-motion-quick) var(--ds-ease-in-out),
+    color var(--dsw-motion-quick) var(--ds-ease-in-out),
+    transform var(--dsw-motion-quick) var(--ds-ease-in-out),
+    opacity var(--dsw-motion-quick) var(--ds-ease-in-out);
 }
 
 .button:disabled {
   cursor: not-allowed;
   opacity: 0.4;
+}
+
+.button:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+/* Keep the press compression readable on icon-only capsules. */
+.button:active .icon {
+  transform: scale(0.92);
 }
 
 .md {
@@ -38,10 +57,15 @@
 .primary {
   background: var(--dsw-alias-button-primary-fill);
   color: var(--dsw-alias-label-primary-foreground);
+  box-shadow: var(--dsw-layer-shadow-l1);
 }
 
 .primary:hover:not(:disabled) {
   background: var(--dsw-alias-button-primary-hover);
+}
+
+.primary:active:not(:disabled) {
+  box-shadow: none;
 }
 
 .ghost:hover:not(:disabled) {
@@ -76,4 +100,5 @@
   height: 16px;
   align-items: center;
   justify-content: center;
+  transition: transform var(--dsw-motion-quick) var(--ds-ease-in-out);
 }

@@ -1,13 +1,58 @@
+/* Connection banner: top strip surfacing connection loss. Elevation l1
+ * keeps it floating above content; the status dot pulses while reconnecting.
+ * The strip rides the spring curve in and eases out. */
 .banner {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   padding: 4px 12px;
   text-align: center;
   font-size: 12px;
   line-height: 18px;
   background: var(--dsw-alias-state-error-primary);
   color: var(--dsw-alias-label-primary-foreground);
+  box-shadow: var(--dsw-layer-shadow-l2);
+  animation: dsh-banner-drop var(--dsw-motion-settle) var(--dsw-motion-spring);
+}
+
+/* Status dot: solid amber while retrying, single-pass pulse. */
+.dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentcolor;
+  animation: dsh-banner-pulse 1.2s var(--ds-ease-in-out) infinite;
+}
+
+@keyframes dsh-banner-drop {
+  from {
+    transform: translateY(-100%);
+  }
+}
+
+@keyframes dsh-banner-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .banner {
+    animation: none;
+  }
+
+  .dot {
+    animation: none;
+  }
 }
