@@ -60,7 +60,13 @@ const DEFAULT_MODELS: DeepSeekCatalogModel[] = [
  * reasoning effort resolves to `high`.
  */
 export interface Config {
-  /** Credential reference (environment-variable name) resolved per request; defaults to `DEEPSEEK_API_KEY`. */
+  /**
+   * Credential reference (environment-variable name) resolved per request;
+   * defaults to `DEEPSEEK_API_KEY`. When it yields nothing, the session-token
+   * fallbacks are tried in order: `DEEPSEEK_SESSION_TOKEN`,
+   * `DEEPSEEK_AUTH_TOKEN`, `DSH_SESSION_TOKEN`, then `DSH_SUBSCRIPTION_KEY`.
+   * A `Bearer ` prefix on a resolved value is stripped before use.
+   */
   apiKeyEnv?: string
   /** Endpoint base; falls back to $DEEPSEEK_BASE_URL from a trusted environment layer, then the public API. */
   baseURL?: string
@@ -222,24 +228,51 @@ export function apply(ctx: Context, config: Config): void {
   }
   options()
 
+  const sanitizeToken = (raw: string): string => {
+    const trimmed = raw.trim()
+    return trimmed.startsWith('Bearer ') ? trimmed.slice(7).trim() : trimmed
+  }
+
+  /**
+   * Credential references tried in order for one request: the configured
+   * {@link Config.apiKeyEnv} reference first, then the documented session-token
+   * fallbacks. The first reference that resolves to a non-empty value wins.
+   */
+  const apiKeyCandidates = (ref: ReturnType<typeof credentialRef>): ReturnType<typeof credentialRef>[] => [
+    ref,
+    credentialRef('DEEPSEEK_SESSION_TOKEN'),
+    credentialRef('DEEPSEEK_AUTH_TOKEN'),
+    credentialRef('DSH_SESSION_TOKEN'),
+    credentialRef('DSH_SUBSCRIPTION_KEY'),
+  ]
+
   const resolveApiKey = async (connection: ResolvedDeepSeekOptions): Promise<string> => {
     // Every credential fact comes from the caller's snapshot, so a rejected
     // settings generation cannot leak its key onto the previous endpoint.
     const ref = connection.apiKeyEnv
+    const candidates = apiKeyCandidates(ref)
+
     const credentials = ctx.get('credentials')
     if (credentials !== undefined) {
-      const hit = await credentials.resolve(ref)
-      if (hit !== undefined) return assertUsableApiKey(hit.value, 'llm-deepseek', ref)
+      for (const candidate of candidates) {
+        const hit = await credentials.resolve(candidate)
+        if (hit !== undefined && hit.value.trim().length > 0) {
+          return assertUsableApiKey(sanitizeToken(hit.value), 'llm-deepseek', candidate)
+        }
+      }
     } else {
       // Without the seam there is no managed store to rank against, so the
       // environment is the whole credential plane.
-      const ambient = launchEnvironmentOf(ctx).get(ref)
-      if (ambient !== undefined && ambient.value.length > 0) {
-        return assertUsableApiKey(ambient.value, 'llm-deepseek', ref)
+      const env = launchEnvironmentOf(ctx)
+      for (const candidate of candidates) {
+        const ambient = env.get(candidate)
+        if (ambient !== undefined && ambient.value.trim().length > 0) {
+          return assertUsableApiKey(sanitizeToken(ambient.value), 'llm-deepseek', candidate)
+        }
       }
     }
     throw new LlmError(
-      `llm-deepseek: no API key for provider route "${PROVIDER}"; store ${ref} through the credentials`
+      `llm-deepseek: no API key or session token for provider route "${PROVIDER}"; store ${ref}, DEEPSEEK_SESSION_TOKEN, or DSH_SESSION_TOKEN through the credentials`
       + ` service (the web Models page writes it), or export ${ref} in the launching environment`,
       'MISSING_CREDENTIAL',
     )
