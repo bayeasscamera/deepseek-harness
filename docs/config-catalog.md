@@ -340,6 +340,40 @@ export interface Config {
 
 Source: [`packages/attachment/attachment-local/src/index.ts:24`](../packages/attachment/attachment-local/src/index.ts)
 
+<a id="deepseek-aidsh-auto-verification"></a>
+
+## `@deepseek-ai/dsh-auto-verification`
+
+```ts config-catalog
+/**
+ * Configuration options for the auto-verification guard.
+ */
+export interface Config {
+  /** Whether auto-verification is active (default true). */
+  enabled?: boolean
+  /** Whether to perform JSON parse checks on .json file mutations (default true). */
+  checkJson?: boolean
+  /** Whether to check delimiter/bracket balance on code files (default true). */
+  checkBrackets?: boolean
+  /** Whether to perform visual UI markup and layout integrity checks on frontend files (default true). */
+  checkVisualUi?: boolean
+  /** Whether to inject a TDD verification reminder after code mutations (default false). */
+  enforceTdd?: boolean
+  /** Whether to inject a 2-step visual review reminder after UI mutations (default false). */
+  visualFeedbackStep?: boolean
+  /** Whether to enforce Loop-Engineering Maker/Checker verification notice on code edits (default false). */
+  enforceLoopVerifier?: boolean
+  /** Denylist of path substrings/patterns blocked from mutation (default ['.env', 'auth/', 'payments/', 'secrets/', 'credentials/']). */
+  denylistPaths?: string[]
+  /** Max consecutive mutation attempts allowed on the same target before escalation notice (default 3). */
+  maxAttemptsPerTarget?: number
+  /** Max characters allowed for diagnostic notices (default 1000). */
+  maxDiagnosticChars?: number
+}
+```
+
+Source: [`packages/guard/auto-verification/src/index.ts:19`](../packages/guard/auto-verification/src/index.ts)
+
 <a id="deepseek-aidsh-bash-local"></a>
 
 ## `@deepseek-ai/dsh-bash-local`
@@ -881,7 +915,13 @@ Requires: `llm`
  * reasoning effort resolves to `high`.
  */
 export interface Config {
-  /** Credential reference (environment-variable name) resolved per request; defaults to `DEEPSEEK_API_KEY`. */
+  /**
+   * Credential reference (environment-variable name) resolved per request;
+   * defaults to `DEEPSEEK_API_KEY`. When it yields nothing, the session-token
+   * fallbacks are tried in order: `DEEPSEEK_SESSION_TOKEN`,
+   * `DEEPSEEK_AUTH_TOKEN`, `DSH_SESSION_TOKEN`, then `DSH_SUBSCRIPTION_KEY`.
+   * A `Bearer ` prefix on a resolved value is stripped before use.
+   */
   apiKeyEnv?: string
   /** Endpoint base; falls back to $DEEPSEEK_BASE_URL from a trusted environment layer, then the public API. */
   baseURL?: string
@@ -3203,7 +3243,7 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 - `@deepseek-ai/dsh-terminal` ([`packages/terminal/terminal/src/index.ts`](../packages/terminal/terminal/src/index.ts))
 - `@deepseek-ai/dsh-tool-ask-user` — requires `tools` · `userQuestions` ([`packages/interaction/tool-ask-user/src/index.ts`](../packages/interaction/tool-ask-user/src/index.ts))
 - `@deepseek-ai/dsh-tool-call-timeout-policy` — requires `tools` ([`packages/guard/timeout-policy/src/index.ts`](../packages/guard/timeout-policy/src/index.ts))
-- `@deepseek-ai/dsh-tool-cordis` — requires `tools` · `systemPrompt` · `dynamicCordisRunner` · `cordisInspect` ([`packages/extensions/tool-cordis/src/index.ts`](../packages/extensions/tool-cordis/src/index.ts))
+- `@deepseek-ai/dsh-tool-cordis` — requires `tools` · `fs` · `systemPrompt` · `dynamicCordisRunner` · `cordisInspect` ([`packages/extensions/tool-cordis/src/index.ts`](../packages/extensions/tool-cordis/src/index.ts))
 - `@deepseek-ai/dsh-tool-subagent-control` — requires `tools` · `subagents` ([`packages/subagent/tool-subagent-control/src/index.ts`](../packages/subagent/tool-subagent-control/src/index.ts))
 - `@deepseek-ai/dsh-user-questions` ([`packages/interaction/user-questions/src/index.ts`](../packages/interaction/user-questions/src/index.ts))
 - `@deepseek-ai/dsh-workspace` — requires `storageDomain` · `sessionPersistence` ([`packages/workspace/workspace/src/index.ts`](../packages/workspace/workspace/src/index.ts))

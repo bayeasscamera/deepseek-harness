@@ -6,6 +6,7 @@ Behavioral guard plugins watch the agent loop for unproductive patterns and enfo
 
 | Package | Role | ctx key |
 |---|---|---|
+| [`auto-verification/`](auto-verification/README.md) | Continuous post-edit syntax & structural auto-verification | listens on tool events |
 | [`repeat-tool-reminder/`](repeat-tool-reminder/README.md) | Advisory reminders for repeated tool calls | listens on tool and agent events |
 | [`timeout-policy/`](timeout-policy/README.md) | Arms per-call tool deadlines as deployment policy | registers a `tools/execute` listener |
 

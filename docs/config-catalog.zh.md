@@ -342,6 +342,40 @@ export interface Config {
 
 来源：[`packages/attachment/attachment-local/src/index.ts:24`](../packages/attachment/attachment-local/src/index.ts)
 
+<a id="deepseek-aidsh-auto-verification"></a>
+
+## `@deepseek-ai/dsh-auto-verification`
+
+```ts config-catalog
+/**
+ * Configuration options for the auto-verification guard.
+ */
+export interface Config {
+  /** Whether auto-verification is active (default true). */
+  enabled?: boolean
+  /** Whether to perform JSON parse checks on .json file mutations (default true). */
+  checkJson?: boolean
+  /** Whether to check delimiter/bracket balance on code files (default true). */
+  checkBrackets?: boolean
+  /** Whether to perform visual UI markup and layout integrity checks on frontend files (default true). */
+  checkVisualUi?: boolean
+  /** Whether to inject a TDD verification reminder after code mutations (default false). */
+  enforceTdd?: boolean
+  /** Whether to inject a 2-step visual review reminder after UI mutations (default false). */
+  visualFeedbackStep?: boolean
+  /** Whether to enforce Loop-Engineering Maker/Checker verification notice on code edits (default false). */
+  enforceLoopVerifier?: boolean
+  /** Denylist of path substrings/patterns blocked from mutation (default ['.env', 'auth/', 'payments/', 'secrets/', 'credentials/']). */
+  denylistPaths?: string[]
+  /** Max consecutive mutation attempts allowed on the same target before escalation notice (default 3). */
+  maxAttemptsPerTarget?: number
+  /** Max characters allowed for diagnostic notices (default 1000). */
+  maxDiagnosticChars?: number
+}
+```
+
+来源：[`packages/guard/auto-verification/src/index.ts:19`](../packages/guard/auto-verification/src/index.ts)
+
 <a id="deepseek-aidsh-bash-local"></a>
 
 ## `@deepseek-ai/dsh-bash-local`
@@ -884,7 +918,13 @@ export interface Config {
  * reasoning effort resolves to `high`.
  */
 export interface Config {
-  /** Credential reference (environment-variable name) resolved per request; defaults to `DEEPSEEK_API_KEY`. */
+  /**
+   * Credential reference (environment-variable name) resolved per request;
+   * defaults to `DEEPSEEK_API_KEY`. When it yields nothing, the session-token
+   * fallbacks are tried in order: `DEEPSEEK_SESSION_TOKEN`,
+   * `DEEPSEEK_AUTH_TOKEN`, `DSH_SESSION_TOKEN`, then `DSH_SUBSCRIPTION_KEY`.
+   * A `Bearer ` prefix on a resolved value is stripped before use.
+   */
   apiKeyEnv?: string
   /** Endpoint base; falls back to $DEEPSEEK_BASE_URL from a trusted environment layer, then the public API. */
   baseURL?: string
