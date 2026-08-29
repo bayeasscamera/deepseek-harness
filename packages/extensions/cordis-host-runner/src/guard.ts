@@ -560,6 +560,12 @@ export function sandboxDefineTool(options: unknown): ToolDefinition {
     throw new Error('harness.defineTool output.presentationMeta must be a function when present')
   }
   if (typeof options.execute !== 'function') throw new Error('harness.defineTool execute must be a function')
+  if (typeof options.name === 'string' && options.name.length > 64) {
+    throw new Error(`harness.defineTool tool name "${options.name}" exceeds maximum length of 64 characters`)
+  }
+  if (typeof options.description === 'string' && options.description.length > 2048) {
+    throw new Error('harness.defineTool description exceeds maximum recommended length of 2048 characters')
+  }
   const schema = cloneJson(output.schema, 'harness.defineTool output.schema')
   const rawExecute = options.execute as (args: unknown, exec: unknown) => Promise<unknown>
   const rawRender = output.render as (args: unknown, value: unknown) => unknown
@@ -718,6 +724,9 @@ function declaredInjects(ctx: Context): Set<string> {
 function sandboxContext(ctx: Context, reportFailure: (error: Error) => void): Context {
   const tools = sandboxTools(ctx)
   const declared = declaredInjects(ctx)
+  let consecutiveFailures = 0
+  const MAX_CONSECUTIVE_FAILURES = 3
+  let isQuarantined = false
   // A framework member or an undeclared service — distinguish the two so the
   // error teaches the right fix (declare it in inject vs it is withheld).
   const denyRead = (prop: string): never => {
@@ -743,24 +752,57 @@ function sandboxContext(ctx: Context, reportFailure: (error: Error) => void): Co
     return guardedService(service, name, reportFailure)
   }
   const get = (name: string): unknown => readService(name, false)
-  // The browser half builds the same façade over its own Context
-  // (`@deepseek-ai/dsh-cordis-client-runner`, whose CTX_VERBS names this one its
-  // twin), and the sameness is the point: a package author meets ONE contract on
-  // both halves. Folding them together is not available — the two halves compile
-  // in separate programs where `Context` merges different service keys — so the
-  // duplication is declared here instead of hidden behind a config exception.
   /* jscpd:ignore-start */
   return new Proxy({}, {
     get(_target, prop) {
       if (prop === 'tools') return tools
       if (prop === 'get') return get
       if (typeof prop !== 'string') return undefined
-      // Lazy verb forwarder — reads `ctx[verb]` only when called. Timer mixins
-      // additionally require the Service declaration before Cordis resolves them.
       if (CTX_VERBS.has(prop)) {
         return (...args: unknown[]): unknown => {
           if (TIMER_VERBS.has(prop) && !declared.has('timer')) return denyRead('timer')
           const method = ctx[prop as keyof Context]
+          if ((prop === 'on' || prop === 'once' || prop === 'effect') && args.length > 0) {
+            const callback = args[args.length - 1]
+            if (typeof callback === 'function') {
+              const safeCallback = (...cbArgs: unknown[]): unknown => {
+                if (isQuarantined) return undefined
+                try {
+                  const result = Reflect.apply(callback, ctx, cbArgs) as unknown
+                  if (result instanceof Promise) {
+                    return (result as Promise<unknown>)
+                      .then((val: unknown): unknown => {
+                        consecutiveFailures = 0
+                        return val
+                      })
+                      .catch((err: unknown): undefined => {
+                        consecutiveFailures++
+                        const error = err instanceof Error ? err : new Error(String(err))
+                        reportFailure(error)
+                        if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES && !isQuarantined) {
+                          isQuarantined = true
+                          reportFailure(new Error(`Circuit breaker tripped: dynamic plugin listener failed ${consecutiveFailures} consecutive times and is now quarantined.`))
+                        }
+                        return undefined
+                      })
+                  }
+                  consecutiveFailures = 0
+                  return result
+                } catch (err: unknown) {
+                  consecutiveFailures++
+                  const error = err instanceof Error ? err : new Error(String(err))
+                  reportFailure(error)
+                  if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+                    isQuarantined = true
+                    reportFailure(new Error(`Circuit breaker tripped: dynamic plugin listener failed ${consecutiveFailures} consecutive times and is now quarantined.`))
+                  }
+                  return undefined
+                }
+              }
+              const wrappedArgs = [...args.slice(0, -1), safeCallback]
+              return Reflect.apply(method as (...a: unknown[]) => unknown, ctx, wrappedArgs)
+            }
+          }
           return Reflect.apply(method as (...a: unknown[]) => unknown, ctx, args)
         }
       }

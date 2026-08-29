@@ -62,6 +62,12 @@ export function apply(ctx: Context): void {
         // Parent authority requires an exact live calling agent.
         throw new Error('send_message requires a calling agent (exec.agent was undefined)')
       }
+      if (args.subagent_id.trim().length === 0) {
+        throw new Error('invalid subagent_id: expected a non-empty string')
+      }
+      if (args.message.trim().length === 0) {
+        throw new Error('invalid message: expected a non-empty string')
+      }
       const message: ContentBlock[] = [{ type: 'text', text: args.message }]
       const messageId = await ctx.subagents.followup(
         parent,
@@ -110,6 +116,9 @@ export function apply(ctx: Context): void {
       if (!caller) {
         // Ancestor authority requires an exact live calling agent.
         throw new Error('interrupt_agent requires a calling agent (exec.agent was undefined)')
+      }
+      if (args.agent_id.trim().length === 0) {
+        throw new Error('invalid agent_id: expected a non-empty string')
       }
       // The service authorizes the exact live caller against the target's
       // recorded lineage; the tool adds no authority of its own.

@@ -372,6 +372,12 @@ export function apply(ctx: Context, config: Config): void {
           // Non-agent callers provide no parent for delegation ownership.
           throw new Error('subagent tool requires a calling agent (exec.agent was undefined)')
         }
+        if (args.description.trim().length === 0) {
+          throw new Error('invalid description: expected a non-empty string')
+        }
+        if (args.prompt.trim().length === 0) {
+          throw new Error('invalid prompt: expected a non-empty string')
+        }
 
         const maxDepth = typeof config.maxDepth === 'number' ? config.maxDepth : undefined
         const request = {

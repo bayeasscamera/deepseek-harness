@@ -329,6 +329,12 @@ export function createRunCodeTool(registry: ToolRuntime, options: RunCodeBridgeO
       if (args.description.trim().length === 0) {
         throw new Error('invalid description: expected a non-empty string')
       }
+      if (args.code.trim().length === 0) {
+        throw new Error('invalid code: expected a non-empty string')
+      }
+      if (args.code.length > 5_000_000) {
+        throw new Error('invalid code: program length exceeds maximum allowed limit of 5MB')
+      }
       const runtime = requireRuntime()
 
       // The run-scoped abort: follows the outer signal in, and fires when the

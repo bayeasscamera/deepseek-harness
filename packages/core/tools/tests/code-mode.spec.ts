@@ -1247,6 +1247,13 @@ describe('the run_code dispatch bridge', () => {
     expect((result.content[0] as { text: string }).text).toContain('invalid description')
   })
 
+  it('rejects a whitespace-only code with a structured isError', async () => {
+    const { ctx } = await setup({ mode: 'code' })
+    const result = await runCode(ctx, '   ', { description: 'run' })
+    expect(result.isError).toBe(true)
+    expect((result.content[0] as { text: string }).text).toContain('invalid code')
+  })
+
   it.each([
     ['logs only', { logs: ['printed'] }, 'printed'],
     ['result only', { logs: [], value: 'returned' }, 'returned'],
@@ -1793,5 +1800,22 @@ describe('per-agent presentation', () => {
 
     await expect(systemPrompt.assemble({ scope: agent }))
       .rejects.toThrow('mode "both" requires a code runtime')
+  })
+
+  it('rejects empty and oversized code payload safely', async () => {
+    const { ctx } = await setup({ mode: 'code' })
+    const emptyResult = await runCode(ctx, '   ')
+    expect(emptyResult.isError).toBe(true)
+    expect(emptyResult.content[0]?.type).toBe('text')
+    expect((emptyResult.content[0] as { text: string }).text).toContain('invalid code: expected a non-empty string')
+
+    const emptyDescResult = await runCode(ctx, 'return 1', { description: '   ' })
+    expect(emptyDescResult.isError).toBe(true)
+    expect((emptyDescResult.content[0] as { text: string }).text).toContain('invalid description: expected a non-empty string')
+
+    const hugeCode = 'a'.repeat(5_000_001)
+    const hugeResult = await runCode(ctx, hugeCode)
+    expect(hugeResult.isError).toBe(true)
+    expect((hugeResult.content[0] as { text: string }).text).toContain('exceeds maximum allowed limit of 5MB')
   })
 })

@@ -92,6 +92,9 @@ export function installReportTool(
         }],
       },
       async execute(args, exec) {
+        if (args.output.trim().length === 0) {
+          throw new Error('invalid output: expected a non-empty string')
+        }
         const content: ContentBlock[] = [{ type: 'text', text: args.output }]
         // Scope-local resolution guarantees an Agent. The service still verifies
         // its exact live Activation identity at the authority boundary.
