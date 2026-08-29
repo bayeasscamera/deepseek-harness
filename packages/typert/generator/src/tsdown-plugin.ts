@@ -6,8 +6,9 @@
  * @module @deepseek-ai/dsh-typert-generator/tsdown
  */
 
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
+import { createHash } from 'node:crypto'
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { dirname, join, relative, resolve } from 'node:path'
 import ts from 'typescript'
 import { WorkspaceTypertGenerator } from './workspace.ts'
 import type { WorkspaceEmitResult } from './workspace.ts'
@@ -89,15 +90,118 @@ export function typertPlugin(pluginOptions: TypertPluginOptions = {}): TypertPlu
   }
 
   function emitWorkspace(root: string, faces: readonly TypertFace[] | undefined): void {
+    // The full analysis costs several seconds and is deterministic for a given
+    // workspace state; the marker skips it when nothing relevant changed. All
+    // requested faces must be reusable, or the whole batch is regenerated.
+    const requestedFaces: readonly TypertFace[] = faces ?? ['host']
+    if (requestedFaces.every(face => canReuseWorkspaceArtifacts(root, face))) return
     const generator = new WorkspaceTypertGenerator(root)
     const packages = generator.discover(faces)
       .filter(candidate => hasTypertExport(readManifest(join(root, candidate.root)).exports))
       .map(candidate => candidate.package)
     if (packages.length === 0) return
-    for (const artifact of generator.generate(packages, faces)) {
+    const emittedPaths: string[] = []
+    const written = generator.generate(packages, faces)
+    for (const artifact of written) {
+      const packageLib = join(root, artifact.packageRoot, 'lib')
       emitArtifacts(join(root, artifact.packageRoot), [artifact])
+      emittedPaths.push(relative(root, join(packageLib, `typert.${artifact.face}.js`)))
+      emittedPaths.push(relative(root, join(packageLib, `typert.${artifact.face}.d.ts`)))
+      if (artifact.remote !== undefined) {
+        emittedPaths.push(relative(root, join(packageLib, 'typert.remote-client.js')))
+      }
+    }
+    for (const face of faces ?? ['host' as const]) {
+      if (written.some(artifact => artifact.face === face)) {
+        writeWorkspaceMarker(root, face, emittedPaths)
+      }
     }
   }
+}
+
+/** Cache marker written whenever workspace-mode artifacts are emitted. */
+const TYPERT_CACHE_FILENAME = '.typert-workspace-cache.json'
+
+/** Bump when generation behavior changes in a way state hashing cannot see. */
+const TYPERT_GENERATOR_REVISION = 1
+
+/**
+ * Hash the aggregate build state of one face plus the generator's own sources,
+ * so an unchanged workspace and an unchanged generator both reuse artifacts.
+ * @param root - absolute workspace root.
+ * @param face - face whose aggregate tsbuildinfo is hashed.
+ * @returns hex digest, or undefined when the aggregate build info is absent.
+ */
+function workspaceStateHash(root: string, face: TypertFace): string | undefined {
+  const buildInfoPath = join(root, `tsconfig.${face}.tsbuildinfo`)
+  if (!existsSync(buildInfoPath)) return undefined
+  const hash = createHash('sha256')
+  hash.update(readFileSync(buildInfoPath))
+  hash.update(`revision=${TYPERT_GENERATOR_REVISION}`)
+  for (const source of walkGeneratorSources(root)) hash.update(source)
+  return hash.digest('hex')
+}
+
+/** Hash the generator package's implementation files in a stable order. */
+function* walkGeneratorSources(root: string): Generator<string> {
+  const dir = join(root, 'packages', 'typert', 'generator', 'src')
+  if (!existsSync(dir)) return
+  for (const name of readdirSync(dir).sort()) {
+    if (!name.endsWith('.ts')) continue
+    const stat = statSync(join(dir, name))
+    yield `${name}:${stat.mtimeMs}:${stat.size}`
+  }
+}
+
+/**
+ * Reuse previously emitted artifacts when neither the face's aggregate build
+ * state nor the generator itself changed. Every declared artifact file must
+ * still exist; a missing file invalidates the whole marker.
+ * @param root - absolute workspace root.
+ * @param face - face being built.
+ * @returns true when the marker matches and every artifact file is present.
+ */
+function canReuseWorkspaceArtifacts(root: string, face: TypertFace): boolean {
+  const state = workspaceStateHash(root, face)
+  if (state === undefined) return false
+  const markerPath = join(root, TYPERT_CACHE_FILENAME)
+  if (!existsSync(markerPath)) return false
+  let marker: { state?: unknown; artifacts?: unknown; face?: unknown }
+  try {
+    marker = JSON.parse(readFileSync(markerPath, 'utf8')) as typeof marker
+  } catch {
+    return false
+  }
+  if (marker.state !== state || marker.face !== face || !Array.isArray(marker.artifacts)) return false
+  for (const entry of marker.artifacts) {
+    if (typeof entry !== 'string') return false
+    if (!existsSync(join(root, entry))) return false
+  }
+  return true
+}
+
+/**
+ * Persist the reuse marker after a successful workspace emission.
+ * @param root - absolute workspace root.
+ * @param face - face that was just emitted.
+ * @param artifacts - relative artifact paths covered by the marker.
+ */
+function writeWorkspaceMarker(root: string, face: TypertFace, artifacts: readonly string[]): void {
+  const state = workspaceStateHash(root, face)
+  if (state === undefined) return
+  writeFileSync(join(root, TYPERT_CACHE_FILENAME), JSON.stringify({
+    face,
+    state,
+    artifacts,
+  }))
+}
+
+/** Write only when the bytes differ, so unchanged output keeps its mtime. */
+function writeIfChanged(path: string, content: string): void {
+  try {
+    if (readFileSync(path, 'utf8') === content) return
+  } catch {}
+  writeFileSync(path, content)
 }
 
 function emitArtifacts(packageDir: string, artifacts: readonly WorkspaceEmitResult[]): void {
@@ -105,13 +209,15 @@ function emitArtifacts(packageDir: string, artifacts: readonly WorkspaceEmitResu
   mkdirSync(output, { recursive: true })
   let emittedRemote = false
   for (const artifact of artifacts) {
-    writeFileSync(join(output, `typert.${artifact.face}.js`), artifact.js)
-    writeFileSync(join(output, `typert.${artifact.face}.d.ts`), artifact.dts)
+    // Rewrite only on content change so file mtimes stay stable across no-op
+    // rebuilds; dev watchers and incremental tools read those mtimes.
+    writeIfChanged(join(output, `typert.${artifact.face}.js`), artifact.js)
+    writeIfChanged(join(output, `typert.${artifact.face}.d.ts`), artifact.dts)
     if (artifact.remote !== undefined) {
       emittedRemote = true
-      writeFileSync(join(output, 'typert.remote-client.js'), artifact.remote.js)
-      writeFileSync(join(output, 'typert.remote-client.d.ts'), artifact.remote.dts)
-      writeFileSync(join(output, 'typert.remote-client.d.ts.map'), artifact.remote.dtsMap)
+      writeIfChanged(join(output, 'typert.remote-client.js'), artifact.remote.js)
+      writeIfChanged(join(output, 'typert.remote-client.d.ts'), artifact.remote.dts)
+      writeIfChanged(join(output, 'typert.remote-client.d.ts.map'), artifact.remote.dtsMap)
     }
   }
   if (!emittedRemote && artifacts.some(artifact => artifact.face === 'host')) {

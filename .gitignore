@@ -3,6 +3,7 @@ CLAUDE.local.md
 node_modules/
 lib/
 *.tsbuildinfo
+.typert-workspace-cache.json
 pnpm-debug.log
 .pnpm-store/
 .cache/

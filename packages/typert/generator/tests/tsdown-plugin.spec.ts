@@ -172,6 +172,38 @@ describe('typertPlugin', () => {
     ]) expect(existsSync(join(packageLib, file))).toBe(false)
   })
 
+  it('reuses workspace artifacts while the aggregate build state is unchanged', async () => {
+    const root = await workspace()
+    writeFileSync(join(root, 'tsconfig.host.tsbuildinfo'), '{"version":1,"state":"first"}\n')
+    const trigger = await packageOutput(root, 'generator', { name: '@deepseek-ai/dsh-typert-generator' })
+    await packageOutput(root, 'core/tools', {
+      name: '@deepseek-ai/dsh-tools',
+      exports: { './typert': './lib/typert.host.js' },
+    })
+    await packageOutput(root, 'ignored', { name: '@fixture/ignored' })
+    await packageOutput(root, 'remote-only', {
+      name: '@fixture/remote-only',
+      exports: { './remote': './lib/typert.remote-client.js' },
+    })
+
+    const first = typertPlugin({ mode: 'workspace', faces: ['host'] })
+    first.writeBundle({ dir: trigger })
+    expect(generated).toHaveBeenCalledOnce()
+
+    // Same aggregate state: the marker skips discovery and generation entirely.
+    const cached = typertPlugin({ mode: 'workspace', faces: ['host'] })
+    cached.writeBundle({ dir: trigger })
+    expect(generated).toHaveBeenCalledOnce()
+
+    // A changed aggregate build state invalidates the marker and regenerates.
+    writeFileSync(join(root, 'tsconfig.host.tsbuildinfo'), '{"version":1,"state":"second"}\n')
+    const changed = typertPlugin({ mode: 'workspace', faces: ['host'] })
+    changed.writeBundle({ dir: trigger })
+    expect(generated).toHaveBeenCalledTimes(2)
+    expect(readFileSync(join(root, 'packages/core/tools/lib/typert.host.js'), 'utf8'))
+      .toBe('export const host = true\n')
+  })
+
   it('emits every explicit workspace contributor once from a host-only prepass', async () => {
     const root = await workspace()
     const trigger = await packageOutput(root, 'generator', { name: '@deepseek-ai/dsh-typert-generator' })
