@@ -260,9 +260,10 @@ const TOOL_PACKAGES: ToolPackage[] = [
     pkg: '@deepseek-ai/dsh-tool-cordis',
     dir: 'tool-cordis',
     source: 'packages/extensions/tool-cordis/src/index.ts',
-    requires: ['ctx.tools', 'ctx.dynamicCordisRunner'],
+    requires: ['ctx.tools', 'ctx.fs', 'ctx.dynamicCordisRunner'],
     writes: ['tool/call', 'tool/result', 'process-local dynamic package lifecycle'],
     async mount(ctx) {
+      await ctx.plugin(LocalFileSystem, { cwd: process.cwd() })
       await ctx.plugin(CordisHostRunner)
       await ctx.plugin(ToolCordis)
     },

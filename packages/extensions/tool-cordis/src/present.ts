@@ -100,3 +100,16 @@ export function presentRunCall(args: { pluginId: string; packageId: string; mode
 export function presentStopCall(args: { pluginId: string }): GenericCallView {
   return { card: 'generic', kind: 'execute', title: `Stop Cordis Plugin ${args.pluginId}` }
 }
+
+/**
+ * Render dynamic Plugin promotion to disk.
+ * @param args - Plugin and optional Package identity.
+ * @returns replay-safe generic call presentation.
+ */
+export function presentPromoteCall(args: { pluginId: string; packageId?: string; targetDirectory?: string }): GenericCallView {
+  return {
+    card: 'generic',
+    kind: 'execute',
+    title: `Promote dynamic Plugin ${args.pluginId} to disk`,
+  }
+}

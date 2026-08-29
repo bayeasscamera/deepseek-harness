@@ -43,3 +43,29 @@ worktrees/
 # typert generator test artifacts (mkdtempSync in tests/; leak when a run is interrupted before afterEach cleanup)
 packages/typert/generator/tests/.generated-model-*/
 packages/typert/generator/tests/.generated-tools-*/
+
+# --- Loop Engineering session residue (agent-side tooling, not part of the product) ---
+LOOP.md
+STATE.md
+gate.yaml
+loop-budget.md
+loop-constraints.md
+loop-run-log.md
+context_store/
+.claude/agents/
+.agents/skills/awesome-design-md/
+.agents/skills/budget-negotiator/
+.agents/skills/canvas-design/
+.agents/skills/docx/
+.agents/skills/install-loop/
+.agents/skills/loop-budget/
+.agents/skills/loop-constraints/
+.agents/skills/loop-engineering/
+.agents/skills/loop-triage/
+.agents/skills/loop-verifier/
+.agents/skills/minimal-fix/
+.agents/skills/open-design/
+.agents/skills/pdf/
+.agents/skills/pptx/
+.agents/skills/skill-creator/
+.agents/skills/system-design-primer/

@@ -33,6 +33,9 @@
       "path": "../../core/session"
     },
     {
+      "path": "../../fs/fs"
+    },
+    {
       "path": "../../llm/llm"
     },
     {

@@ -12,23 +12,51 @@ import type { DynamicCordisReference } from '@deepseek-ai/dsh-cordis-host-runner
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import type { JsonValue } from '@deepseek-ai/dsh-session'
 import type { UserMessage } from '@deepseek-ai/dsh-session'
+import type {} from '@deepseek-ai/dsh-fs'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { ToolExecution } from '@deepseek-ai/dsh-tools'
 import type {} from '@deepseek-ai/dsh-system-prompt'
 import { missingServices, providedServices } from './inspect.ts'
+import { isAbsolute, normalize, sep } from 'node:path'
 import {
-  presentDefineCall, presentInspectListCall, presentInspectQueryCall, presentInspectSelfCall, presentRunCall,
+  presentDefineCall, presentInspectListCall, presentInspectQueryCall, presentInspectSelfCall, presentPromoteCall, presentRunCall,
   presentStopCall, presentUndefineCall,
 } from './present.ts'
 import { CORDIS_SYSTEM_PROMPT } from './prompt.ts'
 import { hostInspectProviders } from './providers.ts'
 
 export const name = 'tool-cordis'
-export const inject = ['tools', 'systemPrompt', 'dynamicCordisRunner', 'cordisInspect']
+export const inject = ['tools', 'fs', 'systemPrompt', 'dynamicCordisRunner', 'cordisInspect']
 
 function requireAgent(exec: ToolExecution): Agent {
   if (exec.agent === undefined) throw new Error('Cordis dynamic tools require an Agent-backed session')
   return exec.agent
+}
+
+/**
+ * Resolve a promotion target directory to a workspace-confined relative path.
+ * Only relative paths under `.dsh/promoted-plugins/` are accepted; absolute
+ * paths, parent traversal, and home shortcuts are rejected before any write.
+ * @param raw - the user-provided target directory (already default-filled).
+ * @returns the normalized relative directory path to write under.
+ */
+function resolvePromotionDirectory(raw: string): string {
+  if (raw.length === 0) throw new Error('targetDirectory must be a non-empty relative path')
+  if (isAbsolute(raw) || raw.startsWith('\\')) {
+    throw new Error(`targetDirectory must be relative to the workspace (under .dsh/promoted-plugins/), got absolute path \`${raw}\``)
+  }
+  if (raw.startsWith('~')) throw new Error('targetDirectory must not start with `~`')
+  const normalized = normalize(raw).split(sep).join('/')
+  if (normalized === '.' || normalized.startsWith('../')) {
+    throw new Error(`targetDirectory must stay inside the workspace, got \`${raw}\``)
+  }
+  if (!normalized.startsWith('.dsh/promoted-plugins/') || normalized === '.dsh/promoted-plugins/') {
+    throw new Error(
+      'targetDirectory must live under .dsh/promoted-plugins/ so promoted plugins stay in the session workspace,'
+      + ` got \`${raw}\``,
+    )
+  }
+  return normalized
 }
 
 /** Register the Cordis tools and explicit `@pluginId` context injection. */
@@ -376,6 +404,93 @@ export function apply(ctx: Context): void {
       return { pluginId: args.pluginId, wasRunning: receipt.wasRunning }
     },
     presentCall: presentUndefineCall,
+  }))
+
+  ctx.tools.register(defineTool({
+    name: 'cordis_promote',
+    description:
+      'Promote a tested dynamic Cordis Plugin to a durable disk-based plugin in the workspace. Writes package.json, '
+      + 'index.js, and documentation so the extension persists across DSH process restarts.',
+    parameters: {
+      pluginId: { type: 'string', required: true, description: 'Stable dynamic Plugin ID to promote.' },
+      packageId: { type: 'string', description: 'Exact Package ID to promote; defaults to currentPackageId or latest Package.' },
+      targetDirectory: { type: 'string', description: 'Directory for the promoted plugin, relative to the workspace (must stay under .dsh/promoted-plugins/; defaults to .dsh/promoted-plugins/<pluginId>).' },
+    },
+    output: {
+      schema: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          pluginId: { type: 'string', required: true },
+          packageId: { type: 'string', required: true },
+          targetPath: { type: 'string', required: true },
+          filesCreated: { type: 'array', items: { type: 'string' }, required: true },
+        },
+      },
+      render: (_args, value) => [{
+        type: 'text',
+        text: `Promoted dynamic Plugin ${value.pluginId}/${value.packageId} to ${value.targetPath} (${value.filesCreated.length} files written).`,
+      }],
+    },
+    async execute(args, exec) {
+      const agent = requireAgent(exec)
+      const pluginId = CordisDynamicPluginId(args.pluginId)
+      const plugin = ctx.dynamicCordisRunner.inspectPlugin(agent, pluginId)
+      const packageId = args.packageId !== undefined
+        ? CordisDynamicPackageId(args.packageId)
+        : plugin.currentPackageId ?? plugin.nextPackageId ?? plugin.packages.at(-1)?.packageId
+      if (packageId === undefined) {
+        throw new Error(`Plugin "${args.pluginId}" has no packages to promote`)
+      }
+      const inspected = ctx.dynamicCordisRunner.inspectPackage(agent, pluginId, packageId)
+      const targetDir = resolvePromotionDirectory(
+        args.targetDirectory ?? `.dsh/promoted-plugins/${args.pluginId}`,
+      )
+      const filesCreated: string[] = []
+
+      const writeFilePolicy = async (filename: string, content: string): Promise<void> => {
+        const target = await ctx.fs.resolve(`${targetDir}/${filename}`, { signal: exec.signal })
+        const intent = await ctx.waterfall('fs/write-intent', target, exec, () => ({ kind: 'createIfAbsent' } as const))
+        await ctx.fs.writeText(target, content, intent, exec.signal)
+        filesCreated.push(filename)
+      }
+
+      const pkgJson = JSON.stringify({
+        name: `@dsh-promoted/${args.pluginId}`,
+        version: '0.1.0',
+        description: inspected.purpose || `Promoted plugin from ${args.pluginId}`,
+        main: 'index.js',
+        type: 'module',
+      }, null, 2)
+      await writeFilePolicy('package.json', pkgJson)
+
+      if (inspected.code.host !== undefined) {
+        const hostCode = `// Auto-promoted from ${args.pluginId}/${packageId}\n`
+          + `// Purpose: ${inspected.purpose}\n\n`
+          + `export default function apply(ctx) {\n${inspected.code.host}\n}\n`
+        await writeFilePolicy('index.js', hostCode)
+      }
+
+      if (inspected.code.client !== undefined) {
+        const clientCode = `// Auto-promoted client half from ${args.pluginId}/${packageId}\n\n`
+          + `export default function apply(ctx) {\n${inspected.code.client}\n}\n`
+        await writeFilePolicy('client.js', clientCode)
+      }
+
+      const readme = `# Promoted Plugin: ${inspected.name}\n\n`
+        + `Original Dynamic Plugin ID: \`${args.pluginId}\`\n`
+        + `Promoted Package ID: \`${packageId}\`\n\n`
+        + `## Purpose\n${inspected.purpose}\n`
+      await writeFilePolicy('README.md', readme)
+
+      return {
+        pluginId: args.pluginId,
+        packageId: String(packageId),
+        targetPath: targetDir,
+        filesCreated,
+      }
+    },
+    presentCall: presentPromoteCall,
   }))
 
   ctx.on('agent/pre-step', async ({ agent, messages, signal }, next): Promise<PreStepDecision> => {
