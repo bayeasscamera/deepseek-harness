@@ -275,6 +275,7 @@
     { "path": "./packages/preset/persona" },
     { "path": "./packages/guard/auto-verification" },
     { "path": "./packages/guard/repeat-tool-reminder" },
+    { "path": "./packages/guard/agent-state" },
     { "path": "./packages/extensions/cordis-host-runner" },
     { "path": "./packages/extensions/tool-cordis" },
     { "path": "./packages/hooks/hook-protocol" },
