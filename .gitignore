@@ -45,6 +45,8 @@ packages/typert/generator/tests/.generated-model-*/
 packages/typert/generator/tests/.generated-tools-*/
 
 # --- Loop Engineering session residue (agent-side tooling, not part of the product) ---
+# The repo's own .agents/notes and shipped skills stay tracked; these external
+# skill folders arrive from a different agent toolchain and never belong here.
 LOOP.md
 STATE.md
 gate.yaml

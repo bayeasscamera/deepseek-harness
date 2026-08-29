@@ -31,9 +31,13 @@ export function findNodeExecutable(): string {
   const candidates = [
     process.env.NODE_PATH_CUSTOM,
     path.join(home, '.local', 'bin', 'node'),
+    path.join(home, '.fnm', 'current', 'bin', 'node'),
+    path.join(home, '.volta', 'bin', 'node'),
+    path.join(home, '.asdf', 'shims', 'node'),
+    path.join(home, '.proto', 'bin', 'node'),
     '/opt/homebrew/bin/node',
     '/usr/local/bin/node',
-    'node',
+    '/usr/bin/node',
   ].filter((c): c is string => Boolean(c))
 
   for (const candidate of candidates) {
@@ -43,6 +47,31 @@ export function findNodeExecutable(): string {
       }
     } catch {}
   }
+
+  // Scan NVM versions directory for installed node binaries; sort numerically so
+  // v9 never beats v24 the way a lexicographic reverse would.
+  try {
+    const nvmDir = path.join(home, '.nvm', 'versions', 'node')
+    if (fs.existsSync(nvmDir)) {
+      const versions = fs.readdirSync(nvmDir)
+        .filter(v => /^v\d+\.\d+\.\d+$/.test(v))
+        .sort((a, b) => {
+          const pa = a.slice(1).split('.').map(Number)
+          const pb = b.slice(1).split('.').map(Number)
+          for (let i = 0; i < 3; i++) {
+            if ((pb[i] ?? 0) !== (pa[i] ?? 0)) return (pb[i] ?? 0) - (pa[i] ?? 0)
+          }
+          return 0
+        })
+      for (const v of versions) {
+        const p = path.join(nvmDir, v, 'bin', 'node')
+        if (fs.existsSync(p)) {
+          return p
+        }
+      }
+    }
+  } catch {}
+
   return 'node'
 }
 

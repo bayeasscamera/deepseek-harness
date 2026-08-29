@@ -37,20 +37,22 @@ export class WindowStateManager {
         // Ensure the restored window coordinates are on a visible screen
         const x = loaded.x
         const y = loaded.y
-        if (x !== undefined && y !== undefined) {
-          const visible = screen.getAllDisplays().some((display) => {
-            const bounds = display.bounds
-            return (
-              x >= bounds.x &&
-              x < bounds.x + bounds.width &&
-              y >= bounds.y &&
-              y < bounds.y + bounds.height
-            )
-          })
-          if (!visible) {
-            delete loaded.x
-            delete loaded.y
-          }
+        if (x !== undefined && y !== undefined && app.isReady()) {
+          try {
+            const visible = screen.getAllDisplays().some((display) => {
+              const bounds = display.bounds
+              return (
+                x >= bounds.x &&
+                x < bounds.x + bounds.width &&
+                y >= bounds.y &&
+                y < bounds.y + bounds.height
+              )
+            })
+            if (!visible) {
+              delete loaded.x
+              delete loaded.y
+            }
+          } catch {}
         }
         return { ...DEFAULT_STATE, ...loaded }
       }
