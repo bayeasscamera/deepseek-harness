@@ -15,6 +15,17 @@ if (!isSingleInstance) {
   process.exit(0)
 }
 
+// ── Performance & GPU Acceleration Flags ──────────────────────────────────────
+// GPU rasterization and out-of-process canvas keep streaming UI updates off
+// the main thread; disabling background timer throttling pairs with
+// backgroundThrottling:false in window.ts so the agent stream keeps rendering
+// when the window loses focus. Dropped as no-ops on current Chromium:
+// 'enable-zero-copy' (raster is zero-copy by default) and the SmoothScrolling
+// feature flag (smooth scrolling is the shipped default).
+app.commandLine.appendSwitch('enable-gpu-rasterization')
+app.commandLine.appendSwitch('disable-background-timer-throttling')
+app.commandLine.appendSwitch('enable-features', 'CanvasOopRasterization')
+
 // ── Core Service Instances ────────────────────────────────────────────────────
 
 const logger = new AppLogger()
@@ -108,25 +119,39 @@ ipcMain.handle('app:openLogs', () => {
 // ── Lifecycle Events ──────────────────────────────────────────────────────────
 
 app.on('second-instance', () => {
-  if (mainWindow) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
     if (mainWindow.isMinimized()) mainWindow.restore()
     mainWindow.show()
     mainWindow.focus()
+  } else {
+    const url = serverManager.getUrl()
+    if (url) {
+      mainWindow = createApplicationWindow(url, windowStateManager, () => {
+        mainWindow = null
+      })
+    }
   }
 })
 
 void app.whenReady().then(async () => {
   try {
+    if (process.platform === 'darwin' && app.dock) {
+      await app.dock.show()
+    }
+
     await bootstrap()
 
     app.on('activate', () => {
-      if (BrowserWindow.getAllWindows().length === 0) {
+      if (BrowserWindow.getAllWindows().length === 0 || !mainWindow || mainWindow.isDestroyed()) {
         const url = serverManager.getUrl()
         if (url) {
           mainWindow = createApplicationWindow(url, windowStateManager, () => {
             mainWindow = null
           })
         }
+      } else {
+        mainWindow.show()
+        mainWindow.focus()
       }
     })
   } catch (err: unknown) {

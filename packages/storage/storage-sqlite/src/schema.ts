@@ -78,6 +78,19 @@ function configureDatabase(db: DatabaseSync, path: string, journalMode: JournalM
   db.exec('PRAGMA foreign_keys = ON')
   // The validated union is safe to interpolate into a non-bindable PRAGMA.
   db.exec(`PRAGMA journal_mode = ${journalMode.toUpperCase()}`)
+  // WAL keeps crash safety at NORMAL synchronous (durable at checkpoints, not
+  // per-commit); the rollback journal keeps its FULL default.
+  if (journalMode === 'wal') {
+    db.exec('PRAGMA synchronous = NORMAL')
+  }
+  // Bound the page cache well above the 2MB default without the per-connection
+  // memory cost of tens of MB: this backend is one of several sqlite
+  // connections a running harness process may hold.
+  db.exec('PRAGMA cache_size = -8000')
+  db.exec('PRAGMA temp_store = MEMORY')
+  // WAL permits one writer plus readers; without a busy timeout a colliding
+  // writer reports SQLITE_BUSY immediately instead of briefly waiting.
+  db.exec('PRAGMA busy_timeout = 5000')
   // `PRAGMA user_version` always returns exactly one row { user_version }.
   const { user_version: onDisk } = db.prepare('PRAGMA user_version').get() as { user_version: number }
   if (onDisk !== 0 && onDisk !== STORAGE_SQLITE_SCHEMA_VERSION) {

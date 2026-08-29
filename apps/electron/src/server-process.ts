@@ -4,6 +4,37 @@ import * as path from 'node:path'
 import { findNodeExecutable, getEnhancedPath, resolveRepoRoot } from './env-paths.js'
 import { type AppLogger } from './logger.js'
 
+/**
+ * Live manager instances, held weakly so registration never keeps an unused
+ * manager alive. One process-level hook stops every live instance at exit.
+ */
+const liveInstances = new Set<WeakRef<ServerProcessManager>>()
+let exitHooksRegistered = false
+
+function stopAllLiveInstances(): void {
+  for (const ref of liveInstances) {
+    const instance = ref.deref()
+    if (instance !== undefined) instance.stop()
+  }
+  liveInstances.clear()
+}
+
+function registerExitHooks(): void {
+  if (exitHooksRegistered) return
+  exitHooksRegistered = true
+  process.once('exit', stopAllLiveInstances)
+  // On signals, stop the child then re-emit so the default termination still
+  // happens; a plain listener would otherwise swallow the default exit.
+  for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+    process.once(signal, () => {
+      stopAllLiveInstances()
+      if (process.listenerCount(signal) === 1) {
+        process.kill(process.pid, signal)
+      }
+    })
+  }
+}
+
 export class ServerProcessManager {
   private process: ChildProcess | null = null
   private serverUrl: string | null = null
@@ -15,6 +46,8 @@ export class ServerProcessManager {
     this.logger = logger
     this.resourcesPath = resourcesPath
     this.onUnexpectedExit = onUnexpectedExit
+    registerExitHooks()
+    liveInstances.add(new WeakRef(this))
   }
 
   public getUrl(): string | null {
@@ -122,6 +155,11 @@ export class ServerProcessManager {
         } catch {}
       }
       this.process = null
+    }
+    // A stopped manager owns no child process anymore; drop it from the
+    // exit-hook registry so shutdown never iterates stopped instances.
+    for (const ref of liveInstances) {
+      if (ref.deref() === this) liveInstances.delete(ref)
     }
   }
 }

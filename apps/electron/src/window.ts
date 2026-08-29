@@ -27,18 +27,26 @@ export function createApplicationWindow(
       nodeIntegration: false,
       sandbox: true,
       webSecurity: true,
-      spellcheck: true,
+      spellcheck: false,
+      backgroundThrottling: false,
     },
   })
 
   windowStateManager.track(win)
 
+  if (savedState.x === undefined || savedState.y === undefined) {
+    win.center()
+  }
+
   if (savedState.isMaximized) {
     win.maximize()
   }
 
+  // Show only once the renderer has painted: an immediately shown window
+  // flashes blank white before the first frame is ready.
   win.once('ready-to-show', () => {
     win.show()
+    win.focus()
   })
 
   // Block opening unvetted popups / new windows

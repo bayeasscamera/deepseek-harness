@@ -169,6 +169,19 @@ function configureDatabase(db: DatabaseSync, path: string, journalMode: JournalM
   // The validated union is safe to interpolate into a non-bindable PRAGMA.
   // Apply it only after ownership validation and initialization commit.
   db.exec(`PRAGMA journal_mode = ${journalMode.toUpperCase()}`)
+  // WAL keeps crash safety at NORMAL synchronous (durable at checkpoints, not
+  // per-commit); the rollback journal keeps its FULL default.
+  if (journalMode === 'wal') {
+    db.exec('PRAGMA synchronous = NORMAL')
+  }
+  // Bound the page cache well above the 2MB default without the per-connection
+  // memory cost of tens of MB: sessions may hold several sqlite connections
+  // (session store, checkpoint store, storage backend) in one process.
+  db.exec('PRAGMA cache_size = -8000')
+  db.exec('PRAGMA temp_store = MEMORY')
+  // WAL permits one writer plus readers; without a busy timeout a colliding
+  // writer reports SQLITE_BUSY immediately instead of briefly waiting.
+  db.exec('PRAGMA busy_timeout = 5000')
 }
 
 /**
