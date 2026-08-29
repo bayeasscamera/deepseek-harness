@@ -393,6 +393,16 @@
         thresholds: [3, 5, 8]
         argumentsPreviewChars: 500
 
+    # Durable per-workspace tool history with pre-action consequence prediction
+    # and post-action outcome comparison. Persists rolling per-tool statistics and
+    # folds one-line lessons into the durable store; the model plans each step
+    # against its own history. Set denyIrreversible: true to block predicted
+    # irreversible calls outright.
+    - id: agent-state
+      name: '@deepseek-ai/dsh-agent-state'
+      config:
+        denyIrreversible: false
+
     # Every mode enables the stable model-facing web_search tool. DeepSeek search
     # resolves the same DEEPSEEK_API_KEY credential the Models page manages for
     # chat, at each search; its Messages endpoint is separate from the
