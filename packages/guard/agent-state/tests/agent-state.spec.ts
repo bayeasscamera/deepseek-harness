@@ -19,14 +19,22 @@ import { MockAdapter, textResponse, toolCallResponse } from '../../../core/agent
 const roots: string[] = []
 afterAll(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }) })
 
+/** Config overrides; optional fields accept explicit `undefined` so a test can remove a default under exactOptionalPropertyTypes. */
+type HarnessConfig = { [K in keyof AgentState.Config]?: AgentState.Config[K] | undefined }
+
 /** Boot the core spine + the guard with an isolated store directory. */
-async function harness(config: Partial<AgentState.Config> = {}): Promise<{ ctx: Context; store: string }> {
+async function harness(config: HarnessConfig = {}): Promise<{ ctx: Context; store: string }> {
   const ctx = new Context()
   await mountAgentLoopTestDependencies(ctx)
   await ctx.plugin(AgentLoop, { agents: [] })
   const store = join(mkdtempSync(join(tmpdir(), 'dsh-agent-state-')), 'state.jsonl')
   roots.push(join(store, '..'))
-  await ctx.plugin(AgentState, { storeDir: store, ...config })
+  // A key present with `undefined` removes the harness default instead of
+  // overriding it — that is how the store-derivation test opts out of
+  // `storeDir` under exactOptionalPropertyTypes.
+  const resolved = { storeDir: store, ...config } as Record<string, unknown>
+  if (resolved['storeDir'] === undefined) delete resolved['storeDir']
+  await ctx.plugin(AgentState, resolved)
   ctx.tools.register(defineContentToolFixture({
     name: 'probe',
     description: 'p',
