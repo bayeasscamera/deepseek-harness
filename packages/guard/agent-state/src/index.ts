@@ -2,9 +2,10 @@
  * Agent state persistence and action consequence reasoning. Before every
  * mutating tool call the guard predicts the action's effects and exposes the
  * prediction to the model; after the call settles it compares the outcome
- * against the prediction, feeds the comparison back as an additional context,
- * and folds a durable lesson into per-tool rolling statistics that survive
- * across sessions.
+ * against the prediction and folds a durable lesson into per-tool rolling
+ * statistics that survive across sessions. Only surprises are fed back as an
+ * additional context — failures and prediction mismatches; a matched success
+ * stays in the durable statistics so no message rides on every call.
  *
  * The persisted store is derived data in the dsh-memory pattern: one JSON
  * object per line under $DSH_HOME/agent-state/<workspace>/, rewritten
@@ -22,11 +23,13 @@ import type { PreStepDecision } from '@deepseek-ai/dsh-agent'
 import type { UserMessage } from '@deepseek-ai/dsh-session'
 import type { PostToolDecision, PreToolDecision, ToolExecution, ToolExecutionResult } from '@deepseek-ai/dsh-tools'
 import { loadState, recordObservation, saveState, storePathFor } from './store.ts'
+import type { StoreLimits } from './store.ts'
 import { predictAction } from './predict.ts'
 import type { ActionObservation, ActionPrediction, PersistedState } from './types.ts'
 
 export * from './types.ts'
 export { loadState, saveState, storePathFor } from './store.ts'
+export type { StoreLimits } from './store.ts'
 export { predictAction } from './predict.ts'
 
 export const name = 'agent-state'
@@ -40,11 +43,17 @@ export interface Config {
   storeDir?: string
   /** Deny predicted-irreversible calls outright instead of predicting and allowing. Default: false (reason, then let the policy decide). */
   denyIrreversible?: boolean
+  /** Rolling observation rows retained in the store. Default: 200. */
+  maxObservations?: number
+  /** Distinct lessons retained per tool row. Default: 8. */
+  maxLessonsPerTool?: number
 }
 
 export const Config: z<Config> = z.object({
   storeDir: z.string(),
   denyIrreversible: z.boolean().default(false),
+  maxObservations: z.number().default(200),
+  maxLessonsPerTool: z.number().default(8),
 })
 
 declare module '@deepseek-ai/cordis' {
@@ -67,6 +76,7 @@ interface Pending {
 export class AgentStateService extends Service {
   private readonly storePath: string
   private readonly state: PersistedState
+  private readonly limits: StoreLimits
   private readonly pending = new WeakMap<ToolExecution, Pending>()
 
   constructor(ctx: Context, config: Config) {
@@ -74,6 +84,9 @@ export class AgentStateService extends Service {
     this.storePath = config.storeDir !== undefined
       ? (config.storeDir.endsWith('.jsonl') ? config.storeDir : `${config.storeDir}/state.jsonl`)
       : storePathFor(process.cwd())
+    // The validated Config fills both schema defaults; the asserts only bridge
+    // the optional input type.
+    this.limits = { maxObservations: config.maxObservations as number, maxLessonsPerTool: config.maxLessonsPerTool as number }
     this.state = loadState(this.storePath)
   }
 
@@ -82,19 +95,30 @@ export class AgentStateService extends Service {
     saveState(this.storePath, this.state)
   }
 
-  /** Remember one execution's prediction for the post-execute comparison. */
+  /**
+   * Remember one execution's prediction for the post-execute comparison.
+   * @param exec - active tool execution key.
+   * @param prediction - model consequence prediction before execution.
+   */
   pendingStore(exec: ToolExecution, prediction: ActionPrediction): void {
     this.pending.set(exec, { prediction })
   }
 
-  /** Take (once) the prediction recorded for one execution, if any. */
+  /**
+   * Take (once) the prediction recorded for one execution, if any.
+   * @param exec - active tool execution key.
+   * @returns the stored prediction or undefined when none was recorded.
+   */
   pendingTake(exec: ToolExecution): ActionPrediction | undefined {
     return this.pending.get(exec)?.prediction
   }
 
-  /** Fold one settled observation into the durable state and persist it. */
+  /**
+   * Fold one settled observation into the durable state and persist it.
+   * @param observation - settled post-execution consequence and verification score.
+   */
   foldObservation(observation: ActionObservation): void {
-    recordObservation(this.state, observation)
+    recordObservation(this.state, observation, this.limits)
     this.persist()
   }
 
@@ -143,11 +167,16 @@ export function apply(ctx: Context, config: Config): void {
   const service = new AgentStateService(ctx, config)
 
   // Before each step the model reasons over the durable state: per-tool
-  // success rates and the lessons this workspace has already paid for.
-  ctx.on('agent/pre-step', ({ messages }, next): Promise<PreStepDecision> => {
+  // success rates and the lessons this workspace has already paid for. The
+  // recall prepends to whatever the rest of the chain decided — the waterfall
+  // still runs, so later listeners and the runtime-context projection keep
+  // their contributions.
+  ctx.on('agent/pre-step', async ({ signal }, next): Promise<PreStepDecision> => {
+    const decision = await next()
+    if (signal.aborted || decision.kind !== 'enter') return decision
     const recall = service.recallAll()
-    if (recall === undefined) return next()
-    return Promise.resolve({ kind: 'enter', messages: [recall, ...messages] })
+    if (recall === undefined) return decision
+    return { kind: 'enter', messages: [recall, ...decision.messages] }
   })
 
   ctx.on('tools/pre-execute', async (exec: ToolExecution, next: () => Promise<PreToolDecision>): Promise<PreToolDecision> => {
@@ -161,10 +190,7 @@ export function apply(ctx: Context, config: Config): void {
     // model what it predicted BEFORE the result, so the post comparison is
     // meaningful even when the policy denies.
     if (prediction.risk === 'irreversible' && config.denyIrreversible === true) {
-      return {
-        kind: 'deny',
-        reason: `agent-state: predicted irreversible action — ${prediction.consequences[0]?.detail ?? 'unrecoverable state change'}`,
-      }
+      return { kind: 'deny', reason: denyReason(prediction) }
     }
     return next()
   })
@@ -180,16 +206,29 @@ export function apply(ctx: Context, config: Config): void {
 
     const observation = settleObservation(exec, result, prediction)
     service.foldObservation(observation)
+    // Surface only surprises: a matched success is already folded into the
+    // durable statistics, and repeating it would inject a message after every
+    // tool call. Blocks always carry the comparison — the call was stopped.
     const feedback = observationMessage(exec, observation)
     if (downstream.kind === 'block') {
       return { kind: 'block', feedback: downstream.feedback, additionalContexts: [feedback, ...downstream.additionalContexts ?? []] }
     }
+    if (observation.matchedPrediction && observation.outcome === 'success') return downstream
     return { ...downstream, additionalContexts: [feedback, ...downstream.additionalContexts ?? []] }
   })
 }
 
-/** Settle one observation by comparing the settled result against the prediction. */
-function settleObservation(
+/**
+ * Human-readable deny reason from a prediction: the details of its
+ * consequences, most significant first. Irreversible predictions always carry
+ * at least one consequence — the predictor pushes one with every irreversible
+ * classification.
+ */
+function denyReason(prediction: ActionPrediction): string {
+  return `agent-state: predicted irreversible action — ${prediction.consequences.map(c => c.detail).join('; ')}`
+}
+
+/** Settle one observation by comparing the settled result against the prediction. */function settleObservation(
   exec: ToolExecution,
   result: Readonly<ToolExecutionResult>,
   prediction: ActionPrediction,

@@ -7,21 +7,23 @@
  * @module @deepseek-ai/dsh-agent-state/store
  */
 
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
-import type { ActionObservation, PersistedState, ToolStat } from './types.ts'
+import type { ActionObservation, PersistedState } from './types.ts'
 
-/** Bounded observation history kept in the store. */
-const MAX_OBSERVATIONS = 200
-
-/** Distinct lessons retained per tool row. */
-const MAX_LESSONS_PER_TOOL = 8
+/** Retention limits applied when folding observations, overridable via plugin Config. */
+export interface StoreLimits {
+  /** Bounded observation history kept in the store. */
+  maxObservations: number
+  /** Distinct lessons retained per tool row. */
+  maxLessonsPerTool: number
+}
 
 /** Fresh empty store. */
 function emptyState(): PersistedState {
-  return { version: 1, tools: {} as Record<string, ToolStat>, observations: [] }
+  return { version: 1, tools: {}, observations: [] }
 }
 
 /**
@@ -58,8 +60,11 @@ export function loadState(path: string): PersistedState {
       if (row.tools !== undefined) {
         state.tools = row.tools
       }
+      // Observation rows are written newest-first and each carries one
+      // observation; concat preserves the persisted order instead of letting
+      // the last row erase the history.
       if (Array.isArray(row.observations)) {
-        state.observations = row.observations
+        state.observations = [...state.observations, ...row.observations]
       }
     } catch {
       // A torn or hand-edited line never blocks the agent; skip it.
@@ -69,8 +74,11 @@ export function loadState(path: string): PersistedState {
 }
 
 /**
- * Serialize the state back as one JSON row per line, atomically replacing
- * the file.
+ * Serialize the state back as one JSON row per line, replacing the file
+ * atomically: the payload lands in a sibling `.tmp` file and one `renameSync`
+ * swaps it in, so a concurrent reader or a crash mid-write never observes a
+ * torn store. The store is derived data; a lost final flush is acceptable, a
+ * torn one is not.
  * @param path - store file to write.
  * @param state - the state to persist.
  */
@@ -78,16 +86,25 @@ export function saveState(path: string, state: PersistedState): void {
   mkdirSync(dirname(path), { recursive: true })
   const toolsRow = JSON.stringify({ version: 1, tools: state.tools })
   const observationRows = state.observations.map(observation => JSON.stringify({ version: 1, observations: [observation] }))
-  writeFileSync(path, [toolsRow, ...observationRows].join('\n') + '\n')
+  const tmpPath = `${path}.tmp`
+  try {
+    writeFileSync(tmpPath, [toolsRow, ...observationRows].join('\n') + '\n')
+    renameSync(tmpPath, path)
+  } catch (err) {
+    // The swap failed; drop the half-written temp file so the next save starts clean.
+    try { unlinkSync(tmpPath) } catch { /* the temp file was never created or is already gone */ }
+    throw err
+  }
 }
 
 /**
  * Record one settled observation and advance the tool's rolling statistics.
  * @param state - the state to mutate (the caller persists afterwards).
  * @param observation - the settled outcome to fold in.
+ * @param limits - retention caps trimming the observation history and per-tool lessons.
  */
-export function recordObservation(state: PersistedState, observation: ActionObservation): void {
-  state.observations = [observation, ...state.observations].slice(0, MAX_OBSERVATIONS)
+export function recordObservation(state: PersistedState, observation: ActionObservation, limits: StoreLimits): void {
+  state.observations = [observation, ...state.observations].slice(0, limits.maxObservations)
   const row = state.tools[observation.tool]
   if (row === undefined) {
     state.tools[observation.tool] = {
@@ -101,6 +118,6 @@ export function recordObservation(state: PersistedState, observation: ActionObse
   if (observation.outcome === 'success') row.successes += 1
   if (observation.outcome === 'failure') row.failures += 1
   if (observation.lesson !== '' && !row.lessons.includes(observation.lesson)) {
-    row.lessons = [observation.lesson, ...row.lessons].slice(0, MAX_LESSONS_PER_TOOL)
+    row.lessons = [observation.lesson, ...row.lessons].slice(0, limits.maxLessonsPerTool)
   }
 }
