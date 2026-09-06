@@ -203,6 +203,15 @@ interface ToolArgsMap {
     /** Exact immutable Package ID owned by pluginId; when specified, source and diagnostics are returned. */
     packageId?: string;
   } & Record<string, JsonValue>;
+  /** Promote a tested dynamic Cordis Plugin to a durable disk-based plugin in the workspace. Writes package.json, index.js, and documentation so the extension persists across DSH process restarts. */
+  cordis_promote: {
+    /** Stable dynamic Plugin ID to promote. */
+    pluginId: string;
+    /** Exact Package ID to promote; defaults to currentPackageId or latest Package. */
+    packageId?: string;
+    /** Directory for the promoted plugin, relative to the workspace (must stay under .dsh/promoted-plugins/; defaults to .dsh/promoted-plugins/<pluginId>). */
+    targetDirectory?: string;
+  } & Record<string, JsonValue>;
   /** Activate one exact Package of a dynamic Plugin. Use mode:"run" for the first activation, restarting currentPackageId, or rollback. When current exists, use mode:"update" to switch to a different Package, even if the Plugin is currently stopped. An unauthorized Client Package creates an approval request and returns awaiting-approval; an authorized Package returns starting and continues asynchronously in the browser. Neither result waits for the final outcome inside the Tool. currentPackageId changes only after complete success; on failure, the old current and target next remain. Asynchronous success, rejection, or technical failure is reported through state and steering. After a technical failure, read diagnostics with cordis_inspect_self, correct the same Plugin, and retry autonomously. Do not request approval again after the user rejects it. */
   cordis_run: {
     /** Stable Plugin ID returned by cordis_define. */
@@ -422,6 +431,12 @@ interface ToolOutputMap {
   cordis_inspect_list: JsonValue;
   cordis_inspect_query: JsonValue;
   cordis_inspect_self: JsonValue;
+  cordis_promote: {
+    pluginId: string;
+    packageId: string;
+    targetPath: string;
+    filesCreated: string[];
+  };
   cordis_run: JsonValue;
   cordis_stop: {
     pluginId: string;

@@ -431,7 +431,7 @@ describe('headless stream-json snapshots', () => {
     // environment, and stops there: configuration carries the reference, so
     // there is no literal-key escape hatch left to offer.
     expect(normalized).toContain(
-      'store DEEPSEEK_API_KEY through the credentials service (the web Models page writes it),',
+      'store DEEPSEEK_API_KEY, DEEPSEEK_SESSION_TOKEN, or DSH_SESSION_TOKEN through the credentials service (the web Models page writes it),',
     )
     expect(normalized).toContain('or export DEEPSEEK_API_KEY in the launching environment')
     expect(normalized).not.toContain('as a last resort')

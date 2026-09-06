@@ -33,7 +33,12 @@ class CliMockAdapter extends LlmAdapter {
       yield { type: 'finish', reason: { kind: 'error', failure: { code: 'SERVER', message: 'CLI mock provider failed' } } }
       return
     }
-    const toolResult = options.messages.at(-1)?.content.find(block => block.type === 'tool-result')
+    // Scan backwards for the latest tool result: plugin guards may append
+    // notice messages after it, so the last message is not necessarily the
+    // one carrying the result block.
+    const toolResult = [...options.messages].reverse()
+      .flatMap(m => m.content)
+      .find(block => block.type === 'tool-result')
     if (toolResult === undefined) {
       const args = JSON.stringify({ command: 'printf CLI_TOOL_ROUND_TRIP', description: 'Prove the CLI tool round trip.' })
       yield { type: 'block-start', index: 0, blockType: 'tool-call' }
