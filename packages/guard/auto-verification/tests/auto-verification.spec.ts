@@ -255,4 +255,36 @@ describe('auto-verification guard integration', () => {
     expect(firstPart?.type).toBe('text')
     expect(firstPart?.text).toContain('Loop-Engineering Verifier')
   })
+
+  it('fires the circuit-breaker notice exactly once per target', async () => {
+    const ctx = await harness()
+    const adapter = new MockAdapter([
+      toolCallResponse('call_repeat_1', 'write_file', { path: 'src/loop.ts', content: 'export const value = 1;' }),
+      toolCallResponse('call_repeat_2', 'write_file', { path: 'src/loop.ts', content: 'export const value = 2;' }),
+      toolCallResponse('call_repeat_3', 'write_file', { path: 'src/loop.ts', content: 'export const value = 3;' }),
+      toolCallResponse('call_repeat_4', 'write_file', { path: 'src/loop.ts', content: 'export const value = 4;' }),
+      textResponse('Escalated once, then stayed quiet.'),
+    ])
+    ctx.llm.registerAdapter(['mock'], adapter)
+
+    const agent = ctx.agentLoop.create(SessionId('a6'), { provider: 'mock', model: 'mock' })
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'Repeat the same edit' }], source: { kind: 'user' } }))
+    await waitForIdle(ctx, agent)
+
+    const events = [...agent.session.events]
+    const breakers = events.filter((e): e is SessionEvent<'user/message'> =>
+      e.type === 'user/message'
+      && e.data.source.kind === 'plugin'
+      && e.data.source.plugin === 'auto-verification'
+      && e.data.source.form === 'notice'
+      && e.data.source.summary.includes('Circuit Breaker'),
+    )
+
+    // The default maxAttemptsPerTarget is 3, so the third edit escalates and
+    // the fourth must not re-inject the notice into model context.
+    expect(breakers).toHaveLength(1)
+    const firstPart = breakers[0]?.data.content[0] as { type: string; text: string } | undefined
+    expect(firstPart?.type).toBe('text')
+    expect(firstPart?.text).toContain('Loop Engineering Circuit-Breaker')
+  })
 })

@@ -31,9 +31,19 @@ export interface Config {
   visualFeedbackStep?: boolean
   /** Whether to enforce Loop-Engineering Maker/Checker verification notice on code edits (default false). */
   enforceLoopVerifier?: boolean
-  /** Denylist of path substrings/patterns blocked from mutation (default ['.env', 'auth/', 'payments/', 'secrets/', 'credentials/']). */
+  /**
+   * Denylist of path substrings/patterns flagged after mutation
+   * (default ['.env', 'auth/', 'payments/', 'secrets/', 'credentials/']).
+   * Advisory and post-hoc: the notice fires after the write already happened
+   * and never blocks or reverts it.
+   */
   denylistPaths?: string[]
-  /** Max consecutive mutation attempts allowed on the same target before escalation notice (default 3). */
+  /**
+   * Max consecutive mutation attempts allowed on the same target before the
+   * escalation notice (default 3). The notice fires once per target, on the
+   * attempt that first reaches the threshold; later edits of the same target
+   * are not re-escalated.
+   */
   maxAttemptsPerTarget?: number
   /** Max characters allowed for diagnostic notices (default 1000). */
   maxDiagnosticChars?: number
@@ -348,6 +358,8 @@ export function apply(ctx: Context, config: Config = {}): void {
   if (config.enabled === false) return
 
   const attemptsByTarget = new Map<string, number>()
+  /** Targets whose circuit-breaker notice already fired; each target escalates once. */
+  const breakersFired = new Set<string>()
 
   ctx.on('tools/post-execute', async (exec: ToolExecution, _result, next): Promise<PostToolDecision> => {
     const downstream = await next()
@@ -397,7 +409,11 @@ export function apply(ctx: Context, config: Config = {}): void {
       const cap = config.maxDiagnosticChars ?? 1000
       const text = diagnostic.length > cap ? `${diagnostic.slice(0, cap)}…` : diagnostic
       noticeText = `[Auto-Verification] ${text}\nPlease review and fix this syntax issue before proceeding.`
-    } else if (attempts >= maxAttempts) {
+    } else if (attempts >= maxAttempts && !breakersFired.has(path)) {
+      // Fire on the attempt that first reaches the threshold only: re-escalating
+      // every later edit of the same target would inject unbounded repeated
+      // noise into model context.
+      breakersFired.add(path)
       noticeText = `[Loop Engineering Circuit-Breaker] ${attempts} consecutive modifications on "${path}". If issues persist, stop and escalate to human review.`
       summary = `Circuit Breaker: ${path}`
     } else if (config.enforceLoopVerifier && /\.(ts|js|py|rs|go|c|cpp|java|cs)$/i.test(path)) {
