@@ -45,7 +45,10 @@ export function findNodeExecutable(): string {
       if (fs.existsSync(candidate)) {
         return candidate
       }
-    } catch {}
+    } catch {
+      // An unreadable candidate path is skipped; the scan continues to the
+      // next candidate rather than failing the launch.
+    }
   }
 
   // Scan NVM versions directory for installed node binaries; sort numerically so
@@ -70,7 +73,10 @@ export function findNodeExecutable(): string {
         }
       }
     }
-  } catch {}
+  } catch {
+    // A missing or malformed nvm directory is not an error; fall through to
+    // the PATH-based `node` lookup below.
+  }
 
   return 'node'
 }
@@ -79,6 +85,10 @@ export function findNodeExecutable(): string {
  * Resolve the project repository root directory.
  */
 export function resolveRepoRoot(resourcesPath: string): string {
+  // Dev-launch probe: when this source tree's built CLI exists, run against it
+  // instead of the packaged resources. The existsSync guard makes the literal
+  // inert on any machine where the path does not exist (packaged installs) —
+  // remove or generalize before public distribution.
   const devRepoRoot = '/Users/bayeasssene/Documents/ProjetsGithub/DeepSeekHarness'
   if (fs.existsSync(path.join(devRepoRoot, 'apps', 'cli', 'lib', 'bin.js'))) {
     return devRepoRoot

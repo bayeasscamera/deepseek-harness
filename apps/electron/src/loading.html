@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DeepSeek Harness</title>
+  <style>
+    :root { color-scheme: light dark; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; -webkit-font-smoothing: antialiased; }
+    body { display: flex; align-items: center; justify-content: center; background: #f9fafb; color: #0f1115; }
+    @media (prefers-color-scheme: dark) { body { background: #151517; color: #e8eaed; } }
+    .card { display: flex; flex-direction: column; align-items: center; gap: 16px; animation: fade-in 0.4s ease-out both; }
+    @keyframes fade-in { from { opacity: 0; transform: translateY(6px); } }
+    .wordmark { font-size: 16px; font-weight: 600; letter-spacing: 0.08em; }
+    .spinner { width: 22px; height: 22px; border-radius: 50%; border: 2px solid rgba(0,0,0,0.1); border-top-color: #3964fe; animation: spin 0.7s linear infinite; }
+    @media (prefers-color-scheme: dark) { .spinner { border-color: rgba(255,255,255,0.1); border-top-color: #4176fe; } }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .hint { font-size: 12px; opacity: 0.55; }
+    @media (prefers-reduced-motion: reduce) { .card, .spinner { animation: none; } }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="wordmark">HARNESS</div>
+    <div class="spinner"></div>
+    <div class="hint">Starting backend…</div>
+  </div>
+</body>
+</html>

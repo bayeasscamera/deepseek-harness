@@ -52,7 +52,10 @@ export class WindowStateManager {
               delete loaded.x
               delete loaded.y
             }
-          } catch {}
+          } catch {
+            // Screen-bounds probing is best-effort: a failure keeps the saved
+            // position unchanged instead of discarding it.
+          }
         }
         return { ...DEFAULT_STATE, ...loaded }
       }

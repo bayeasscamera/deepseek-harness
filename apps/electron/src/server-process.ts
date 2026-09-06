@@ -3,6 +3,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { findNodeExecutable, getEnhancedPath, resolveRepoRoot } from './env-paths.js'
 import { type AppLogger } from './logger.js'
+import { SERVER_MAX_OLD_SPACE_MB, SERVER_START_TIMEOUT_MS, STOP_GRACE_MS } from './tunables.js'
 
 /**
  * Live manager instances, held weakly so registration never keeps an unused
@@ -24,11 +25,13 @@ function registerExitHooks(): void {
   exitHooksRegistered = true
   process.once('exit', stopAllLiveInstances)
   // On signals, stop the child then re-emit so the default termination still
-  // happens; a plain listener would otherwise swallow the default exit.
+  // happens; a plain listener would otherwise swallow the default exit. The
+  // once-wrapper has already removed itself when the callback runs, so an
+  // empty listener list means this hook is the only one that was registered.
   for (const signal of ['SIGINT', 'SIGTERM'] as const) {
     process.once(signal, () => {
       stopAllLiveInstances()
-      if (process.listenerCount(signal) === 1) {
+      if (process.listenerCount(signal) === 0) {
         process.kill(process.pid, signal)
       }
     })
@@ -83,22 +86,29 @@ export class ServerProcessManager {
         NODE_ENV: 'production',
       }
 
-      this.process = spawn(nodeBin, [cliBin, 'web', '--port', '0'], {
-        cwd: repoRoot,
-        stdio: ['ignore', 'pipe', 'pipe'],
-        env,
-        detached: process.platform !== 'win32',
-      })
+      this.process = spawn(
+        nodeBin,
+        [`--max-old-space-size=${String(SERVER_MAX_OLD_SPACE_MB)}`, cliBin, 'web', '--port', '0'],
+        {
+          cwd: repoRoot,
+          stdio: ['ignore', 'pipe', 'pipe'],
+          // The backend is a trusted local child; the full parent environment
+          // (credentials included) flows through deliberately.
+          env,
+          detached: process.platform !== 'win32',
+        },
+      )
+      const child = this.process
 
       let resolved = false
       const timeout = setTimeout(() => {
         if (!resolved) {
           resolved = true
-          const err = new Error('Server backend startup timed out after 15s')
+          const err = new Error(`Server backend startup timed out after ${String(SERVER_START_TIMEOUT_MS / 1_000)}s`)
           this.logger.error(err.message)
           reject(err)
         }
-      }, 15000)
+      }, SERVER_START_TIMEOUT_MS)
 
       this.process.stdout?.on('data', (data: Buffer) => {
         const text = data.toString()
@@ -127,33 +137,53 @@ export class ServerProcessManager {
         }
       })
 
-      this.process.on('exit', (code: number | null, signal: string | null) => {
+      child.on('exit', (code: number | null, signal: string | null) => {
         this.logger.log(`DSH process exited (code: ${code}, signal: ${signal})`)
-        this.process = null
-        if (!resolved) {
-          resolved = true
-          clearTimeout(timeout)
-          reject(new Error(`DSH process exited during startup (code: ${code})`))
-        } else if (this.onUnexpectedExit) {
-          this.onUnexpectedExit()
+        // A restart's stop() may already have replaced this child; only the
+        // live child clears the handle, and only its death is unexpected.
+        if (this.process === child) {
+          this.process = null
+          if (!resolved) {
+            resolved = true
+            clearTimeout(timeout)
+            reject(new Error(`DSH process exited during startup (code: ${code})`))
+          } else if (this.onUnexpectedExit) {
+            this.onUnexpectedExit()
+          }
         }
       })
     })
   }
 
   public stop(): void {
-    if (this.process && this.process.pid) {
+    const child = this.process
+    if (child && child.pid) {
+      const pid = child.pid
       try {
         if (process.platform !== 'win32') {
-          process.kill(-this.process.pid, 'SIGTERM')
+          process.kill(-pid, 'SIGTERM')
         } else {
-          this.process.kill('SIGTERM')
+          child.kill('SIGTERM')
         }
       } catch {
+        // The process group is already gone; try the direct kill as a fallback.
         try {
-          this.process.kill('SIGKILL')
-        } catch {}
+          child.kill('SIGKILL')
+        } catch { /* it exited between the two attempts */ }
       }
+      // A child that ignores SIGTERM must not survive as a detached orphan:
+      // escalate to SIGKILL once the grace window closes.
+      const escalation = setTimeout(() => {
+        try {
+          if (process.platform !== 'win32') {
+            process.kill(-pid, 'SIGKILL')
+          } else {
+            child.kill('SIGKILL')
+          }
+        } catch { /* the group exited inside the grace window */ }
+      }, STOP_GRACE_MS)
+      escalation.unref()
+      child.once('exit', () => { clearTimeout(escalation) })
       this.process = null
     }
     // A stopped manager owns no child process anymore; drop it from the

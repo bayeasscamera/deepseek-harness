@@ -7,7 +7,7 @@
   "type": "commonjs",
   "main": "dist/main.js",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node -e \"require('node:fs').copyFileSync('src/loading.html', 'dist/loading.html')\"",
     "dev": "npm run build && electron .",
     "dist": "npm run build && electron-builder",
     "dist:mac": "npm run build && electron-builder --mac"
