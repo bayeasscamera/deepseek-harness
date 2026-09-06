@@ -5,9 +5,9 @@
 
 Every model-facing tool a shipped plugin contributes to `ctx.tools`: the `name`, `description`, and JSON-Schema `parameters` the model receives via the system-prompt assembly. It complements the [subsystem pages](subsystems/core.md) (the types plus each page's generated Cordis API region) — this page is the *tools* the agent is offered.
 
-This file is GENERATED and verified fresh by `pnpm run verify-tool-catalog` (part of `doc-sync`) — do not edit it by hand. Unlike the cordis catalog (a pure source-AST pass), this generator BOOTS each tool plugin on a real context and reads `ctx.tools.schemas()`, because a tool schema is not statically knowable (runtime-spread enums, concatenated descriptions, config-driven names, raw-JSON-Schema MCP tools). A completeness guard globs `packages/*/tool-*` and fails if any package is missing from the generator's boot manifest, so a new tool cannot be silently undocumented. See [the tool-schema-catalog Agent Note](../.agents/notes/implemented/process/2026-07-02-tool-schema-catalog.md).
+This file is GENERATED and verified fresh by `pnpm run verify-tool-catalog` (part of `doc-sync`) — do not edit it by hand. Unlike the cordis catalog (a pure source-AST pass), this generator BOOTS each tool plugin on a real context and reads `ctx.tools.schemas()`, because a tool schema is not statically knowable (runtime-spread enums, concatenated descriptions, config-driven names, raw-JSON-Schema MCP tools). A completeness guard globs `packages/*/tool-*` plus the tool-contributing non-`tool-*` directories (`world-model`, `code-review`, `design-artboard`, `ios-simulator`) and fails if any package is missing from the generator's boot manifest, so a new tool cannot be silently undocumented. See [the tool-schema-catalog Agent Note](../.agents/notes/implemented/process/2026-07-02-tool-schema-catalog.md).
 
-Scope: shipped product tools under `packages/*/tool-*`, each booted with its DEFAULT config, except where a Config field is REQUIRED with no default — there the generator must choose, and the per-package note records which branch this page shows. The registered tool NAME can be a load-time config (e.g. `tool-subagent`'s `toolName`), so a deployment may expose a package under a different or additional name — a per-package note records those shipped aliases where they exist. The `examples/` demo tools (e.g. `echo`) are excluded, matching the cordis catalog's packages-only scope.
+Scope: shipped product tools under `packages/*/tool-*` plus the tool-contributing non-`tool-*` packages named above, each booted with its DEFAULT config, except where a Config field is REQUIRED with no default — there the generator must choose, and the per-package note records which branch this page shows. The registered tool NAME can be a load-time config (e.g. `tool-subagent`'s `toolName`), so a deployment may expose a package under a different or additional name — a per-package note records those shipped aliases where they exist. The `examples/` demo tools (e.g. `echo`) are excluded, matching the cordis catalog's packages-only scope.
 
 ## Tool Package Map
 
@@ -40,6 +40,10 @@ This table connects model-visible tool names to the plugin package and service s
 | `@deepseek-ai/dsh-tool-todo` | `todo_write` | `ctx.tools`, `owning Agent session` | `tool/call`, `todo/write`, `tool/result` | - | todo_write is session-owned state; UIs render the latest todo/write event as a checklist. `allowParallelInProgress` is required with no default, so the catalog states its choice: `true`, whose description invites several `in_progress` items. A deployment choosing `false` receives the same tool with a description asking for exactly one active task. |
 | `@deepseek-ai/dsh-tool-workflow` | `workflow` | `ctx.tools`, `ctx.workflowEngine`, `ctx.systemPrompt`, `a calling Agent (exec.agent parents the script children)` | `tool/call`, `tool/result` | - | - |
 | `@deepseek-ai/dsh-tool-web` | `web_fetch`, `web_search` | `ctx.tools`, `ctx.web`, `ctx.systemPrompt` | `tool/call`, `tool/result` | - | web_search and web_fetch keep provider selection behind ctx.web so model-visible schemas stay stable across backend swaps. |
+| `@deepseek-ai/dsh-code-review` | `code_review_audit` | `ctx.tools`, `ctx.commands` | `tool/call`, `tool/result` | - | The /review command renders the audit prompt for the human; code_review_audit returns the structured level spec to the model. The five effort levels and their aspect checklists are fixed by the package. |
+| `@deepseek-ai/dsh-design-artboard` | `design_create_artboard` | `ctx.tools`, `ctx.commands` | `tool/call`, `tool/result`, `artboard HTML files under the configured artboardDir` | - | The /design command lists and previews saved artboards; design_create_artboard writes the HTML/Tailwind preview file and returns its absolute path. |
+| `@deepseek-ai/dsh-ios-simulator` | `ios_list_devices`, `ios_simulator_screenshot` | `ctx.tools`, `ctx.commands`, `xcrun simctl at execution time (macOS only)` | `tool/call`, `tool/result`, `screenshot PNG files under the configured screenshotDir` | - | The /ios command drives list/boot/shutdown/open/screenshot over `xcrun simctl`; ios_list_devices and ios_simulator_screenshot expose the read and capture paths to the model. On non-macOS hosts the tools still register and report the platform restriction at execution. |
+| `@deepseek-ai/dsh-world-model` | `world_model_predict`, `world_model_query`, `world_model_save_fact` | `ctx.tools`, `ctx.commands`, `ctx.systemPrompt` | `tool/call`, `tool/result`, `tools/pre-execute + tools/post-execute listeners (advisory feedback)`, `<workspace>/.dsh/world-state.json` | - | world_model_predict assesses risk and blast radius before a call, world_model_query reads persisted state and environment rules, and world_model_save_fact records durable facts; the same plugin also contributes the /env and /worldstate commands and an Environment Rules system-prompt section. |
 
 <a id="deepseek-aidsh-tool-ask-user"></a>
 
@@ -1992,3 +1996,193 @@ Search the web for current information. Returns an optional summary answer and a
 Source: [`packages/web/tool-web/src/index.ts`](../packages/web/tool-web/src/index.ts)
 
 web_search and web_fetch keep provider selection behind ctx.web so model-visible schemas stay stable across backend swaps.
+
+<a id="deepseek-aidsh-code-review"></a>
+
+## `@deepseek-ai/dsh-code-review`
+
+### `code_review_audit`
+
+Run an automated code review audit at one of five configurable effort levels (low, medium, high, extra-high, ultra).
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "level": {
+      "type": "string",
+      "description": "Effort and analysis depth.",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "extra-high",
+        "ultra"
+      ]
+    },
+    "path": {
+      "type": "string",
+      "description": "File or directory to review."
+    }
+  }
+}
+```
+
+Source: [`packages/extensions/code-review/src/index.ts`](../packages/extensions/code-review/src/index.ts)
+
+The /review command renders the audit prompt for the human; code_review_audit returns the structured level spec to the model. The five effort levels and their aspect checklists are fixed by the package.
+
+<a id="deepseek-aidsh-design-artboard"></a>
+
+## `@deepseek-ai/dsh-design-artboard`
+
+### `design_create_artboard`
+
+Create a new HTML/Tailwind UI artboard in the configured artboard directory for visual preview.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Identifying name of the component or page (e.g. login_card, dashboard_stat)."
+    },
+    "title": {
+      "type": "string",
+      "description": "Human-readable artboard title."
+    },
+    "content": {
+      "type": "string",
+      "description": "HTML/Tailwind markup of the component."
+    }
+  },
+  "required": [
+    "name",
+    "content"
+  ]
+}
+```
+
+Source: [`packages/extensions/design-artboard/src/index.ts`](../packages/extensions/design-artboard/src/index.ts)
+
+The /design command lists and previews saved artboards; design_create_artboard writes the HTML/Tailwind preview file and returns its absolute path.
+
+<a id="deepseek-aidsh-ios-simulator"></a>
+
+## `@deepseek-ai/dsh-ios-simulator`
+
+### `ios_list_devices`
+
+List all iOS simulators configured and available on this macOS machine.
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+Source: [`packages/extensions/ios-simulator/src/index.ts`](../packages/extensions/ios-simulator/src/index.ts)
+
+### `ios_simulator_screenshot`
+
+Capture a PNG screenshot from an iOS simulator and save it to a file path.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "udid": {
+      "type": "string",
+      "description": "Simulator UDID (or the `booted` alias) to capture."
+    },
+    "outputPath": {
+      "type": "string",
+      "description": "File path where the PNG screenshot is written."
+    }
+  },
+  "required": [
+    "udid",
+    "outputPath"
+  ]
+}
+```
+
+Source: [`packages/extensions/ios-simulator/src/index.ts`](../packages/extensions/ios-simulator/src/index.ts)
+
+The /ios command drives list/boot/shutdown/open/screenshot over `xcrun simctl`; ios_list_devices and ios_simulator_screenshot expose the read and capture paths to the model. On non-macOS hosts the tools still register and report the platform restriction at execution.
+
+<a id="deepseek-aidsh-world-model"></a>
+
+## `@deepseek-ai/dsh-world-model`
+
+### `world_model_predict`
+
+Computes in advance the consequences, risk level (low, medium, high, critical), and blast radius of an action before executing it.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "action": {
+      "type": "string",
+      "description": "Name of the tool or command to evaluate."
+    },
+    "argsJson": {
+      "type": "string",
+      "description": "Planned arguments as a JSON string (optional)."
+    }
+  }
+}
+```
+
+Source: [`packages/context/world-model/src/index.ts`](../packages/context/world-model/src/index.ts)
+
+### `world_model_query`
+
+Queries the persistent world-model state, saved facts, and environment rules.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "queryType": {
+      "type": "string",
+      "description": "The kind of information to read.",
+      "enum": [
+        "facts",
+        "history",
+        "rules",
+        "telemetry"
+      ]
+    }
+  }
+}
+```
+
+Source: [`packages/context/world-model/src/index.ts`](../packages/context/world-model/src/index.ts)
+
+### `world_model_save_fact`
+
+Permanently records an important fact or a learned rule in the project's persistent world state.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "key": {
+      "type": "string",
+      "description": "Identifier key of the fact (e.g. \"preferred_runner\", \"build_command\")."
+    },
+    "valueJson": {
+      "type": "string",
+      "description": "Value to record, as JSON or plain text."
+    }
+  }
+}
+```
+
+Source: [`packages/context/world-model/src/index.ts`](../packages/context/world-model/src/index.ts)
+
+world_model_predict assesses risk and blast radius before a call, world_model_query reads persisted state and environment rules, and world_model_save_fact records durable facts; the same plugin also contributes the /env and /worldstate commands and an Environment Rules system-prompt section.

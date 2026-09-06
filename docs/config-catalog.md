@@ -294,6 +294,29 @@ Depends on: [`AgentLoopConfig`](#deepseek-aidsh-agent-loop) · [`GoalDomainConfi
 
 Source: [`packages/examples/agent-spine-demo/src/index.ts:92`](../packages/examples/agent-spine-demo/src/index.ts)
 
+<a id="deepseek-aidsh-agent-state"></a>
+
+## `@deepseek-ai/dsh-agent-state`
+
+```ts config-catalog
+/** Plugin config. */
+export interface Config {
+  /**
+   * Store directory location. Default: `agent-state` under \$DSH_HOME (or
+   * `~/.dsh`); one state file per session cwd keeps workspaces independent.
+   */
+  storeDir?: string
+  /** Deny predicted-irreversible calls outright instead of predicting and allowing. Default: false (reason, then let the policy decide). */
+  denyIrreversible?: boolean
+  /** Rolling observation rows retained in the store. Default: 200. */
+  maxObservations?: number
+  /** Distinct lessons retained per tool row. Default: 8. */
+  maxLessonsPerTool?: number
+}
+```
+
+Source: [`packages/guard/agent-state/src/index.ts:38`](../packages/guard/agent-state/src/index.ts)
+
 <a id="deepseek-aidsh-agent-tool-presentation"></a>
 
 ## `@deepseek-ai/dsh-agent-tool-presentation`
@@ -340,6 +363,39 @@ export interface Config {
 
 Source: [`packages/attachment/attachment-local/src/index.ts:24`](../packages/attachment/attachment-local/src/index.ts)
 
+<a id="deepseek-aidsh-auto-continue"></a>
+
+## `@deepseek-ai/dsh-auto-continue`
+
+Requires: `commands`
+
+```ts config-catalog
+/** Plugin config. */
+export interface Config {
+  /**
+   * Whether the guard owns rate-limit recovery. Default: false — mounting the
+   * guard alone never changes failure behavior until it is enabled here or via
+   * `/autocontinue on`.
+   */
+  enabled?: boolean
+  /**
+   * Owned recoveries whose cooldown elapsed without cancellation, allowed per
+   * agent before the guard delegates. The count covers consecutive rate-limit
+   * recoveries of one agent and resets when that agent's session logs a
+   * successful model response. Default: 10.
+   */
+  maxContinues?: number
+  /**
+   * Base exponential backoff in milliseconds for the first owned recovery of a
+   * streak; each consecutive owned recovery without an intervening successful
+   * request doubles the previous delay. Default: 1000.
+   */
+  delayMs?: number
+}
+```
+
+Source: [`packages/guard/auto-continue/src/index.ts:27`](../packages/guard/auto-continue/src/index.ts)
+
 <a id="deepseek-aidsh-auto-verification"></a>
 
 ## `@deepseek-ai/dsh-auto-verification`
@@ -363,9 +419,19 @@ export interface Config {
   visualFeedbackStep?: boolean
   /** Whether to enforce Loop-Engineering Maker/Checker verification notice on code edits (default false). */
   enforceLoopVerifier?: boolean
-  /** Denylist of path substrings/patterns blocked from mutation (default ['.env', 'auth/', 'payments/', 'secrets/', 'credentials/']). */
+  /**
+   * Denylist of path substrings/patterns flagged after mutation
+   * (default ['.env', 'auth/', 'payments/', 'secrets/', 'credentials/']).
+   * Advisory and post-hoc: the notice fires after the write already happened
+   * and never blocks or reverts it.
+   */
   denylistPaths?: string[]
-  /** Max consecutive mutation attempts allowed on the same target before escalation notice (default 3). */
+  /**
+   * Max consecutive mutation attempts allowed on the same target before the
+   * escalation notice (default 3). The notice fires once per target, on the
+   * attempt that first reaches the threshold; later edits of the same target
+   * are not re-escalated.
+   */
   maxAttemptsPerTarget?: number
   /** Max characters allowed for diagnostic notices (default 1000). */
   maxDiagnosticChars?: number
@@ -625,6 +691,22 @@ export interface Config {
 
 Source: [`packages/credentials/credentials-local/src/index.ts:55`](../packages/credentials/credentials-local/src/index.ts)
 
+<a id="deepseek-aidsh-design-artboard"></a>
+
+## `@deepseek-ai/dsh-design-artboard`
+
+Requires: `commands` · `tools`
+
+```ts config-catalog
+/** Plugin config. */
+export interface Config {
+  /** Directory holding the HTML artboard files, resolved against the process cwd. Default: `.dsh/artboards`. */
+  artboardDir?: string
+}
+```
+
+Source: [`packages/extensions/design-artboard/src/index.ts:47`](../packages/extensions/design-artboard/src/index.ts)
+
 <a id="deepseek-aidsh-e2b"></a>
 
 ## `@deepseek-ai/dsh-e2b`
@@ -882,6 +964,24 @@ export interface Config {
 
 Source: [`packages/runtime-diagnostics/invariants/src/index.ts:15`](../packages/runtime-diagnostics/invariants/src/index.ts)
 
+<a id="deepseek-aidsh-ios-simulator"></a>
+
+## `@deepseek-ai/dsh-ios-simulator`
+
+Requires: `commands` · `tools`
+
+```ts config-catalog
+/** Plugin config. */
+export interface Config {
+  /** Directory for `/ios screenshot` captures, resolved against the process cwd. Default: `.dsh/screenshots`. */
+  screenshotDir?: string
+  /** Positive milliseconds before a simctl invocation is killed. Default: 3000. */
+  timeoutMs?: number
+}
+```
+
+Source: [`packages/extensions/ios-simulator/src/index.ts:44`](../packages/extensions/ios-simulator/src/index.ts)
+
 <a id="deepseek-aidsh-jobs-local"></a>
 
 ## `@deepseek-ai/dsh-jobs-local`
@@ -920,7 +1020,8 @@ export interface Config {
    * defaults to `DEEPSEEK_API_KEY`. When it yields nothing, the session-token
    * fallbacks are tried in order: `DEEPSEEK_SESSION_TOKEN`,
    * `DEEPSEEK_AUTH_TOKEN`, `DSH_SESSION_TOKEN`, then `DSH_SUBSCRIPTION_KEY`.
-   * A `Bearer ` prefix on a resolved value is stripped before use.
+   * A `bearer` scheme word (any casing) on a resolved value is stripped before
+   * use; other scheme words and bare tokens pass through unchanged.
    */
   apiKeyEnv?: string
   /** Endpoint base; falls back to $DEEPSEEK_BASE_URL from a trusted environment layer, then the public API. */
@@ -3177,6 +3278,26 @@ export interface Config {
 
 Source: [`packages/workflow/workflow-worker-thread/src/index.ts:32`](../packages/workflow/workflow-worker-thread/src/index.ts)
 
+<a id="deepseek-aidsh-world-model"></a>
+
+## `@deepseek-ai/dsh-world-model`
+
+Requires: `systemPrompt` · `commands` · `tools`
+
+```ts config-catalog
+/** Plugin configuration. */
+export interface Config {
+  /** Maximum number of environment rules injected into the system prompt. */
+  maxRules?: number
+  /** Maximum task-history entries stored on disk per workspace. */
+  maxHistory?: number
+  /** Maximum consequence history entries held in memory. */
+  maxConsequences?: number
+}
+```
+
+Source: [`packages/context/world-model/src/index.ts:88`](../packages/context/world-model/src/index.ts)
+
 ## Loadable plugins with no config
 
 These load from a `cordis.yml` entry with no `config:` block; they declare no configuration API.
@@ -3216,6 +3337,7 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 - `@deepseek-ai/dsh-client-ui-user-questions` ([`packages/client/ui-user-questions/src/index.ts`](../packages/client/ui-user-questions/src/index.ts))
 - `@deepseek-ai/dsh-client-ui-workflow-run` ([`packages/client/ui-workflow-run/src/index.ts`](../packages/client/ui-workflow-run/src/index.ts))
 - `@deepseek-ai/dsh-client-ui-workspace` ([`packages/client/ui-workspace/src/index.ts`](../packages/client/ui-workspace/src/index.ts))
+- `@deepseek-ai/dsh-code-review` — requires `commands` · `tools` ([`packages/extensions/code-review/src/index.ts`](../packages/extensions/code-review/src/index.ts))
 - `@deepseek-ai/dsh-command-compact` — requires `commands` · `compaction` ([`packages/compaction/command-compact/src/index.ts`](../packages/compaction/command-compact/src/index.ts))
 - `@deepseek-ai/dsh-command-feedback` — requires `commands` ([`packages/feedback/command-feedback/src/index.ts`](../packages/feedback/command-feedback/src/index.ts))
 - `@deepseek-ai/dsh-command-goal` — requires `commands` · `goals` ([`packages/goal/command-goal/src/index.ts`](../packages/goal/command-goal/src/index.ts))
@@ -3231,6 +3353,7 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 - `@deepseek-ai/dsh-lsp` ([`packages/lsp/lsp/src/index.ts`](../packages/lsp/lsp/src/index.ts))
 - `@deepseek-ai/dsh-prompt-budget` — requires `systemPrompt` ([`packages/guard/prompt-budget/src/index.ts`](../packages/guard/prompt-budget/src/index.ts))
 - `@deepseek-ai/dsh-schedule` — requires `agents` · `sessions` · `tools` · `sessionPersistence` ([`packages/schedule/schedule/src/index.ts`](../packages/schedule/schedule/src/index.ts))
+- `@deepseek-ai/dsh-screen-reader` — requires `commands` ([`packages/interaction/screen-reader/src/index.ts`](../packages/interaction/screen-reader/src/index.ts))
 - `@deepseek-ai/dsh-session` ([`packages/core/session/src/index.ts`](../packages/core/session/src/index.ts))
 - `@deepseek-ai/dsh-session-checkpoint-policy` — requires `llm` · `sessionPersistence` · `sessions` · `tools` ([`packages/session/session-checkpoint-policy/src/index.ts`](../packages/session/session-checkpoint-policy/src/index.ts))
 - `@deepseek-ai/dsh-session-log-export` — requires `commands` ([`packages/session-query/session-log-export/src/index.ts`](../packages/session-query/session-log-export/src/index.ts))

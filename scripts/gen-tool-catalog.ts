@@ -1,7 +1,8 @@
 /**
  * Generate `docs/tool-catalog.md` from schemas collected by booting each tool
  * plugin. Runtime registration is the source of truth for computed schemas;
- * the manifest is checked against every on-disk `tool-*` package. `--check`
+ * the manifest is checked against every on-disk `tool-*` package plus the
+ * tool-contributing non-`tool-*` directories. `--check`
  * verifies the committed artifact. Rationale and ownership live in
  * `.agents/notes/implemented/process/2026-07-02-tool-schema-catalog.md`.
  */
@@ -38,6 +39,11 @@ import * as ToolSubagentListAgents from '@deepseek-ai/dsh-tool-subagent-control/
 import * as ToolSubagentReport from '@deepseek-ai/dsh-tool-subagent-report'
 import * as MemoryPlugin from '@deepseek-ai/dsh-memory'
 import * as ToolMemory from '@deepseek-ai/dsh-tool-memory'
+import CommandsService from '@deepseek-ai/dsh-commands'
+import * as CodeReview from '@deepseek-ai/dsh-code-review'
+import * as DesignArtboard from '@deepseek-ai/dsh-design-artboard'
+import * as IosSimulator from '@deepseek-ai/dsh-ios-simulator'
+import * as WorldModel from '@deepseek-ai/dsh-world-model'
 import SkillRegistry from '@deepseek-ai/dsh-skill'
 import * as SkillFileSystem from '@deepseek-ai/dsh-skill-filesystem'
 import LocalJobRegistry from '@deepseek-ai/dsh-jobs-local'
@@ -180,8 +186,10 @@ export interface ToolPackage {
 
 /**
  * The boot manifest: every shipped tool package (a `tool-*` leaf under
- * `packages/`). Ordered by package name (the render order); the completeness
- * guard proves it is exhaustive against the on-disk glob.
+ * `packages/`, plus the tool-contributing packages whose leaf is not a
+ * `tool-*` directory — matched by {@link NON_TOOL_PACKAGE_GLOBS}). Ordered by
+ * package name (the render order); the completeness guard proves it is
+ * exhaustive against the on-disk globs.
  */
 const TOOL_PACKAGES: ToolPackage[] = [
   {
@@ -569,6 +577,65 @@ const TOOL_PACKAGES: ToolPackage[] = [
     note:
       'web_search and web_fetch keep provider selection behind ctx.web so model-visible schemas stay stable across backend swaps.',
   },
+  {
+    pkg: '@deepseek-ai/dsh-code-review',
+    dir: 'code-review',
+    source: 'packages/extensions/code-review/src/index.ts',
+    requires: ['ctx.tools', 'ctx.commands'],
+    writes: ['tool/call', 'tool/result'],
+    async mount(ctx) {
+      await ctx.plugin(CommandsService)
+      await ctx.plugin(CodeReview)
+    },
+    note:
+      'The /review command renders the audit prompt for the human; code_review_audit returns the structured level spec to the model. The five effort levels and their aspect checklists are fixed by the package.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-design-artboard',
+    dir: 'design-artboard',
+    source: 'packages/extensions/design-artboard/src/index.ts',
+    requires: ['ctx.tools', 'ctx.commands'],
+    writes: ['tool/call', 'tool/result', 'artboard HTML files under the configured artboardDir'],
+    async mount(ctx) {
+      // Registration is inert; the catalog points the write side at a tmp dir
+      // so a later execution cannot create `.dsh/artboards` in the repo root.
+      await ctx.plugin(CommandsService)
+      await ctx.plugin(DesignArtboard, { artboardDir: resolve(root, '.tmp/tool-catalog/artboards') })
+    },
+    note:
+      'The /design command lists and previews saved artboards; design_create_artboard writes the HTML/Tailwind preview file and returns its absolute path.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-ios-simulator',
+    dir: 'ios-simulator',
+    source: 'packages/extensions/ios-simulator/src/index.ts',
+    requires: ['ctx.tools', 'ctx.commands', 'xcrun simctl at execution time (macOS only)'],
+    writes: ['tool/call', 'tool/result', 'screenshot PNG files under the configured screenshotDir'],
+    async mount(ctx) {
+      // Registration is inert; the catalog points the write side at a tmp dir
+      // so a later execution cannot create `.dsh/screenshots` in the repo root.
+      await ctx.plugin(CommandsService)
+      await ctx.plugin(IosSimulator, { screenshotDir: resolve(root, '.tmp/tool-catalog/screenshots') })
+    },
+    note:
+      'The /ios command drives list/boot/shutdown/open/screenshot over `xcrun simctl`; ios_list_devices and ios_simulator_screenshot expose the read and capture paths to the model. On non-macOS hosts the tools still register and report the platform restriction at execution.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-world-model',
+    dir: 'world-model',
+    source: 'packages/context/world-model/src/index.ts',
+    requires: ['ctx.tools', 'ctx.commands', 'ctx.systemPrompt'],
+    writes: ['tool/call', 'tool/result', 'tools/pre-execute + tools/post-execute listeners (advisory feedback)', '<workspace>/.dsh/world-state.json'],
+    async mount(ctx) {
+      // Registration is inert — stores are created lazily per workspace cwd on
+      // first use, and the schema harvest never executes a tool or fires a
+      // pipeline event, so no `.dsh/world-state.json` is written anywhere.
+      await ctx.plugin(CommandsService)
+      await ctx.plugin(WorldModel)
+    },
+    note:
+      'world_model_predict assesses risk and blast radius before a call, world_model_query reads persisted state and environment rules, and world_model_save_fact records durable facts; the same plugin also contributes the /env and /worldstate commands and an Environment Rules system-prompt section.',
+  },
 ]
 
 /** One package's contribution to the catalog: its schemas plus attribution. */
@@ -587,8 +654,22 @@ interface CatalogPackage {
 export type ToolCatalog = CatalogPackage[]
 
 /**
+ * On-disk globs for tool-contributing packages the completeness glob cannot
+ * infer because their directory leaf is not a `tool-*` name. Extend both this
+ * list and {@link TOOL_PACKAGES} together when a new tool package lands
+ * outside the `tool-*` naming.
+ */
+const NON_TOOL_PACKAGE_GLOBS: readonly string[] = [
+  'packages/context/world-model',
+  'packages/extensions/code-review',
+  'packages/extensions/design-artboard',
+  'packages/extensions/ios-simulator',
+]
+
+/**
  * Assert the boot manifest covers every shipped tool package on disk (a
- * `tool-*` leaf under `packages/`).
+ * `tool-*` leaf under `packages/`, plus every {@link NON_TOOL_PACKAGE_GLOBS}
+ * match).
  * Booting has no source declaration to enumerate, so this glob restores the
  * "a new tool cannot be silently undocumented" guarantee: an unlisted package
  * fails the generator (and the freshness gate) until it is added to
@@ -597,7 +678,10 @@ export type ToolCatalog = CatalogPackage[]
  * `scanRoot` defaults to the repo root; a test may point it at a fixture tree.
  */
 export function assertManifestComplete(packages: ToolPackage[] = TOOL_PACKAGES, scanRoot: string = root): void {
-  const onDisk = globSync('packages/*/tool-*', { cwd: scanRoot }).map(p => basename(p)).sort()
+  const onDisk = [
+    ...globSync('packages/*/tool-*', { cwd: scanRoot }),
+    ...NON_TOOL_PACKAGE_GLOBS.flatMap(pattern => globSync(pattern, { cwd: scanRoot })),
+  ].map(p => basename(p)).sort()
   const listed = new Set(packages.map(p => p.dir))
   const missing = onDisk.filter(dir => !listed.has(dir))
   if (missing.length > 0) {
@@ -709,9 +793,9 @@ export function render(catalog: ToolCatalog): string {
     '',
     'Every model-facing tool a shipped plugin contributes to `ctx.tools`: the `name`, `description`, and JSON-Schema `parameters` the model receives via the system-prompt assembly. It complements the [subsystem pages](subsystems/core.md) (the types plus each page\'s generated Cordis API region) — this page is the *tools* the agent is offered.',
     '',
-    'This file is GENERATED and verified fresh by `pnpm run verify-tool-catalog` (part of `doc-sync`) — do not edit it by hand. Unlike the cordis catalog (a pure source-AST pass), this generator BOOTS each tool plugin on a real context and reads `ctx.tools.schemas()`, because a tool schema is not statically knowable (runtime-spread enums, concatenated descriptions, config-driven names, raw-JSON-Schema MCP tools). A completeness guard globs `packages/*/tool-*` and fails if any package is missing from the generator\'s boot manifest, so a new tool cannot be silently undocumented. See [the tool-schema-catalog Agent Note](../.agents/notes/implemented/process/2026-07-02-tool-schema-catalog.md).',
+    'This file is GENERATED and verified fresh by `pnpm run verify-tool-catalog` (part of `doc-sync`) — do not edit it by hand. Unlike the cordis catalog (a pure source-AST pass), this generator BOOTS each tool plugin on a real context and reads `ctx.tools.schemas()`, because a tool schema is not statically knowable (runtime-spread enums, concatenated descriptions, config-driven names, raw-JSON-Schema MCP tools). A completeness guard globs `packages/*/tool-*` plus the tool-contributing non-`tool-*` directories (`world-model`, `code-review`, `design-artboard`, `ios-simulator`) and fails if any package is missing from the generator\'s boot manifest, so a new tool cannot be silently undocumented. See [the tool-schema-catalog Agent Note](../.agents/notes/implemented/process/2026-07-02-tool-schema-catalog.md).',
     '',
-    'Scope: shipped product tools under `packages/*/tool-*`, each booted with its DEFAULT config, except where a Config field is REQUIRED with no default — there the generator must choose, and the per-package note records which branch this page shows. The registered tool NAME can be a load-time config (e.g. `tool-subagent`\'s `toolName`), so a deployment may expose a package under a different or additional name — a per-package note records those shipped aliases where they exist. The `examples/` demo tools (e.g. `echo`) are excluded, matching the cordis catalog\'s packages-only scope.',
+    'Scope: shipped product tools under `packages/*/tool-*` plus the tool-contributing non-`tool-*` packages named above, each booted with its DEFAULT config, except where a Config field is REQUIRED with no default — there the generator must choose, and the per-package note records which branch this page shows. The registered tool NAME can be a load-time config (e.g. `tool-subagent`\'s `toolName`), so a deployment may expose a package under a different or additional name — a per-package note records those shipped aliases where they exist. The `examples/` demo tools (e.g. `echo`) are excluded, matching the cordis catalog\'s packages-only scope.',
     '',
     '## Tool Package Map',
     '',

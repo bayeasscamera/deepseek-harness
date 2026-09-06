@@ -6,7 +6,7 @@ One page per subsystem of the DeepSeek Harness: what it is, the data structures 
 
 | Page | Owns |
 |---|---|
-| [core.md](core.md) | how `packages/core` controls the agent loop: the package-by-package loop description, agent creation and ownership (`AgentHandle`), the `Agent` handle's delivery/cancellation/interception contracts, and the repo-wide type patterns (`…Map → derived-union`, branded ids) |
+| [core.md](core.md) | how `packages/core` controls the agent loop: the package-by-package loop description, agent creation and ownership (`AgentHandle`), the `Agent` handle's delivery/cancellation/interception contracts, and the repo-wide type patterns (`…Map → derived-union`, branded ids); its generated Cordis API region also hosts the guard-provided `ctx.agentState` and `ctx.autoContinue` services |
 | [llm-streaming.md](llm-streaming.md) | the `packages/llm` conversation types — `Message`/`ContentBlock`, the assembled model request, the `StreamChunk` wire protocol and adapter contract, `BlockAssembler`, and the `LlmAdapter` provider contract |
 | [token-meter.md](token-meter.md) | immutable scalar and positional replay measurements with consumed-log revisions |
 | [scope.md](scope.md) | scoped registration identity, dispatch carriers, and the owned `Scope` context |
@@ -26,6 +26,7 @@ One page per subsystem of the DeepSeek Harness: what it is, the data structures 
 | [system-prompt.md](system-prompt.md) | per-assembly context, tool-provider results, prompt sections, and cooperative assembly |
 | [tools.md](tools.md) | `ToolDefinition` full fields, the schema DSL, `ToolExecution`/`ToolResult`, tool-presentation UI types, and the guarded execution pipeline |
 | [user-questions.md](user-questions.md) | the UI-backed human question/answer seam: `AskUserQuestionRequest`, answer/options vocabulary, provider API, error taxonomy |
+| [screen-reader.md](screen-reader.md) | the screen-reader accessibility seam: `Verbosity` levels, `ScreenReaderState`, the `formatLinearEvent` formatter, and the `/screenreader` toggle |
 | [approval.md](approval.md) | the one-shot user-approval seam: `ApprovalRequest`, `ApprovalOutcome`, per-session policy, audit events, and answerer contracts |
 | [attachment.md](attachment.md) | durable image identity and metadata, validation inputs, verified reads, and the `AttachmentStore` seam |
 | [shell.md](shell.md) | the bash executor seam: `ShellExecRequest`/`Spec`, `ShellRunResult`, background `ShellProcess` handles |

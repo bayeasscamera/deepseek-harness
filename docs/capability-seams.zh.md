@@ -198,16 +198,24 @@ flowchart LR
   pkg_cordis_host_runner["cordis-host-runner"]
   svc_dynamicCordisRunner["ctx.dynamicCordisRunner<br/>Dynamic Cordis package host runner"]
   svc_cordisInspect["ctx.cordisInspect<br/>Dynamic Cordis inspect registry"]
+  pkg_agent_state["agent-state"]
+  svc_agentState["ctx.agentState<br/>Agent state persistence and consequence reasoning"]
+  pkg_auto_continue["auto-continue"]
+  svc_autoContinue["ctx.autoContinue<br/>Rate-limit auto-continue recovery"]
+  pkg_screen_reader["screen-reader"]
+  svc_screenReader["ctx.screenReader<br/>Screen-reader accessibility mode"]
   pkg_acp --> svc_approval
   pkg_agent --> svc_agents
   pkg_agent_default_model --> svc_agentDefaultModel
   pkg_agent_loop --> svc_agentLoop
   pkg_agent_presets --> svc_agentPresets
+  pkg_agent_state --> svc_agentState
   pkg_api_gateway --> svc_typertGateway
   pkg_apiproxy --> svc_apiProxy
   pkg_approval --> svc_approval
   pkg_attachment --> svc_attachments
   pkg_attachment_local --> svc_attachments
+  pkg_auto_continue --> svc_autoContinue
   pkg_bash_local --> svc_shell
   pkg_bash_sandbox --> svc_shell
   pkg_code_runtime --> svc_codeRuntime
@@ -247,6 +255,7 @@ flowchart LR
   pkg_sandbox --> svc_sandbox
   pkg_sandbox_local --> svc_sandbox
   pkg_sandbox_policy --> svc_sandboxPolicy
+  pkg_screen_reader --> svc_screenReader
   pkg_session --> svc_sessions
   pkg_session_persistence --> svc_sessionPersistence
   pkg_session_persistence_jsonl --> svc_sessionPersistence
@@ -475,5 +484,8 @@ flowchart LR
 | `ctx.apiProxy` | `core` | `apiproxy` | - | `connection` | - | 与传输无关的 Host 网关接口：它分派浏览器 API 调用，每条打开的 Host 流自行订阅转发事件，而不是由广播方法向其推送。 |
 | `ctx.dynamicCordisRunner` | `core` | [`cordis-host-runner`](../packages/extensions/cordis-host-runner) | - | [`tool-cordis`](../packages/extensions/tool-cordis) | - | 拥有内存定义注册表、Host 半的 vm 沙箱和 request-run 往返流程；浏览器页面通过其 Remote 命名空间在线访问同一服务。 |
 | `ctx.cordisInspect` | `core` | [`cordis-host-runner`](../packages/extensions/cordis-host-runner) | - | [`tool-cordis`](../packages/extensions/tool-cordis) | - | 注册 Host inspect 提供方、镜像 Client 提供方 manifest，并通过动态 Cordis 传输路由 Client 查询。 |
+| `ctx.agentState` | `core` | [`agent-state`](../packages/guard/agent-state) | - | - | - | 拥有持久化的每工作区动作历史，并在工具执行前后运行后果推理。没有任何包直接读取 ctx.agentState；与 agent loop 相关的行为通过它的 agent/pre-step 与 tools/pre-execute + tools/post-execute 监听器到达（见事件矩阵）。 |
+| `ctx.autoContinue` | `core` | [`auto-continue`](../packages/guard/auto-continue) | - | - | - | 持有自动限流恢复的每 agent 连续预算与实时开关。没有任何包直接读取 ctx.autoContinue；恢复通过它的 agent/request-error 监听器和 /autocontinue 命令发生。 |
+| `ctx.screenReader` | `core` | [`screen-reader`](../packages/interaction/screen-reader) | - | - | - | 持有由 /screenreader 命令驱动的每上下文无障碍模式状态；只影响呈现，没有自己的面向模型 schema 或会话事件。 |
 
 维护模式：混合模式。服务从 Cordis 声明中发现；接口、实现和消费方角色在 `scripts/gen-doc-graphs.ts` 中分类，并设有完整性守卫。

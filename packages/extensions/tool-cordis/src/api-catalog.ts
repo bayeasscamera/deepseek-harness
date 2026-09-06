@@ -305,6 +305,41 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'agentState',
+    summary: 'The agent-state service: owns the durable per-workspace state store and the pre/post consequence pipeline.',
+    description: 'The agent-state service: owns the durable per-workspace state store and the pre/post consequence pipeline.',
+    methods: [
+      {
+        signature: 'pendingStore(exec: ToolExecution, prediction: ActionPrediction): void',
+        description: 'Remember one execution\'s prediction for the post-execute comparison.',
+        parameters: [{ name: 'exec', description: 'active tool execution key.' }, { name: 'prediction', description: 'model consequence prediction before execution.' }],
+      },
+      {
+        signature: 'pendingTake(exec: ToolExecution): ActionPrediction | undefined',
+        description: 'Take (once) the prediction recorded for one execution, if any.',
+        parameters: [{ name: 'exec', description: 'active tool execution key.' }],
+        returns: 'the stored prediction or undefined when none was recorded.',
+      },
+      {
+        signature: 'foldObservation(observation: ActionObservation): void',
+        description: 'Fold one settled observation into the durable state and persist it.',
+        parameters: [{ name: 'observation', description: 'settled post-execution consequence and verification score.' }],
+      },
+      {
+        signature: 'recallFor(tools: readonly string[]): UserMessage | undefined',
+        description: 'Render the durable per-tool lessons for the tools named in one request.',
+        parameters: [{ name: 'tools', description: 'tool names the caller is about to use.' }],
+        returns: 'a context message, or undefined when nothing relevant is stored.',
+      },
+      {
+        signature: 'recallAll(): UserMessage | undefined',
+        description: 'Render every stored tool row with settled history, for step-wide recall.',
+        parameters: [],
+        returns: 'a context message, or undefined when no row has three settles.',
+      },
+    ],
+  },
+  {
     key: 'apiProxy',
     summary: 'Root interface of the unified API.',
     description: 'Root interface of the unified API. New client-request domain = one new file pair + one field here + one map row.',
@@ -375,6 +410,66 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         parameters: [{ name: 'ref', description: 'durable reference from the session log.' }, { name: 'signal', description: 'optional cancellation for backend read and verification work.' }],
         returns: 'the verified bytes and canonical reference.',
         throws: ['the signal reason when aborted, or a storage error when verification fails.'],
+      },
+    ],
+  },
+  {
+    key: 'autoContinue',
+    summary: 'The auto-continue service: per-agent continuation budget and live toggle state, owned by the mounting plugin fiber so a disposed plugin leaves no state behind.',
+    description: 'The auto-continue service: per-agent continuation budget and live toggle state, owned by the mounting plugin fiber so a disposed plugin leaves no state behind.',
+    methods: [
+      {
+        signature: 'enabled: boolean',
+        description: 'Whether the guard owns rate-limit recovery; toggled by `/autocontinue`.',
+        parameters: [],
+      },
+      {
+        signature: 'readonly maxContinues: number',
+        description: 'Owned recoveries with an elapsed cooldown allowed per agent before the guard delegates.',
+        parameters: [],
+      },
+      {
+        signature: 'readonly delayMs: number',
+        description: 'Base exponential backoff in milliseconds.',
+        parameters: [],
+      },
+      {
+        signature: 'continuesFor(agentId: SessionId): number',
+        description: 'Read the consecutive owned recoveries already counted for one agent.',
+        parameters: [{ name: 'agentId', description: 'identity carried by the failed request\'s agent.' }],
+        returns: 'the current consecutive-continue count.',
+      },
+      {
+        signature: 'budgetExhausted(agentId: SessionId): boolean',
+        description: 'Whether one agent has spent its whole continuation budget.',
+        parameters: [{ name: 'agentId', description: 'identity carried by the failed request\'s agent.' }],
+        returns: 'true when further owned recoveries must delegate.',
+      },
+      {
+        signature: 'recordContinue(agentId: SessionId): void',
+        description: 'Count one owned recovery with an elapsed cooldown for one agent.',
+        parameters: [{ name: 'agentId', description: 'identity carried by the failed request\'s agent.' }],
+      },
+      {
+        signature: 'resetBudget(agentId: SessionId): void',
+        description: 'Drop one agent\'s consecutive-continue count after a successful request.',
+        parameters: [{ name: 'agentId', description: 'identity of the agent whose session logged the success.' }],
+      },
+      {
+        signature: 'noteWait(agentId: SessionId, resumeAt: number): void',
+        description: 'Record the pending resume time of one in-flight cooldown wait, for the `/autocontinue status` report.',
+        parameters: [{ name: 'agentId', description: 'identity of the agent whose recovery is cooling down.' }, { name: 'resumeAt', description: 'epoch milliseconds when the wait elapses.' }],
+      },
+      {
+        signature: 'clearWait(agentId: SessionId): void',
+        description: 'Clear one agent\'s in-flight cooldown wait record.',
+        parameters: [{ name: 'agentId', description: 'identity of the agent whose wait settled or was cancelled.' }],
+      },
+      {
+        signature: 'waitResumeAt(agentId: SessionId): number | undefined',
+        description: 'Read the pending resume time of one agent\'s cooldown wait.',
+        parameters: [{ name: 'agentId', description: 'identity of the agent whose wait is queried.' }],
+        returns: 'epoch milliseconds when the wait elapses, or undefined when none is in flight.',
       },
     ],
   },
@@ -1033,6 +1128,23 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Read the session override without applying the deployment default.',
         parameters: [{ name: 'session', description: 'session whose log supplies the override.' }],
         returns: 'the last logged mode, or `undefined` without one.',
+      },
+    ],
+  },
+  {
+    key: 'screenReader',
+    summary: 'The screen-reader service: owns the per-context accessibility-mode state the `/screenreader` command drives and reporters read.',
+    description: 'The screen-reader service: owns the per-context accessibility-mode state the `/screenreader` command drives and reporters read.',
+    methods: [
+      {
+        signature: 'setEnabled(value: boolean): void',
+        description: 'Enable or disable linear accessibility output.',
+        parameters: [{ name: 'value', description: 'the new enabled state.' }],
+      },
+      {
+        signature: 'setVerbosity(value: Verbosity): void',
+        description: 'Set the narrative detail level.',
+        parameters: [{ name: 'value', description: 'the new verbosity level.' }],
       },
     ],
   },
@@ -2649,6 +2761,18 @@ export const EVENT_API: readonly EventApiEntry[] = [
 /** Shapes of every exported type the Service and Event signatures reference (transitively), sorted by name. */
 export const TYPE_API: readonly TypeApiEntry[] = [
   {
+    name: 'ActionObservation',
+    declaration: 'export interface ActionObservation {\n    readonly id: string;\n    readonly tool: string;\n    readonly outcome: \'success\' | \'failure\';\n    readonly matchedPrediction: boolean;\n    readonly unexpected: readonly string[];\n    readonly lesson: string;\n    readonly at: number;\n}',
+  },
+  {
+    name: 'ActionPrediction',
+    declaration: 'export interface ActionPrediction {\n    readonly risk: ActionRisk;\n    readonly consequences: readonly PredictedConsequence[];\n    readonly targets: readonly string[];\n    readonly reversibleByConvention: boolean;\n}',
+  },
+  {
+    name: 'ActionRisk',
+    declaration: 'export type ActionRisk = \'read-only\' | \'reversible\' | \'irreversible\';',
+  },
+  {
     name: 'AdapterRegistrationHandle',
     declaration: 'export interface AdapterRegistrationHandle {\n    (): void;\n    replace(providers: string[]): void;\n}',
   },
@@ -3531,6 +3655,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'PostToolDecision',
     declaration: 'export type PostToolDecision = {\n    kind: \'accept\';\n    content?: ContentBlock[];\n    value?: never;\n    additionalContexts?: UserMessage[];\n} | {\n    kind: \'accept\';\n    value: JsonValue;\n    content?: never;\n    additionalContexts?: UserMessage[];\n} | {\n    kind: \'block\';\n    feedback: ContentBlock[];\n    additionalContexts?: UserMessage[];\n};',
+  },
+  {
+    name: 'PredictedConsequence',
+    declaration: 'export interface PredictedConsequence {\n    readonly effect: string;\n    readonly detail: string;\n}',
   },
   {
     name: 'PreparedLlmCall',
@@ -4587,6 +4715,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'UserQuestionProvider',
     declaration: 'export interface UserQuestionProvider {\n    ask(request: AskUserQuestionRequest): Promise<AskUserQuestionAnswer>;\n}',
+  },
+  {
+    name: 'Verbosity',
+    declaration: 'export type Verbosity = \'concise\' | \'standard\' | \'verbose\';',
   },
   {
     name: 'WebBootEntry',

@@ -7,9 +7,9 @@
 
 已发布插件向 `ctx.tools` 提供的所有面向模型的工具：模型通过系统提示词组装获得的 `name`、`description` 和 JSON Schema `parameters`。本目录是[子系统页面](subsystems/core.md)（类型及每页生成的 `cordis-surface` 接线区域）的补充；本页列出的是向 agent（智能体）提供的*工具*。
 
-英文源文件由系统**生成**，并通过 `pnpm run verify-tool-catalog`（`doc-sync`（文档同步门禁）的一部分）验证新鲜度；本中文文件作为经评审对侧通过双语配对维护。与 Cordis 目录（纯源码 AST 处理）不同，英文生成器会在真实上下文中**启动**每个工具插件并读取 `ctx.tools.schemas()`，因为工具 schema 无法通过静态分析完全确定，例如运行时展开的枚举、拼接的描述、由配置决定的名称以及使用原始 JSON Schema 的 MCP 工具。完整性守卫会 glob 匹配 `packages/*/tool-*`；如果生成器的启动 manifest（元数据清单）遗漏任何包，检查就会失败，因此新工具不会在无人察觉的情况下缺少文档。参见[工具 schema 目录 Agent Note](../.agents/notes/implemented/process/2026-07-02-tool-schema-catalog.md)。
+英文源文件由系统**生成**，并通过 `pnpm run verify-tool-catalog`（`doc-sync`（文档同步门禁）的一部分）验证新鲜度；本中文文件作为经评审对侧通过双语配对维护。与 Cordis 目录（纯源码 AST 处理）不同，英文生成器会在真实上下文中**启动**每个工具插件并读取 `ctx.tools.schemas()`，因为工具 schema 无法通过静态分析完全确定，例如运行时展开的枚举、拼接的描述、由配置决定的名称以及使用原始 JSON Schema 的 MCP 工具。完整性守卫会 glob 匹配 `packages/*/tool-*`，以及叶目录名不是 `tool-*` 的工具贡献包（`world-model`、`code-review`、`design-artboard`、`ios-simulator`）；如果生成器的启动 manifest（元数据清单）遗漏任何包，检查就会失败，因此新工具不会在无人察觉的情况下缺少文档。参见[工具 schema 目录 Agent Note](../.agents/notes/implemented/process/2026-07-02-tool-schema-catalog.md)。
 
-范围：`packages/*/tool-*` 下已发布的产品工具，每个工具均使用其**默认**配置启动；但如果某个 Config 字段是**必填项**且没有默认值，生成器就必须作出选择，对应包的说明会记录本页展示的是哪个分支。注册的工具**名称**可以是加载时配置，例如 `tool-subagent` 的 `toolName`，因此部署可能以不同名称或额外名称提供某个包；如果存在随产品发布的别名，对应包的说明会予以记录。`examples/` 中的演示工具（例如 `echo`）不在范围内，这与 Cordis 目录仅涵盖包的范围一致。
+范围：`packages/*/tool-*` 下以及上文列出的非 `tool-*` 工具贡献包中已发布的产品工具，每个工具均使用其**默认**配置启动；但如果某个 Config 字段是**必填项**且没有默认值，生成器就必须作出选择，对应包的说明会记录本页展示的是哪个分支。注册的工具**名称**可以是加载时配置，例如 `tool-subagent` 的 `toolName`，因此部署可能以不同名称或额外名称提供某个包；如果存在随产品发布的别名，对应包的说明会予以记录。`examples/` 中的演示工具（例如 `echo`）不在范围内，这与 Cordis 目录仅涵盖包的范围一致。
 
 ## 工具包映射
 
@@ -42,6 +42,10 @@
 | `@deepseek-ai/dsh-tool-todo` | `todo_write` | `ctx.tools`、`owning Agent session` | `tool/call`、`todo/write`、`tool/result` | - | todo_write 是会话所有的状态；UI 将最新的 todo/write 事件渲染为检查清单。`allowParallelInProgress` 是没有默认值的必填项，因此本目录明确选择 `true`，对应描述允许同时存在多个 `in_progress` 项。选择 `false` 的部署会获得同一工具，但描述会要求只能有 1 个活动任务。 |
 | `@deepseek-ai/dsh-tool-workflow` | `workflow` | `ctx.tools`、`ctx.workflowEngine`、`ctx.systemPrompt`、`a calling Agent (exec.agent parents the script children)` | `tool/call`、`tool/result` | - | - |
 | `@deepseek-ai/dsh-tool-web` | `web_fetch`、`web_search` | `ctx.tools`、`ctx.web`、`ctx.systemPrompt` | `tool/call`、`tool/result` | - | web_search 和 web_fetch 将提供方选择置于 ctx.web 之后，使模型可见 schema 在更换后端时保持稳定。 |
+| `@deepseek-ai/dsh-code-review` | `code_review_audit` | `ctx.tools`、`ctx.commands` | `tool/call`、`tool/result` | - | /review 命令为人类渲染审计提示词；code_review_audit 向模型返回结构化的级别规格。五个努力级别及其检查维度由该包固定。 |
+| `@deepseek-ai/dsh-design-artboard` | `design_create_artboard` | `ctx.tools`、`ctx.commands` | `tool/call`、`tool/result`、`artboard HTML files under the configured artboardDir` | - | /design 命令列出并预览已保存的画板；design_create_artboard 写入 HTML/Tailwind 预览文件并返回其绝对路径。 |
+| `@deepseek-ai/dsh-ios-simulator` | `ios_list_devices`、`ios_simulator_screenshot` | `ctx.tools`、`ctx.commands`、`xcrun simctl at execution time (macOS only)` | `tool/call`、`tool/result`、`screenshot PNG files under the configured screenshotDir` | - | /ios 命令通过 `xcrun simctl` 驱动 list/boot/shutdown/open/screenshot；ios_list_devices 和 ios_simulator_screenshot 向模型暴露读取与截图路径。在非 macOS 宿主机上，工具仍会注册并在执行时报告平台限制。 |
+| `@deepseek-ai/dsh-world-model` | `world_model_predict`、`world_model_query`、`world_model_save_fact` | `ctx.tools`、`ctx.commands`、`ctx.systemPrompt` | `tool/call`、`tool/result`、`tools/pre-execute + tools/post-execute listeners (advisory feedback)`、`<workspace>/.dsh/world-state.json` | - | world_model_predict 在调用前评估风险与影响面，world_model_query 读取持久化状态与环境规则，world_model_save_fact 记录持久事实；同一插件还提供 /env 与 /worldstate 命令以及 Environment Rules 系统提示词章节。 |
 
 <a id="deepseek-aidsh-tool-ask-user"></a>
 
@@ -1997,3 +2001,193 @@ todo_write 是会话所有的状态；UI 将最新的 todo/write 事件渲染为
 来源：[`packages/web/tool-web/src/index.ts`](../packages/web/tool-web/src/index.ts)
 
 web_search 和 web_fetch 将提供方选择置于 ctx.web 之后，使模型可见 schema 在更换后端时保持稳定。
+
+<a id="deepseek-aidsh-code-review"></a>
+
+## `@deepseek-ai/dsh-code-review`
+
+### `code_review_audit`
+
+以五个可配置的努力级别（low、medium、high、extra-high、ultra）之一运行自动化代码审查审计。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "level": {
+      "type": "string",
+      "description": "Effort and analysis depth.",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "extra-high",
+        "ultra"
+      ]
+    },
+    "path": {
+      "type": "string",
+      "description": "File or directory to review."
+    }
+  }
+}
+```
+
+来源：[`packages/extensions/code-review/src/index.ts`](../packages/extensions/code-review/src/index.ts)
+
+/review 命令为人类渲染审计提示词；code_review_audit 向模型返回结构化的级别规格。五个努力级别及其检查维度由该包固定。
+
+<a id="deepseek-aidsh-design-artboard"></a>
+
+## `@deepseek-ai/dsh-design-artboard`
+
+### `design_create_artboard`
+
+在配置的画板目录中创建一个新的 HTML/Tailwind UI 画板，用于视觉预览。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Identifying name of the component or page (e.g. login_card, dashboard_stat)."
+    },
+    "title": {
+      "type": "string",
+      "description": "Human-readable artboard title."
+    },
+    "content": {
+      "type": "string",
+      "description": "HTML/Tailwind markup of the component."
+    }
+  },
+  "required": [
+    "name",
+    "content"
+  ]
+}
+```
+
+来源：[`packages/extensions/design-artboard/src/index.ts`](../packages/extensions/design-artboard/src/index.ts)
+
+/design 命令列出并预览已保存的画板；design_create_artboard 写入 HTML/Tailwind 预览文件并返回其绝对路径。
+
+<a id="deepseek-aidsh-ios-simulator"></a>
+
+## `@deepseek-ai/dsh-ios-simulator`
+
+### `ios_list_devices`
+
+列出这台 macOS 机器上配置且可用的所有 iOS 模拟器。
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+来源：[`packages/extensions/ios-simulator/src/index.ts`](../packages/extensions/ios-simulator/src/index.ts)
+
+### `ios_simulator_screenshot`
+
+从 iOS 模拟器捕获 PNG 截图并保存到文件路径。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "udid": {
+      "type": "string",
+      "description": "Simulator UDID (or the `booted` alias) to capture."
+    },
+    "outputPath": {
+      "type": "string",
+      "description": "File path where the PNG screenshot is written."
+    }
+  },
+  "required": [
+    "udid",
+    "outputPath"
+  ]
+}
+```
+
+来源：[`packages/extensions/ios-simulator/src/index.ts`](../packages/extensions/ios-simulator/src/index.ts)
+
+/ios 命令通过 `xcrun simctl` 驱动 list/boot/shutdown/open/screenshot；ios_list_devices 和 ios_simulator_screenshot 向模型暴露读取与截图路径。在非 macOS 宿主机上，工具仍会注册并在执行时报告平台限制。
+
+<a id="deepseek-aidsh-world-model"></a>
+
+## `@deepseek-ai/dsh-world-model`
+
+### `world_model_predict`
+
+在执行动作之前预先计算其后果、风险级别（low、medium、high、critical）与影响面。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "action": {
+      "type": "string",
+      "description": "Name of the tool or command to evaluate."
+    },
+    "argsJson": {
+      "type": "string",
+      "description": "Planned arguments as a JSON string (optional)."
+    }
+  }
+}
+```
+
+来源：[`packages/context/world-model/src/index.ts`](../packages/context/world-model/src/index.ts)
+
+### `world_model_query`
+
+查询持久化的世界模型状态、已保存的事实与环境规则。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "queryType": {
+      "type": "string",
+      "description": "The kind of information to read.",
+      "enum": [
+        "facts",
+        "history",
+        "rules",
+        "telemetry"
+      ]
+    }
+  }
+}
+```
+
+来源：[`packages/context/world-model/src/index.ts`](../packages/context/world-model/src/index.ts)
+
+### `world_model_save_fact`
+
+将重要事实或学到的规则永久记录到项目的持久世界状态中。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "key": {
+      "type": "string",
+      "description": "Identifier key of the fact (e.g. \"preferred_runner\", \"build_command\")."
+    },
+    "valueJson": {
+      "type": "string",
+      "description": "Value to record, as JSON or plain text."
+    }
+  }
+}
+```
+
+来源：[`packages/context/world-model/src/index.ts`](../packages/context/world-model/src/index.ts)
+
+world_model_predict 在调用前评估风险与影响面，world_model_query 读取持久化状态与环境规则，world_model_save_fact 记录持久事实；同一插件还提供 /env 与 /worldstate 命令以及 Environment Rules 系统提示词章节。

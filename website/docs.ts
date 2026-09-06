@@ -298,6 +298,7 @@ const subsystemGroups = [
     ['sandbox.md', '沙箱', 'Sandboxing'],
     ['plan.md', '计划模式', 'Plan mode'],
     ['user-questions.md', '用户交互', 'User interaction'],
+    ['screen-reader.md', '屏幕阅读器', 'Screen reader'],
     ['commands.md', '命令', 'Human commands'],
     ['goal.md', '目标', 'Goals'],
     ['schedule.md', '定时提醒', 'Scheduled reminders'],

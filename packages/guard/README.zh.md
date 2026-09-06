@@ -6,6 +6,8 @@
 
 | 包 | 职责 | ctx key |
 |---|---|---|
+| [`agent-state/`](agent-state/README.md) | 持久化的每工作区动作历史与前后后果推理 | 注册 `ctx.agentState`；监听 `agent/pre-step` 与 `tools/*` |
+| [`auto-continue/`](auto-continue/README.md) | 在每 agent 连续预算下的限流自动恢复 | 注册 `ctx.autoContinue`；监听 `agent/request-error` |
 | [`auto-verification/`](auto-verification/README.md) | 编辑后连续语法与结构自动验证 | 监听工具事件 |
 | [`repeat-tool-reminder/`](repeat-tool-reminder/README.md) | 针对重复工具调用的建议性提醒 | 监听工具和 agent 事件 |
 | [`timeout-policy/`](timeout-policy/README.md) | 以部署策略形式设置单次工具调用截止时间 | 注册 `tools/execute` 监听器 |

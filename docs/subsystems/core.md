@@ -722,6 +722,108 @@ roots(): Agent[]
 
 Source: [`packages/core/agent/src/index.ts:256`](../../packages/core/agent/src/index.ts)
 
+<a id="ctxagentstate--agentstateservice"></a>
+
+### `ctx.agentState` — `AgentStateService`
+
+The agent-state service: owns the durable per-workspace state store and the pre/post consequence pipeline.
+
+```ts cordis-catalog
+/**
+ * Remember one execution's prediction for the post-execute comparison.
+ * @param exec - active tool execution key.
+ * @param prediction - model consequence prediction before execution.
+ */
+pendingStore(exec: ToolExecution, prediction: ActionPrediction): void
+
+/**
+ * Take (once) the prediction recorded for one execution, if any.
+ * @param exec - active tool execution key.
+ * @returns the stored prediction or undefined when none was recorded.
+ */
+pendingTake(exec: ToolExecution): ActionPrediction | undefined
+
+/**
+ * Fold one settled observation into the durable state and persist it.
+ * @param observation - settled post-execution consequence and verification score.
+ */
+foldObservation(observation: ActionObservation): void
+
+/**
+ * Render the durable per-tool lessons for the tools named in one request.
+ * @param tools - tool names the caller is about to use.
+ * @returns a context message, or undefined when nothing relevant is stored.
+ */
+recallFor(tools: readonly string[]): UserMessage | undefined
+
+/**
+ * Render every stored tool row with settled history, for step-wide recall.
+ * @returns a context message, or undefined when no row has three settles.
+ */
+recallAll(): UserMessage | undefined
+```
+
+Types: [ToolExecution](tools.md) · [UserMessage](session.md)
+
+Source: [`packages/guard/agent-state/src/index.ts:76`](../../packages/guard/agent-state/src/index.ts)
+
+<a id="ctxautocontinue--autocontinueservice"></a>
+
+### `ctx.autoContinue` — `AutoContinueService`
+
+The auto-continue service: per-agent continuation budget and live toggle state, owned by the mounting plugin fiber so a disposed plugin leaves no state behind.
+
+```ts cordis-catalog
+/**
+ * Read the consecutive owned recoveries already counted for one agent.
+ * @param agentId - identity carried by the failed request's agent.
+ * @returns the current consecutive-continue count.
+ */
+continuesFor(agentId: SessionId): number
+
+/**
+ * Whether one agent has spent its whole continuation budget.
+ * @param agentId - identity carried by the failed request's agent.
+ * @returns true when further owned recoveries must delegate.
+ */
+budgetExhausted(agentId: SessionId): boolean
+
+/**
+ * Count one owned recovery with an elapsed cooldown for one agent.
+ * @param agentId - identity carried by the failed request's agent.
+ */
+recordContinue(agentId: SessionId): void
+
+/**
+ * Drop one agent's consecutive-continue count after a successful request.
+ * @param agentId - identity of the agent whose session logged the success.
+ */
+resetBudget(agentId: SessionId): void
+
+/**
+ * Record the pending resume time of one in-flight cooldown wait, for the
+ * `/autocontinue status` report.
+ * @param agentId - identity of the agent whose recovery is cooling down.
+ * @param resumeAt - epoch milliseconds when the wait elapses.
+ */
+noteWait(agentId: SessionId, resumeAt: number): void
+
+/**
+ * Clear one agent's in-flight cooldown wait record.
+ * @param agentId - identity of the agent whose wait settled or was cancelled.
+ */
+clearWait(agentId: SessionId): void
+
+/**
+ * Read the pending resume time of one agent's cooldown wait.
+ * @param agentId - identity of the agent whose wait is queried.
+ * @returns epoch milliseconds when the wait elapses, or undefined when none is in flight.
+ */
+waitResumeAt(agentId: SessionId): number | undefined
+```
+
+Source: [`packages/guard/auto-continue/src/index.ts:125`](../../packages/guard/auto-continue/src/index.ts)
+
 <a id="agent-events"></a>
 
 ### `agent/*` events

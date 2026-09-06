@@ -54,8 +54,10 @@ export const SERVICE_PAGE: Record<string, string> = {
   agentDefaultModel: 'core.md',
   agentPresets: 'core.md',
   agents: 'core.md',
+  agentState: 'core.md',
   apiProxy: 'typert.md',
   approval: 'approval.md',
+  autoContinue: 'core.md',
   attachments: 'attachment.md',
   shell: 'shell.md',
   shellEnv: 'shell.md',
@@ -89,6 +91,7 @@ export const SERVICE_PAGE: Record<string, string> = {
   sessions: 'session.md',
   settings: 'settings.md',
   sessionTitle: 'session-title.md',
+  screenReader: 'screen-reader.md',
   skills: 'skills.md',
   spillStore: 'spill.md',
   storage: 'storage.md',
@@ -218,6 +221,8 @@ export const LINK_MAP: Readonly<Record<string, string>> = {
   Agent: 'core.md',
   AgentCancelCause: 'core.md',
   AgentFactory: 'core.md',
+  ScreenReaderState: 'screen-reader.md',
+  Verbosity: 'screen-reader.md',
   AgentHandle: 'core.md',
   ModelSelection: 'core.md',
   AgentOptions: 'core.md',
@@ -584,6 +589,8 @@ export const TYPE_LINK_EXEMPTIONS: Readonly<Record<string, string>> = {
   WorkflowAgentEndInfo: 'event-local snapshot is owned by packages/workflow/workflow/src/index.ts',
   WorkflowAgentInfo: 'event-local snapshot is owned by packages/workflow/workflow/src/index.ts',
   WorkflowResultInfo: 'event-local snapshot is owned by packages/workflow/workflow/src/index.ts',
+  ActionPrediction: 'guard prediction payload is owned by packages/guard/agent-state/README.md',
+  ActionObservation: 'guard observation payload is owned by packages/guard/agent-state/README.md',
 }
 
 /** Repository data policy consumed by the Cordis catalog projector. */

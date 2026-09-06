@@ -572,6 +572,30 @@ const SERVICE_ROLES: ServiceRole[] = [
     consumers: ['tool-cordis'],
     note: 'Registers host inspect providers, mirrors the client provider manifest, and routes client queries through the dynamic Cordis transport.',
   },
+  {
+    key: 'agentState',
+    pkg: 'agent-state',
+    title: 'Agent state persistence and consequence reasoning',
+    mode: 'core',
+    consumers: [],
+    note: 'Owns durable per-workspace action history and runs pre/post consequence reasoning around tool executions. No package reads ctx.agentState directly; agent-loop-related behavior reaches it through its agent/pre-step and tools/pre-execute + tools/post-execute listeners (see the event matrix).',
+  },
+  {
+    key: 'autoContinue',
+    pkg: 'auto-continue',
+    title: 'Rate-limit auto-continue recovery',
+    mode: 'core',
+    consumers: [],
+    note: 'Owns the per-agent continuation budget and live toggle for automatic rate-limit recovery. No package reads ctx.autoContinue directly; recovery rides its agent/request-error listener and the /autocontinue command.',
+  },
+  {
+    key: 'screenReader',
+    pkg: 'screen-reader',
+    title: 'Screen-reader accessibility mode',
+    mode: 'core',
+    consumers: [],
+    note: 'Owns the per-context accessibility-mode state the /screenreader command drives; presentation-only, with no model-facing schema or session events of its own.',
+  },
 ]
 
 function generatedHeader(title: string): string[] {

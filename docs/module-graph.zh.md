@@ -176,6 +176,7 @@ flowchart TD
     pkg_session_reference["session-reference"]
     pkg_time_context["time-context"]
     pkg_tmux_context["tmux-context"]
+    pkg_world_model["world-model"]
   end
   subgraph group_credentials["packages/credentials"]
     pkg_credentials["credentials"]
@@ -193,8 +194,11 @@ flowchart TD
   end
   subgraph group_extensions["packages/extensions"]
     pkg_client_ui_cordis["client-ui-cordis"]
+    pkg_code_review["code-review"]
     pkg_cordis_client_runner["cordis-client-runner"]
     pkg_cordis_host_runner["cordis-host-runner"]
+    pkg_design_artboard["design-artboard"]
+    pkg_ios_simulator["ios-simulator"]
     pkg_tool_cordis["tool-cordis"]
   end
   subgraph group_feedback["packages/feedback"]
@@ -202,6 +206,8 @@ flowchart TD
     pkg_message_feedback["message-feedback"]
   end
   subgraph group_guard["packages/guard"]
+    pkg_agent_state["agent-state"]
+    pkg_auto_continue["auto-continue"]
     pkg_auto_verification["auto-verification"]
     pkg_prompt_budget["prompt-budget"]
     pkg_repeat_tool_reminder["repeat-tool-reminder"]
@@ -224,6 +230,7 @@ flowchart TD
     pkg_commands["commands"]
     pkg_permission_presets["permission-presets"]
     pkg_permission_rules["permission-rules"]
+    pkg_screen_reader["screen-reader"]
     pkg_tool_ask_user["tool-ask-user"]
     pkg_user_approval["user-approval"]
     pkg_user_questions["user-questions"]
@@ -681,6 +688,12 @@ flowchart TD
   pkg_command_feedback --> pkg_invariants
   pkg_command_feedback --> pkg_session
   pkg_command_feedback --> pkg_session_telemetry
+  pkg_auto_continue --> pkg_agent
+  pkg_auto_continue --> pkg_commands
+  pkg_auto_continue --> pkg_invariants
+  pkg_auto_continue --> pkg_llm
+  pkg_auto_continue --> pkg_session
+  pkg_auto_continue --> pkg_timeout
   pkg_permission_presets --> pkg_commands
   pkg_permission_presets --> pkg_invariants
   pkg_permission_presets --> pkg_sandbox
@@ -690,6 +703,9 @@ flowchart TD
   pkg_permission_presets --> pkg_settings
   pkg_permission_presets --> pkg_shell
   pkg_permission_presets --> pkg_user_approval
+  pkg_screen_reader --> pkg_commands
+  pkg_screen_reader --> pkg_invariants
+  pkg_screen_reader --> pkg_llm
   pkg_jobs_local --> pkg_agent
   pkg_jobs_local --> pkg_invariants
   pkg_jobs_local --> pkg_jobs
@@ -856,6 +872,16 @@ flowchart TD
   pkg_session_reference --> pkg_output_retention
   pkg_session_reference --> pkg_session
   pkg_session_reference --> pkg_session_query
+  pkg_world_model --> pkg_agent
+  pkg_world_model --> pkg_brand
+  pkg_world_model --> pkg_commands
+  pkg_world_model --> pkg_invariants
+  pkg_world_model --> pkg_llm
+  pkg_world_model --> pkg_system_prompt
+  pkg_world_model --> pkg_tools
+  pkg_code_review --> pkg_commands
+  pkg_code_review --> pkg_invariants
+  pkg_code_review --> pkg_tools
   pkg_cordis_host_runner --> pkg_agent
   pkg_cordis_host_runner --> pkg_brand
   pkg_cordis_host_runner --> pkg_invariants
@@ -864,6 +890,18 @@ flowchart TD
   pkg_cordis_host_runner --> pkg_session
   pkg_cordis_host_runner --> pkg_tools
   pkg_cordis_host_runner --> pkg_typert_protocol
+  pkg_design_artboard --> pkg_commands
+  pkg_design_artboard --> pkg_invariants
+  pkg_design_artboard --> pkg_tools
+  pkg_ios_simulator --> pkg_brand
+  pkg_ios_simulator --> pkg_commands
+  pkg_ios_simulator --> pkg_invariants
+  pkg_ios_simulator --> pkg_tools
+  pkg_agent_state --> pkg_agent
+  pkg_agent_state --> pkg_invariants
+  pkg_agent_state --> pkg_llm
+  pkg_agent_state --> pkg_session
+  pkg_agent_state --> pkg_tools
   pkg_auto_verification --> pkg_agent
   pkg_auto_verification --> pkg_invariants
   pkg_auto_verification --> pkg_tools
@@ -1559,7 +1597,9 @@ flowchart TD
 | [`tmux-context`](../packages/context/tmux-context) | `context` | [`agent`](../packages/core/agent), [`invariants`](../packages/runtime-diagnostics/invariants), [`session`](../packages/core/session), [`shell`](../packages/shell/shell) |
 | [`fs-e2b`](../packages/e2b/fs-e2b) | `e2b` | [`e2b`](../packages/e2b/e2b), [`fs`](../packages/fs/fs), [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`command-feedback`](../packages/feedback/command-feedback) | `feedback` | [`anonymous-user-id`](../packages/identity/anonymous-user-id), [`commands`](../packages/interaction/commands), [`invariants`](../packages/runtime-diagnostics/invariants), [`session`](../packages/core/session), [`session-telemetry`](../packages/session/session-telemetry) |
+| [`auto-continue`](../packages/guard/auto-continue) | `guard` | [`agent`](../packages/core/agent), [`commands`](../packages/interaction/commands), [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm), [`session`](../packages/core/session), [`timeout`](../packages/util/timeout) |
 | [`permission-presets`](../packages/interaction/permission-presets) | `interaction` | [`commands`](../packages/interaction/commands), [`invariants`](../packages/runtime-diagnostics/invariants), [`sandbox`](../packages/sandbox/sandbox), [`sandbox-policy`](../packages/sandbox/sandbox-policy), [`session`](../packages/core/session), [`session-projection`](../packages/session/session-projection), [`settings`](../packages/settings/settings), [`shell`](../packages/shell/shell), [`user-approval`](../packages/interaction/user-approval) |
+| [`screen-reader`](../packages/interaction/screen-reader) | `interaction` | [`commands`](../packages/interaction/commands), [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm) |
 | [`jobs-local`](../packages/jobs/jobs-local) | `jobs` | [`agent`](../packages/core/agent), [`invariants`](../packages/runtime-diagnostics/invariants), [`jobs`](../packages/jobs/jobs), [`scope`](../packages/core/scope), [`timeout`](../packages/util/timeout) |
 | [`lsp-stdio`](../packages/lsp/lsp-stdio) | `lsp` | [`brand`](../packages/util/brand), [`fs`](../packages/fs/fs), [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm), [`lsp`](../packages/lsp/lsp), [`subprocess`](../packages/subprocess/subprocess), [`timeout`](../packages/util/timeout) |
 | [`session-title-llm`](../packages/session/session-title-llm) | `session` | [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm), [`session`](../packages/core/session), [`session-title`](../packages/session/session-title), [`timeout`](../packages/util/timeout) |
@@ -1586,7 +1626,12 @@ flowchart TD
 | [`command-compact`](../packages/compaction/command-compact) | `compaction` | [`commands`](../packages/interaction/commands), [`compaction`](../packages/compaction/compaction), [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`agent-instructions`](../packages/context/agent-instructions) | `context` | [`agent`](../packages/core/agent), [`fs`](../packages/fs/fs), [`home-paths`](../packages/util/home-paths), [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm), [`session`](../packages/core/session), [`tools`](../packages/core/tools) |
 | [`session-reference`](../packages/context/session-reference) | `context` | [`agent`](../packages/core/agent), [`compaction`](../packages/compaction/compaction), [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm), [`output-retention`](../packages/util/output-retention), [`session`](../packages/core/session), [`session-query`](../packages/session-query/session-query) |
+| [`world-model`](../packages/context/world-model) | `context` | [`agent`](../packages/core/agent), [`brand`](../packages/util/brand), [`commands`](../packages/interaction/commands), [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm), [`system-prompt`](../packages/core/system-prompt), [`tools`](../packages/core/tools) |
+| [`code-review`](../packages/extensions/code-review) | `extensions` | [`commands`](../packages/interaction/commands), [`invariants`](../packages/runtime-diagnostics/invariants), [`tools`](../packages/core/tools) |
 | [`cordis-host-runner`](../packages/extensions/cordis-host-runner) | `extensions` | [`agent`](../packages/core/agent), [`brand`](../packages/util/brand), [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm), [`scope`](../packages/core/scope), [`session`](../packages/core/session), [`tools`](../packages/core/tools), [`typert-protocol`](../packages/typert/protocol) |
+| [`design-artboard`](../packages/extensions/design-artboard) | `extensions` | [`commands`](../packages/interaction/commands), [`invariants`](../packages/runtime-diagnostics/invariants), [`tools`](../packages/core/tools) |
+| [`ios-simulator`](../packages/extensions/ios-simulator) | `extensions` | [`brand`](../packages/util/brand), [`commands`](../packages/interaction/commands), [`invariants`](../packages/runtime-diagnostics/invariants), [`tools`](../packages/core/tools) |
+| [`agent-state`](../packages/guard/agent-state) | `guard` | [`agent`](../packages/core/agent), [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm), [`session`](../packages/core/session), [`tools`](../packages/core/tools) |
 | [`auto-verification`](../packages/guard/auto-verification) | `guard` | [`agent`](../packages/core/agent), [`invariants`](../packages/runtime-diagnostics/invariants), [`tools`](../packages/core/tools) |
 | [`repeat-tool-reminder`](../packages/guard/repeat-tool-reminder) | `guard` | [`agent`](../packages/core/agent), [`invariants`](../packages/runtime-diagnostics/invariants), [`tools`](../packages/core/tools) |
 | [`tool-call-timeout-policy`](../packages/guard/timeout-policy) | `guard` | [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm), [`timeout`](../packages/util/timeout), [`tools`](../packages/core/tools) |

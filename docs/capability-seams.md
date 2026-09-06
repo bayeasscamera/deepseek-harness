@@ -196,16 +196,24 @@ flowchart LR
   pkg_cordis_host_runner["cordis-host-runner"]
   svc_dynamicCordisRunner["ctx.dynamicCordisRunner<br/>Dynamic Cordis package host runner"]
   svc_cordisInspect["ctx.cordisInspect<br/>Dynamic Cordis inspect registry"]
+  pkg_agent_state["agent-state"]
+  svc_agentState["ctx.agentState<br/>Agent state persistence and consequence reasoning"]
+  pkg_auto_continue["auto-continue"]
+  svc_autoContinue["ctx.autoContinue<br/>Rate-limit auto-continue recovery"]
+  pkg_screen_reader["screen-reader"]
+  svc_screenReader["ctx.screenReader<br/>Screen-reader accessibility mode"]
   pkg_acp --> svc_approval
   pkg_agent --> svc_agents
   pkg_agent_default_model --> svc_agentDefaultModel
   pkg_agent_loop --> svc_agentLoop
   pkg_agent_presets --> svc_agentPresets
+  pkg_agent_state --> svc_agentState
   pkg_api_gateway --> svc_typertGateway
   pkg_apiproxy --> svc_apiProxy
   pkg_approval --> svc_approval
   pkg_attachment --> svc_attachments
   pkg_attachment_local --> svc_attachments
+  pkg_auto_continue --> svc_autoContinue
   pkg_bash_local --> svc_shell
   pkg_bash_sandbox --> svc_shell
   pkg_code_runtime --> svc_codeRuntime
@@ -245,6 +253,7 @@ flowchart LR
   pkg_sandbox --> svc_sandbox
   pkg_sandbox_local --> svc_sandbox
   pkg_sandbox_policy --> svc_sandboxPolicy
+  pkg_screen_reader --> svc_screenReader
   pkg_session --> svc_sessions
   pkg_session_persistence --> svc_sessionPersistence
   pkg_session_persistence_jsonl --> svc_sessionPersistence
@@ -473,5 +482,8 @@ flowchart LR
 | `ctx.apiProxy` | `core` | `apiproxy` | - | `connection` | - | The transport-agnostic host gateway face: it dispatches browser API calls, and each open host stream subscribes to the events it forwards rather than being pushed to through a broadcast verb. |
 | `ctx.dynamicCordisRunner` | `core` | [`cordis-host-runner`](../packages/extensions/cordis-host-runner) | - | [`tool-cordis`](../packages/extensions/tool-cordis) | - | Owns the in-memory definition registry, the vm sandbox for host halves, and the request-run round trip; browser pages reach the same service over the wire through its remote namespace. |
 | `ctx.cordisInspect` | `core` | [`cordis-host-runner`](../packages/extensions/cordis-host-runner) | - | [`tool-cordis`](../packages/extensions/tool-cordis) | - | Registers host inspect providers, mirrors the client provider manifest, and routes client queries through the dynamic Cordis transport. |
+| `ctx.agentState` | `core` | [`agent-state`](../packages/guard/agent-state) | - | - | - | Owns durable per-workspace action history and runs pre/post consequence reasoning around tool executions. No package reads ctx.agentState directly; agent-loop-related behavior reaches it through its agent/pre-step and tools/pre-execute + tools/post-execute listeners (see the event matrix). |
+| `ctx.autoContinue` | `core` | [`auto-continue`](../packages/guard/auto-continue) | - | - | - | Owns the per-agent continuation budget and live toggle for automatic rate-limit recovery. No package reads ctx.autoContinue directly; recovery rides its agent/request-error listener and the /autocontinue command. |
+| `ctx.screenReader` | `core` | [`screen-reader`](../packages/interaction/screen-reader) | - | - | - | Owns the per-context accessibility-mode state the /screenreader command drives; presentation-only, with no model-facing schema or session events of its own. |
 
 Maintenance mode: hybrid: services are discovered from Cordis declarations; interface/implementation/consumer roles are classified in `scripts/gen-doc-graphs.ts` with a completeness guard.
