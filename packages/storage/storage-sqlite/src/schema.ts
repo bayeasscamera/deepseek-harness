@@ -78,8 +78,9 @@ function configureDatabase(db: DatabaseSync, path: string, journalMode: JournalM
   db.exec('PRAGMA foreign_keys = ON')
   // The validated union is safe to interpolate into a non-bindable PRAGMA.
   db.exec(`PRAGMA journal_mode = ${journalMode.toUpperCase()}`)
-  // WAL keeps crash safety at NORMAL synchronous (durable at checkpoints, not
-  // per-commit); the rollback journal keeps its FULL default.
+  // WAL runs synchronous NORMAL: a commit survives a process crash
+  // immediately, but OS-crash/power-loss durability is deferred to checkpoint
+  // time; the rollback journal keeps its FULL per-commit default.
   if (journalMode === 'wal') {
     db.exec('PRAGMA synchronous = NORMAL')
   }

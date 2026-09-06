@@ -33,6 +33,10 @@ interface Config {
 }
 ```
 
+### Durability
+
+The default `wal` journal mode runs `synchronous = NORMAL`: a commit survives a process crash immediately (its bytes are already in the WAL), but durability against OS crash or power loss is deferred to the next WAL checkpoint, so a power loss can roll back recently committed transactions. The rollback-journal modes keep SQLite's FULL per-commit sync default. Choose `journalMode` for both the filesystem's WAL support and the deployment's power-loss durability requirement.
+
 ## Write path
 
 Like the JSONL backend, the plugin copies each frozen `session/event` into one controller per live session. The first pending event starts the configured fixed batching window, and later events join without resetting it. Expiry starts one transaction; events admitted during that write form a separately bounded follow-up batch. `session/flush` cancels the wait and drains current and pending batches. The controller persists a fork's seed once, keeps a write cursor so resume never re-appends stored events, and seeds live sessions on apply because HMR does not replay `session/created`. Dispose drains every retained controller before closing the database. Every event remains a separate SQLite row; batching only groups more INSERTs into one transaction and revision increment.

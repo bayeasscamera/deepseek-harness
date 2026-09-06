@@ -33,6 +33,10 @@ interface Config {
 }
 ```
 
+### 持久性
+
+默认的 `wal` 日志模式运行 `synchronous = NORMAL`：提交立即能在进程崩溃后存活（其字节已写入 WAL），但针对操作系统崩溃或断电的持久性被推迟到下一次 WAL checkpoint，因此断电可能回滚最近提交的事务。回滚日志模式保留 SQLite 的 FULL 逐提交同步默认值。选择 `journalMode` 时需同时考虑文件系统的 WAL 支持与部署的断电持久性要求。
+
 ## 写入路径
 
 与 JSONL 后端一样，插件将每个冻结的 `session/event` 复制到对应活动会话的 controller 中，每个活动会话各有一个 controller。第一个待处理事件会开启配置的固定批处理窗口，后续事件会加入但不会重置截止时间。窗口到期后会启动一个事务；该次写入期间接纳的事件会形成另一个独立有界的后续批次。`session/flush` 会取消等待并排空当前与待处理批次。Controller 会持久化一次 fork 种子，并保留写入游标，使恢复操作绝不重新 append 已存储事件；它还会在 apply 时为活动会话设置初始状态，因为 HMR（热模块替换）不回放 `session/created`。dispose（资源释放）会在关闭数据库前排空每个保留的 controller。每个事件仍各占一行 SQLite 记录；批处理只把更多 INSERT 归入同一个事务和同一次修订版本递增。

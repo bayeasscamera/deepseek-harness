@@ -19,6 +19,10 @@ interface Config {
 }
 ```
 
+### Durability
+
+The default `wal` journal mode runs `synchronous = NORMAL`: a commit survives a process crash immediately (its bytes are already in the WAL), but durability against OS crash or power loss is deferred to the next WAL checkpoint, so a power loss can roll back recently committed transactions. The rollback-journal modes keep SQLite's FULL per-commit sync default. Choose `journalMode` for both the filesystem's WAL support and the deployment's power-loss durability requirement.
+
 ## Model Experience
 
 ### Stored domain records

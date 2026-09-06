@@ -19,6 +19,10 @@ interface Config {
 }
 ```
 
+### 持久性
+
+默认的 `wal` 日志模式运行 `synchronous = NORMAL`：提交立即能在进程崩溃后存活（其字节已写入 WAL），但针对操作系统崩溃或断电的持久性被推迟到下一次 WAL checkpoint，因此断电可能回滚最近提交的事务。回滚日志模式保留 SQLite 的 FULL 逐提交同步默认值。选择 `journalMode` 时需同时考虑文件系统的 WAL 支持与部署的断电持久性要求。
+
 ## 模型体验
 
 ### 已存领域记录
