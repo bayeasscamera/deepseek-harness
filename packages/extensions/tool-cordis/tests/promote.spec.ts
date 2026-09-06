@@ -8,7 +8,7 @@ import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { describe, expect, it } from 'vitest'
 import * as ToolCordis from '../src/index.ts'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, rm, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -108,5 +108,30 @@ describe('cordis_promote tool', () => {
     )).rejects.toThrow('must live under .dsh/promoted-plugins/')
 
     await rm(root, { recursive: true, force: true })
+  })
+
+  it('rejects a promotion target whose symlink resolves outside the workspace', async () => {
+    const { ctx, root } = await setup()
+    const pluginId = await defineDemoPlugin(ctx)
+    const tool = ctx.tools.get('cordis_promote')
+    expect(tool).toBeDefined()
+
+    // The textual confinement accepts this target, but the link redirects the
+    // resolved write outside the workspace root; the containment re-check must
+    // fail loud before any file is written.
+    const outside = await mkdtemp(join(tmpdir(), 'promote-escape-'))
+    const promotedRoot = join(root, '.dsh', 'promoted-plugins')
+    await mkdir(promotedRoot, { recursive: true })
+    await symlink(outside, join(promotedRoot, 'escape'))
+
+    await expect(tool!.execute(
+      { pluginId, targetDirectory: '.dsh/promoted-plugins/escape' },
+      { agent: AGENT, signal: new AbortController().signal } as unknown as Parameters<NonNullable<typeof tool>['execute']>[1],
+    )).rejects.toThrow(/outside the workspace/)
+
+    await expect(readFile(join(outside, 'package.json'), 'utf-8')).rejects.toMatchObject({ code: 'ENOENT' })
+
+    await rm(root, { recursive: true, force: true })
+    await rm(outside, { recursive: true, force: true })
   })
 })

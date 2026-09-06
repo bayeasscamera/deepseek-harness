@@ -37,6 +37,9 @@ function requireAgent(exec: ToolExecution): Agent {
  * Resolve a promotion target directory to a workspace-confined relative path.
  * Only relative paths under `.dsh/promoted-plugins/` are accepted; absolute
  * paths, parent traversal, and home shortcuts are rejected before any write.
+ * This textual check alone cannot stop a symlink planted inside the promotion
+ * directory, so the write path additionally re-verifies canonical containment
+ * with `ctx.fs.contains` after each target is resolved.
  * @param raw - the user-provided target directory (already default-filled).
  * @returns the normalized relative directory path to write under.
  */
@@ -448,8 +451,21 @@ export function apply(ctx: Context): void {
       )
       const filesCreated: string[] = []
 
+      // `resolve` follows symlinks, so the textual confinement of
+      // `resolvePromotionDirectory` is not enough: a symlink planted inside
+      // `.dsh/promoted-plugins/<sub>` would redirect the writes outside the
+      // workspace. Every target is therefore re-verified against the canonical
+      // containment check after resolution, and an escaping promotion fails
+      // loud before the first write instead of following the link.
+      const workspaceRoot = await ctx.fs.resolve('.', { signal: exec.signal })
       const writeFilePolicy = async (filename: string, content: string): Promise<void> => {
         const target = await ctx.fs.resolve(`${targetDir}/${filename}`, { signal: exec.signal })
+        if (!ctx.fs.contains(workspaceRoot, target)) {
+          throw new Error(
+            `Refusing to write "${targetDir}/${filename}": it resolves to "${target.displayPath}", outside the workspace`
+            + ' — a symlink inside the promotion directory redirects the write. Remove the link and retry.',
+          )
+        }
         const intent = await ctx.waterfall('fs/write-intent', target, exec, () => ({ kind: 'createIfAbsent' } as const))
         await ctx.fs.writeText(target, content, intent, exec.signal)
         filesCreated.push(filename)
