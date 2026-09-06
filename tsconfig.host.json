@@ -300,6 +300,12 @@
     { "path": "./packages/memory/memory" },
     { "path": "./packages/memory/tool-memory" },
     { "path": "./packages/guard/prompt-budget" },
+    { "path": "./packages/context/world-model" },
+    { "path": "./packages/extensions/code-review" },
+    { "path": "./packages/extensions/design-artboard" },
+    { "path": "./packages/extensions/ios-simulator" },
+    { "path": "./packages/guard/auto-continue" },
+    { "path": "./packages/interaction/screen-reader" },
     { "path": "./apps/cli" }
   ]
 }

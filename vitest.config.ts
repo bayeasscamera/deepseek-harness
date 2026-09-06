@@ -245,8 +245,14 @@ export default defineConfig({
         'packages/client/ui-primitives/src/JsonTree.tsx',
         'packages/client/ui-settings-models/src/client/DeepSeekOnboardingDialog.tsx',
         'packages/client/ui-settings-models/src/client/welcome-store.ts',
-        'packages/extensions/*/src/**/*.ts',
-        'packages/extensions/*/src/**/*.tsx',
+        // Dynamic Host/Client composition and the vendored-Cordis UI/runner
+        // extensions are covered by their focused lifecycle tests and
+        // assembled application checks rather than per-file coverage; the
+        // product-surface extensions stay under the per-file gate.
+        'packages/extensions/cordis-client-runner/src/**/*.ts',
+        'packages/extensions/cordis-host-runner/src/**/*.ts',
+        'packages/extensions/tool-cordis/src/**/*.ts',
+        'packages/extensions/ui-cordis/src/**/*.{ts,tsx}',
         // Typert generator: correctness is pinned by its fixture suites and
         // the byte-for-byte catalog reproduction test; per-file coverage
         // would put whole-workspace compiler analysis under v8
