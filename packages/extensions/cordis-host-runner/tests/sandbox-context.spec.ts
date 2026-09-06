@@ -1,5 +1,25 @@
 import { describe, expect, it } from 'vitest'
+import { Context } from '@deepseek-ai/cordis'
+import { guardedPlugin } from '../src/guard.ts'
 import { call, CONTENT_OUTPUT_CODE, dummyTool, mount, setup, text } from './helpers.ts'
+
+declare module '@deepseek-ai/cordis' {
+  interface Events {
+    /**
+     * Test-only emit event for sandbox listener-failure semantics.
+     * @param label - opaque payload ignored by listeners.
+     * @mode emit
+     */
+    'sandbox-guard/emit'(label: string): void
+    /**
+     * Test-only waterfall event for sandbox listener-failure semantics.
+     * @param value - opaque payload passed through the chain.
+     * @param next - delegates the composed result to the rest of the chain.
+     * @mode waterfall
+     */
+    'sandbox-guard/waterfall'(value: string, next: () => string): string | Promise<string>
+  }
+}
 
 /**
  * The sandbox context façade is a whitelist, not a pass-through proxy. A running
@@ -263,5 +283,98 @@ describe('sandbox tools façade — get is a read-only schema view', () => {
       }
     `)
     expect(text(await call(harness.ctx, 'probe_unknown', {}))).toBe('true')
+  })
+})
+
+/**
+ * The listener wrapper (guardedPlugin's on/once/effect façade) must not swallow
+ * listener errors: a failing non-waterfall listener propagates its error, and a
+ * failing waterfall listener still delegates to `next()` so the chain keeps its
+ * built-in and downstream decisions. Quarantine withdraws the listener from the
+ * decision without turning it into a permanent veto.
+ */
+describe('sandbox context façade — listener failure semantics', () => {
+  /** Mount one host half through the registration guard and record reported failures. */
+  async function mountGuarded(apply: (sandbox: Context) => void): Promise<{ ctx: Context; reported: Error[] }> {
+    const reported: Error[] = []
+    const ctx = new Context()
+    await ctx.plugin(guardedPlugin({ name: 'failure-probe', apply }, (error) => { reported.push(error) }))
+    return { ctx, reported }
+  }
+
+  it('propagates a throwing non-waterfall listener to the dispatcher', async () => {
+    const { ctx, reported } = await mountGuarded((sandbox) => {
+      sandbox.on('sandbox-guard/emit', () => {
+        throw new Error('emit listener exploded')
+      })
+    })
+
+    expect(() => { ctx.emit('sandbox-guard/emit', 'once') }).toThrow('emit listener exploded')
+    expect(reported.map(error => error.message)).toContain('emit listener exploded')
+  })
+
+  it('still delegates to next() when a waterfall listener throws', async () => {
+    const { ctx, reported } = await mountGuarded((sandbox) => {
+      sandbox.on('sandbox-guard/waterfall', () => {
+        throw new Error('waterfall listener exploded')
+      })
+    })
+
+    // The wrapped listener died, but the dispatch must not short-circuit: the
+    // built-in default still carries the chain.
+    expect(ctx.waterfall('sandbox-guard/waterfall', 'payload', () => 'default')).toBe('default')
+    expect(reported.map(error => error.message)).toContain('waterfall listener exploded')
+  })
+
+  it('delegates to next() when an async waterfall listener rejects', async () => {
+    const { ctx } = await mountGuarded((sandbox) => {
+      sandbox.on('sandbox-guard/waterfall', async () => {
+        throw new Error('async waterfall exploded')
+      })
+    })
+
+    await expect(Promise.resolve(ctx.waterfall('sandbox-guard/waterfall', 'payload', () => 'default')))
+      .resolves.toBe('default')
+  })
+
+  it('quarantines a repeatedly failing listener while emit keeps working', async () => {
+    let calls = 0
+    const { ctx, reported } = await mountGuarded((sandbox) => {
+      sandbox.on('sandbox-guard/emit', () => {
+        calls++
+        throw new Error('repeat failure')
+      })
+    })
+
+    for (let i = 0; i < 3; i++) {
+      expect(() => { ctx.emit('sandbox-guard/emit', 'tick') }).toThrow('repeat failure')
+    }
+    expect(calls).toBe(3)
+    expect(reported.map(error => error.message)).toContain('Circuit breaker tripped: dynamic plugin listener failed 3 consecutive times and is now quarantined.')
+
+    // Quarantined: the listener body no longer runs and nothing throws.
+    expect(() => { ctx.emit('sandbox-guard/emit', 'tick') }).not.toThrow()
+    expect(calls).toBe(3)
+  })
+
+  it('quarantines a repeatedly failing waterfall listener without vetoing the chain', async () => {
+    let calls = 0
+    const { ctx } = await mountGuarded((sandbox) => {
+      sandbox.on('sandbox-guard/waterfall', () => {
+        calls++
+        throw new Error('repeat waterfall failure')
+      })
+    })
+
+    // Each failing dispatch still delegates, so the chain resolves throughout.
+    for (let i = 0; i < 3; i++) {
+      expect(ctx.waterfall('sandbox-guard/waterfall', 'payload', () => 'default')).toBe('default')
+    }
+    expect(calls).toBe(3)
+
+    // After quarantine the listener body stops running and the chain still
+    // resolves — a quarantined listener is withdrawn, not a permanent veto.
+    expect(ctx.waterfall('sandbox-guard/waterfall', 'payload', () => 'default')).toBe('default')
+    expect(calls).toBe(3)
   })
 })

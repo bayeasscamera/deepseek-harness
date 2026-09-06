@@ -766,7 +766,43 @@ function sandboxContext(ctx: Context, reportFailure: (error: Error) => void): Co
             const callback = args[args.length - 1]
             if (typeof callback === 'function') {
               const safeCallback = (...cbArgs: unknown[]): unknown => {
-                if (isQuarantined) return undefined
+                // A waterfall dispatch hands every listener the delegating
+                // `next` as its trailing argument; emit/parallel/serial
+                // listeners never receive one. That trailing function decides
+                // the failure semantics below.
+                const waterfallNext = typeof cbArgs[cbArgs.length - 1] === 'function'
+                  ? cbArgs[cbArgs.length - 1] as () => unknown
+                  : undefined
+                if (isQuarantined) {
+                  // Quarantine withdraws this listener from every decision,
+                  // like an unregistration — it must not turn into a permanent
+                  // veto: a waterfall chain keeps delegating past the
+                  // quarantined listener, and a quarantined non-waterfall
+                  // listener is a no-op.
+                  return waterfallNext?.()
+                }
+                const recordFailure = (err: unknown): unknown => {
+                  consecutiveFailures++
+                  const error = err instanceof Error ? err : new Error(String(err))
+                  reportFailure(error)
+                  if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES && !isQuarantined) {
+                    isQuarantined = true
+                    reportFailure(new Error(`Circuit breaker tripped: dynamic plugin listener failed ${consecutiveFailures} consecutive times and is now quarantined.`))
+                  }
+                  // Failure semantics per dispatch mode. A failed listener must
+                  // neither swallow its error nor — the waterfall contract —
+                  // return without calling `next()`, which would short-circuit
+                  // the whole chain and veto every downstream listener plus
+                  // the built-in behavior. So a failed waterfall listener
+                  // still delegates, letting `next()`'s result (or its own
+                  // error) carry the dispatch; every other listener's error
+                  // propagates to its dispatcher (for `emit` this reaches the
+                  // emitting call site; an async emit listener that rejects
+                  // surfaces as an unhandled rejection, consistent with the
+                  // convention that emit listeners are synchronous recorders).
+                  if (waterfallNext !== undefined) return waterfallNext()
+                  throw error
+                }
                 try {
                   const result = Reflect.apply(callback, ctx, cbArgs) as unknown
                   if (result instanceof Promise) {
@@ -775,28 +811,12 @@ function sandboxContext(ctx: Context, reportFailure: (error: Error) => void): Co
                         consecutiveFailures = 0
                         return val
                       })
-                      .catch((err: unknown): undefined => {
-                        consecutiveFailures++
-                        const error = err instanceof Error ? err : new Error(String(err))
-                        reportFailure(error)
-                        if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES && !isQuarantined) {
-                          isQuarantined = true
-                          reportFailure(new Error(`Circuit breaker tripped: dynamic plugin listener failed ${consecutiveFailures} consecutive times and is now quarantined.`))
-                        }
-                        return undefined
-                      })
+                      .catch((err: unknown): unknown => recordFailure(err))
                   }
                   consecutiveFailures = 0
                   return result
                 } catch (err: unknown) {
-                  consecutiveFailures++
-                  const error = err instanceof Error ? err : new Error(String(err))
-                  reportFailure(error)
-                  if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
-                    isQuarantined = true
-                    reportFailure(new Error(`Circuit breaker tripped: dynamic plugin listener failed ${consecutiveFailures} consecutive times and is now quarantined.`))
-                  }
-                  return undefined
+                  return recordFailure(err)
                 }
               }
               const wrappedArgs = [...args.slice(0, -1), safeCallback]
