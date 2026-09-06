@@ -122,6 +122,8 @@
   align-items: center;
   gap: 4px;
   margin-left: auto;
+  flex: none;
+  white-space: nowrap;
 }
 
 /* `box-sizing` on every control here: the app has no global border-box reset,

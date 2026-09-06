@@ -8,6 +8,19 @@
   display: grid;
   place-items: center;
   background: var(--dsw-alias-bg-base, #f9fafb);
+  color: var(--dsw-alias-label-primary, #0f1115);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  transform: translateZ(0);
+  contain: layout paint;
+}
+
+@media (prefers-color-scheme: dark) {
+  .boot {
+    background: var(--dsw-alias-bg-base, #151517);
+    color: var(--dsw-alias-label-primary, #e8eaed);
+  }
 }
 
 .card {

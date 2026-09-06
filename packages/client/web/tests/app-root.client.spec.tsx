@@ -7,7 +7,7 @@
  * gate semantics. Stores are the kernel-own signals production boot uses
  * (shell self-sufficiency: the loading page depends on no plugin package).
  */
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, render } from '@testing-library/react'
 
 afterEach(cleanup)
@@ -72,5 +72,49 @@ describe('AppRoot', () => {
     expect(getByTestId('real-ui')).toBeTruthy()
     expect(queryByText('HARNESS')).toBeNull()
     expect(counts()).toBe(1)
+  })
+
+  it('renders the crash card when the real UI throws', () => {
+    const settled = createSignal(false)
+    const error = createSignal<string | undefined>(undefined)
+    const status = createLoaderStatusStore()
+    const { getByText, queryByText, queryByTestId } = render(
+      <AppRoot
+        settled={settled}
+        status={status}
+        error={error}
+        renderApp={() => { throw new Error('boom in real UI') }}
+      />,
+    )
+    act(() => { settled.set(true) })
+    expect(getByText('Application Error')).toBeTruthy()
+    expect(getByText('boom in real UI')).toBeTruthy()
+    expect(queryByTestId('real-ui')).toBeNull()
+    expect(queryByText('Loading plugins…')).toBeNull()
+  })
+
+  it('uses the fallback message when the error carries none, and reloads on the button', () => {
+    const originalLocation = window.location
+    const reload = vi.fn()
+    Object.defineProperty(window, 'location', { value: { reload }, writable: true, configurable: true })
+    try {
+      const settled = createSignal(false)
+      const error = createSignal<string | undefined>(undefined)
+      const status = createLoaderStatusStore()
+      const { getByText } = render(
+        <AppRoot
+          settled={settled}
+          status={status}
+          error={error}
+          renderApp={() => { throw new Error('') }}
+        />,
+      )
+      act(() => { settled.set(true) })
+      expect(getByText('An unexpected error occurred during execution.')).toBeTruthy()
+      act(() => { getByText('Reload Application').click() })
+      expect(reload).toHaveBeenCalledTimes(1)
+    } finally {
+      Object.defineProperty(window, 'location', { value: originalLocation, writable: true, configurable: true })
+    }
   })
 })

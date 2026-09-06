@@ -31,11 +31,36 @@ describe('OnboardingSurface', () => {
     expect(stage!.textContent).toBe('step content')
   })
 
-  it('holds #root inert for exactly its own lifetime', () => {
+  it('holds the rest of the document inert for exactly its own lifetime', () => {
     const view = render(<OnboardingSurface>x</OnboardingSurface>)
-    expect(appRoot.inert).toBe(true)
+    expect(appRoot.getAttribute('inert')).not.toBeNull()
     view.unmount()
-    expect(appRoot.inert).toBe(false)
+    expect(appRoot.getAttribute('inert')).toBeNull()
+  })
+
+  it('inerts body-portaled dialogs opened during onboarding and restores them', () => {
+    // A body-portaled dialog (the settings-panel precedent) sits outside #root;
+    // it must fall under the takeover too.
+    const dialog = document.createElement('div')
+    dialog.id = 'portaled-dialog'
+    document.body.appendChild(dialog)
+    const view = render(<OnboardingSurface>x</OnboardingSurface>)
+    expect(dialog.getAttribute('inert')).not.toBeNull()
+    expect(appRoot.getAttribute('inert')).not.toBeNull()
+    view.unmount()
+    expect(dialog.getAttribute('inert')).toBeNull()
+    expect(appRoot.getAttribute('inert')).toBeNull()
+    dialog.remove()
+  })
+
+  it('leaves pre-existing inert elements inert after unmount', () => {
+    const already = document.createElement('div')
+    already.setAttribute('inert', '')
+    document.body.appendChild(already)
+    const view = render(<OnboardingSurface>x</OnboardingSurface>)
+    view.unmount()
+    expect(already.getAttribute('inert')).not.toBeNull()
+    already.remove()
   })
 
   it('renders without an #root element (compositions that mount elsewhere)', () => {
