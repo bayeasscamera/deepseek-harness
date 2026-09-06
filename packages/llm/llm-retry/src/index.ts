@@ -75,7 +75,13 @@ function retryPolicyKey(policy: ResolvedRetryPolicy): string {
     ])
 }
 
-function cancellableDelay(delayMs: number, signal: AbortSignal): Promise<boolean> {
+/**
+ * Wait out one delay, cancellable by an abort signal.
+ * @param delayMs - delay duration in milliseconds.
+ * @param signal - abort signal cancelling the wait.
+ * @returns true when the delay elapsed, false when the wait was cancelled.
+ */
+export function cancellableDelay(delayMs: number, signal: AbortSignal): Promise<boolean> {
   if (signal.aborted) return Promise.resolve(false)
   return new Promise((resolve) => {
     const timer = setTimeout(() => {
@@ -91,6 +97,24 @@ function cancellableDelay(delayMs: number, signal: AbortSignal): Promise<boolean
 }
 
 /**
+ * Track in-flight recovery operations: every settled operation removes itself
+ * from the active set, and an owner drains the set on teardown.
+ * @returns the tracker: `track` wraps one operation, `active` is the live set.
+ */
+export function createOperationTracker(): {
+  track: (operation: Promise<RequestErrorAction>) => Promise<RequestErrorAction>
+  readonly active: Set<Promise<RequestErrorAction>>
+} {
+  const active = new Set<Promise<RequestErrorAction>>()
+  function track(operation: Promise<RequestErrorAction>): Promise<RequestErrorAction> {
+    const tracked = operation.finally(() => active.delete(tracked))
+    active.add(tracked)
+    return tracked
+  }
+  return { track, active }
+}
+
+/**
  * Install provider-routed normal or unbounded request recovery.
  * @param ctx - plugin context that owns the listener and active waits.
  * @param config - empty executor config; provider registrations own policy.
@@ -100,13 +124,7 @@ export function apply(ctx: Context, config: Config = {}, internals: RetryInterna
   validateConfig(config)
   const random = internals.random ?? Math.random
   const lifetime = new AbortController()
-  const active = new Set<Promise<RequestErrorAction>>()
-
-  function track(operation: Promise<RequestErrorAction>): Promise<RequestErrorAction> {
-    const tracked = operation.finally(() => active.delete(tracked))
-    active.add(tracked)
-    return tracked
-  }
+  const { track, active } = createOperationTracker()
 
   async function backoff(
     agent: Agent,
