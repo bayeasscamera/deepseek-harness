@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
 import { mkdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -202,6 +202,46 @@ describe('typertPlugin', () => {
     expect(generated).toHaveBeenCalledTimes(2)
     expect(readFileSync(join(root, 'packages/core/tools/lib/typert.host.js'), 'utf8'))
       .toBe('export const host = true\n')
+  })
+
+  it('regenerates when a generator-source edit preserves mtime and size', async () => {
+    const root = await workspace()
+    writeFileSync(join(root, 'tsconfig.host.tsbuildinfo'), '{"version":1,"state":"first"}\n')
+    const sourceDir = join(root, 'packages', 'typert', 'generator', 'src')
+    mkdirSync(sourceDir, { recursive: true })
+    const source = join(sourceDir, 'emit.ts')
+    // A whole-millisecond epoch pin round-trips exactly through utimes, so the
+    // stat-hash (name:mtimeMs:size) is genuinely identical across the edit.
+    const pinned = new Date(1_700_000_000_000)
+    writeFileSync(source, 'export const step = 1\n')
+    utimesSync(source, pinned, pinned)
+    const trigger = await packageOutput(root, 'typert/generator', { name: '@deepseek-ai/dsh-typert-generator' })
+    await packageOutput(root, 'core/tools', {
+      name: '@deepseek-ai/dsh-tools',
+      exports: { './typert': './lib/typert.host.js' },
+    })
+    await packageOutput(root, 'ignored', { name: '@fixture/ignored' })
+    await packageOutput(root, 'remote-only', {
+      name: '@fixture/remote-only',
+      exports: { './remote': './lib/typert.remote-client.js' },
+    })
+
+    const first = typertPlugin({ mode: 'workspace', faces: ['host'] })
+    first.writeBundle({ dir: trigger })
+    expect(generated).toHaveBeenCalledOnce()
+
+    // Same byte size, mtime pinned back to the same value: a stat-hash would
+    // call this unchanged and reuse stale artifacts.
+    writeFileSync(source, 'export const step = 2\n')
+    utimesSync(source, pinned, pinned)
+    const edited = typertPlugin({ mode: 'workspace', faces: ['host'] })
+    edited.writeBundle({ dir: trigger })
+    expect(generated).toHaveBeenCalledTimes(2)
+
+    // A no-op rebuild after the invalidated emission still reuses.
+    const cached = typertPlugin({ mode: 'workspace', faces: ['host'] })
+    cached.writeBundle({ dir: trigger })
+    expect(generated).toHaveBeenCalledTimes(2)
   })
 
   it('emits every explicit workspace contributor once from a host-only prepass', async () => {

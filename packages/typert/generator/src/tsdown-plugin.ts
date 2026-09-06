@@ -7,7 +7,7 @@
  */
 
 import { createHash } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join, relative, resolve } from 'node:path'
 import ts from 'typescript'
 import { WorkspaceTypertGenerator } from './workspace.ts'
@@ -142,14 +142,16 @@ function workspaceStateHash(root: string, face: TypertFace): string | undefined 
   return hash.digest('hex')
 }
 
-/** Hash the generator package's implementation files in a stable order. */
+/** Hash each generator package's implementation file CONTENT in a stable order. */
 function* walkGeneratorSources(root: string): Generator<string> {
   const dir = join(root, 'packages', 'typert', 'generator', 'src')
   if (!existsSync(dir)) return
   for (const name of readdirSync(dir).sort()) {
     if (!name.endsWith('.ts')) continue
-    const stat = statSync(join(dir, name))
-    yield `${name}:${stat.mtimeMs}:${stat.size}`
+    // Content, not mtime+size: a stat-hash misses an edit that preserves both,
+    // which would reuse artifacts generated from the previous source.
+    const hash = createHash('sha256').update(readFileSync(join(dir, name))).digest('hex')
+    yield `${name}:${hash}`
   }
 }
 
@@ -200,7 +202,11 @@ function writeWorkspaceMarker(root: string, face: TypertFace, artifacts: readonl
 function writeIfChanged(path: string, content: string): void {
   try {
     if (readFileSync(path, 'utf8') === content) return
-  } catch {}
+  } catch {
+    // Swallows the ENOENT of a first emission (the artifact does not exist
+    // yet, so it must be written); any other read failure also cannot justify
+    // skipping the write, which is the only recovery available here.
+  }
   writeFileSync(path, content)
 }
 
