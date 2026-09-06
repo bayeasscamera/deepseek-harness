@@ -37,7 +37,7 @@ harness LLM（大语言模型）seam 的 DeepSeek chat-completions 适配器：�
 
 ### 凭据解析顺序
 
-优先尝试配置的 `apiKeyEnv` 引用，随后依次尝试会话令牌回退项：`DEEPSEEK_SESSION_TOKEN`、`DEEPSEEK_AUTH_TOKEN`、`DSH_SESSION_TOKEN`、`DSH_SUBSCRIPTION_KEY`。第一个通过 `ctx.credentials`（未挂载凭据 seam 时为启动环境）解析出非空值的引用生效，使用前会剥离 `Bearer ` 前缀。没有任何可解析凭据的请求将以 `MISSING_CREDENTIAL` 失败。
+优先尝试配置的 `apiKeyEnv` 引用，随后依次尝试会话令牌回退项：`DEEPSEEK_SESSION_TOKEN`、`DEEPSEEK_AUTH_TOKEN`、`DSH_SESSION_TOKEN`、`DSH_SUBSCRIPTION_KEY`。第一个通过 `ctx.credentials`（未挂载凭据 seam 时为启动环境）解析出非空值的引用生效，使用前会从解析值中剥离 `bearer` 方案词（不区分大小写）；其他方案词与裸令牌原样传递。没有任何可解析凭据的请求将以 `MISSING_CREDENTIAL` 失败。
 
 该插件注册唯一提供方路由 `deepseek-official`，同时注册解析后的 `retryPolicy`。请求使用 `provider: deepseek-official` 选择该路由；其 `model` 会作为协议 `model` 字符串原样传递，因此更改 DeepSeek 模型不需要生命周期时注册。省略 `models` 会公布 `deepseek-v4-flash`（名称为 `DeepSeek-V4-Flash`）和 `deepseek-v4-pro`（名称为 `DeepSeek-V4-Pro`），两者的上下文窗口均为 1,000,000 token；显式列表会替换这些默认值，`models: []` 则不公布任何模型。Catalog 配置项通过 `ctx.llm.listModels('deepseek-official')` 公开给 ACP（Agent Client Protocol）编辑器和 Web 选择器等客户端，但仍只提供建议：未列出模型 id 仍原样传递。省略配置项 name 默认为其 id。
 

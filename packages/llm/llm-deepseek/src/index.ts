@@ -65,7 +65,8 @@ export interface Config {
    * defaults to `DEEPSEEK_API_KEY`. When it yields nothing, the session-token
    * fallbacks are tried in order: `DEEPSEEK_SESSION_TOKEN`,
    * `DEEPSEEK_AUTH_TOKEN`, `DSH_SESSION_TOKEN`, then `DSH_SUBSCRIPTION_KEY`.
-   * A `Bearer ` prefix on a resolved value is stripped before use.
+   * A `bearer` scheme word (any casing) on a resolved value is stripped before
+   * use; other scheme words and bare tokens pass through unchanged.
    */
   apiKeyEnv?: string
   /** Endpoint base; falls back to $DEEPSEEK_BASE_URL from a trusted environment layer, then the public API. */
@@ -228,9 +229,16 @@ export function apply(ctx: Context, config: Config): void {
   }
   options()
 
+  /**
+   * Strip a `bearer` scheme word (any casing) from a resolved credential
+   * value. Only the bearer scheme is stripped — a raw token or any other
+   * scheme passes through unchanged, so a credential stored with its scheme
+   * still yields the bare key the auth header needs.
+   */
   const sanitizeToken = (raw: string): string => {
     const trimmed = raw.trim()
-    return trimmed.startsWith('Bearer ') ? trimmed.slice(7).trim() : trimmed
+    const scheme = /^(bearer)\s+/i.exec(trimmed)
+    return scheme ? trimmed.slice(scheme[0].length).trim() : trimmed
   }
 
   /**

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mkdtempSync, rmSync } from 'node:fs'
+import { writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
@@ -13,6 +14,7 @@ import LlmRuntime, { createUserMessage,
 } from '@deepseek-ai/dsh-llm'
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
 import { getOrCreateAnonymousUserId, type AnonymousUserId } from '@deepseek-ai/dsh-anonymous-user-id'
+import { LocalCredentialProvider } from '@deepseek-ai/dsh-credentials-local'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import * as LlmDeepSeek from '@deepseek-ai/dsh-llm-deepseek'
 import { DeepSeekAdapter, resolveAdapterOptions } from '@deepseek-ai/dsh-llm-deepseek'
@@ -1051,5 +1053,113 @@ describe('plugin registration and config', () => {
       retryPolicy: { mode: 'normal', maxRetries: -1 },
     })).rejects.toThrow(/retryPolicy/)
     expect(ctx.llm.listProviders()).toEqual([])
+  })
+})
+
+describe('session-token credential fallbacks', () => {
+  const CREDENTIAL_REFS = [
+    'DEEPSEEK_API_KEY',
+    'DEEPSEEK_SESSION_TOKEN',
+    'DEEPSEEK_AUTH_TOKEN',
+    'DSH_SESSION_TOKEN',
+    'DSH_SUBSCRIPTION_KEY',
+  ] as const
+
+  /** Blank every candidate reference in the inherited environment so ambient tests pin one variable at a time. */
+  function stubAmbientCredentialsEmpty(): void {
+    for (const name of CREDENTIAL_REFS) vi.stubEnv(name, '')
+  }
+
+  /** Plugin-only context over the inherited launch environment (no credentials seam mounted). */
+  async function ambientHarness(baseURL: string, config: object = {}): Promise<Context> {
+    const ctx = new Context()
+    await ctx.plugin(LlmRuntime)
+    await ctx.plugin(LlmDeepSeek, { baseURL, ...config })
+    return ctx
+  }
+
+  /**
+   * Real credentials seam over one credentials file in the test home. The
+   * inherited environment is blanked first: the local provider ranks the
+   * process environment above its own store, so a stale ambient value would
+   * otherwise shadow the file.
+   */
+  async function seamHarness(baseURL: string, credentials: string): Promise<Context> {
+    stubAmbientCredentialsEmpty()
+    const path = join(testHome, '.credentials.yaml')
+    await writeFile(path, credentials, { mode: 0o600 })
+    const ctx = new Context()
+    await ctx.plugin(LlmRuntime)
+    await ctx.plugin(LocalCredentialProvider, { path, watch: false })
+    await ctx.plugin(LlmDeepSeek, { baseURL })
+    return ctx
+  }
+
+  it('prefers the configured apiKeyEnv reference over the session-token fallbacks in the ambient environment', async () => {
+    vi.stubEnv('DEEPSEEK_API_KEY', 'ambient-primary')
+    vi.stubEnv('DEEPSEEK_SESSION_TOKEN', 'ambient-session')
+    const server = await mockServer([{ kind: 'sse', events: textEvents }])
+    const ctx = await ambientHarness(server.url)
+    await assemble(ctx, { model: 'deepseek-v4-flash', messages: [] })
+    expect(server.headers[0]?.authorization).toBe('Bearer ambient-primary')
+  })
+
+  it('walks the ambient session-token fallbacks in the documented order', async () => {
+    vi.stubEnv('DEEPSEEK_API_KEY', '')
+    vi.stubEnv('DEEPSEEK_SESSION_TOKEN', 'session-token-value')
+    vi.stubEnv('DEEPSEEK_AUTH_TOKEN', 'auth-token-value')
+    const server = await mockServer([{ kind: 'sse', events: textEvents }])
+    const ctx = await ambientHarness(server.url)
+    await assemble(ctx, { model: 'deepseek-v4-flash', messages: [] })
+    expect(server.headers[0]?.authorization).toBe('Bearer session-token-value')
+  })
+
+  it('reaches the last documented ambient fallback', async () => {
+    vi.stubEnv('DEEPSEEK_API_KEY', '')
+    vi.stubEnv('DEEPSEEK_SESSION_TOKEN', '')
+    vi.stubEnv('DEEPSEEK_AUTH_TOKEN', '')
+    vi.stubEnv('DSH_SESSION_TOKEN', '')
+    vi.stubEnv('DSH_SUBSCRIPTION_KEY', 'subscription-value')
+    const server = await mockServer([{ kind: 'sse', events: textEvents }])
+    const ctx = await ambientHarness(server.url)
+    await assemble(ctx, { model: 'deepseek-v4-flash', messages: [] })
+    expect(server.headers[0]?.authorization).toBe('Bearer subscription-value')
+  })
+
+  it('prefers the configured reference over the session-token fallbacks through the credentials seam', async () => {
+    const server = await mockServer([{ kind: 'sse', events: textEvents }])
+    const ctx = await seamHarness(server.url, 'DEEPSEEK_API_KEY: seam-primary\nDEEPSEEK_SESSION_TOKEN: seam-fallback\n')
+    await assemble(ctx, { model: 'deepseek-v4-flash', messages: [] })
+    expect(server.headers[0]?.authorization).toBe('Bearer seam-primary')
+  })
+
+  it('walks the seam session-token fallbacks in the documented order', async () => {
+    const server = await mockServer([{ kind: 'sse', events: textEvents }])
+    const ctx = await seamHarness(server.url, 'DEEPSEEK_SESSION_TOKEN: seam-session\nDSH_SUBSCRIPTION_KEY: seam-subscription\n')
+    await assemble(ctx, { model: 'deepseek-v4-flash', messages: [] })
+    expect(server.headers[0]?.authorization).toBe('Bearer seam-session')
+  })
+
+  it('fails loud with MISSING_CREDENTIAL when the mounted seam resolves nothing', async () => {
+    const ctx = await seamHarness('http://127.0.0.1:1', '')
+    const result = await assemble(ctx, { model: 'deepseek-v4-flash', messages: [] })
+    expect(result.finish).toMatchObject({ kind: 'error', failure: { code: 'MISSING_CREDENTIAL' } })
+  })
+
+  it.each([
+    ['Bearer sk-secret', 'Bearer sk-secret'],
+    ['bearer sk-secret', 'Bearer sk-secret'],
+    ['BeArEr sk-secret', 'Bearer sk-secret'],
+    ['sk-raw-token', 'Bearer sk-raw-token'],
+    ['bearerish-token', 'Bearer bearerish-token'],
+  ])('resolves %s to the bare key on the wire', async (stored, expected) => {
+    // Only the bearer scheme word (any casing, followed by whitespace) is
+    // stripped: a raw token and a bearer-prefixed non-scheme value pass
+    // through unchanged, and no other scheme word is touched.
+    vi.stubEnv('DEEPSEEK_API_KEY', stored)
+    const server = await mockServer([{ kind: 'sse', events: textEvents }])
+    const ctx = await ambientHarness(server.url)
+    await assemble(ctx, { model: 'deepseek-v4-flash', messages: [] })
+    expect(server.headers[0]?.authorization).toBe(expected)
   })
 })
