@@ -1,0 +1,20 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib/types"
+  },
+  "include": ["src"],
+  "references": [
+    { "path": "../../../vendor/cosmokit" },
+    { "path": "../../../vendor/cordis" },
+    { "path": "../../../vendor/schemastery" },
+    { "path": "../../core/agent" },
+    { "path": "../../core/session" },
+    { "path": "../../interaction/commands" },
+    { "path": "../../llm/llm" },
+    { "path": "../../llm/llm-retry" },
+    { "path": "../../util/timeout" },
+    { "path": "../../runtime-diagnostics/invariants" }
+  ]
+}
