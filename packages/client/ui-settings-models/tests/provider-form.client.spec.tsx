@@ -31,8 +31,10 @@ const PiAiConfig = Schema.object({
       name: Schema.string(),
       contextWindow: Schema.number(),
       maxTokens: Schema.number(),
+      input: Schema.array(Schema.union(['text', 'image'])),
     })),
     reasoning: Schema.union(['off', 'high']),
+    defaultInput: Schema.array(Schema.union(['text', 'image'])),
   })),
 })
 
@@ -385,6 +387,80 @@ describe('model list editing', () => {
 
 })
 
+describe('image input', () => {
+  it('declares image input on one model row and leaves the other silent', async () => {
+    const { mutate } = await mountSection({
+      providers: {
+        openai: {
+          baseURL: 'https://proxy.example/v1',
+          models: [{ id: 'first' }, { id: 'second' }],
+        },
+      },
+    })
+    openEditor('openai')
+    expandModel(1)
+    fireEvent.click(screen.getByLabelText(`${en.modelImageInput} 1`))
+    fireEvent.click(screen.getByText(en.apply))
+
+    await waitFor(() => { expect(mutate).toHaveBeenCalled() })
+    expect(firstMutate(mutate).ops[0]?.value).toEqual([
+      { id: 'first', input: ['text', 'image'] },
+      { id: 'second' },
+    ])
+  })
+
+  it('reads a stored image declaration back and clears it to inherit', async () => {
+    const { mutate } = await mountSection({
+      providers: {
+        openai: {
+          baseURL: 'https://proxy.example/v1',
+          models: [{ id: 'vision', input: ['text', 'image'] }],
+        },
+      },
+    })
+    openEditor('openai')
+    expandModel(1)
+    expect(screen.getByLabelText<HTMLInputElement>(`${en.modelImageInput} 1`).checked).toBe(true)
+    fireEvent.click(screen.getByLabelText(`${en.modelImageInput} 1`))
+    fireEvent.click(screen.getByText(en.apply))
+
+    await waitFor(() => { expect(mutate).toHaveBeenCalled() })
+    // Clearing is inheritance, not a text-only declaration, so no key lands.
+    expect(firstMutate(mutate).ops[0]?.value).toEqual([{ id: 'vision' }])
+  })
+
+  it('declares image input as the route default for undescribed models', async () => {
+    const { mutate } = await mountSection()
+    openEditor('openai')
+    fireEvent.click(screen.getByLabelText(en.defaultImageInput))
+    fireEvent.click(screen.getByText(en.apply))
+
+    await waitFor(() => { expect(mutate).toHaveBeenCalled() })
+    expect(firstMutate(mutate).ops).toContainEqual({
+      op: 'set', path: ['providers', 'openai', 'defaultInput'], value: ['text', 'image'],
+    })
+  })
+
+  it('reads a stored route default back and restores the adapter default on clear', async () => {
+    const { mutate } = await mountSection({
+      providers: {
+        openai: { baseURL: 'https://proxy.example/v1', defaultInput: ['text', 'image'] },
+      },
+    })
+    openEditor('openai')
+    expect(screen.getByLabelText<HTMLInputElement>(en.defaultImageInput).checked).toBe(true)
+    fireEvent.click(screen.getByLabelText(en.defaultImageInput))
+    fireEvent.click(screen.getByText(en.apply))
+
+    await waitFor(() => { expect(mutate).toHaveBeenCalled() })
+    // An absent key is "inherit", so unchecking drops the override rather
+    // than storing a text-only answer.
+    expect(firstMutate(mutate).ops).toContainEqual({
+      op: 'unset', path: ['providers', 'openai', 'defaultInput'],
+    })
+  })
+})
+
 describe('capacity spellings', () => {
   it.each([
     ['', undefined],
@@ -476,7 +552,7 @@ describe('endpoint interrogation', () => {
     fireEvent.click(screen.getByText(en.fetchModels))
     await screen.findByText(en.fetchTitle)
     // The already-configured row starts unchecked; the new one starts checked.
-    const boxes = [...document.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')]
+    const boxes = [...screen.getByRole('dialog').querySelectorAll<HTMLInputElement>('input[type="checkbox"]')]
     expect(boxes.map(box => box.checked)).toEqual([false, true])
     fireEvent.click(screen.getByText(en.fetchAdopt))
 
@@ -727,7 +803,8 @@ describe('hand-declared providers', () => {
     await mountSection({ providers: { openai: { apiKeyEnv: 'OPENAI_API_KEY' } } })
     openEditor('openai')
     fireEvent.click(screen.getByText(en.customized))
-    expect(fields()).toEqual([en.keyInput, en.baseUrl])
+    // The route-level image-input default lives in the same fold.
+    expect(fields()).toEqual([en.keyInput, en.baseUrl, en.defaultImageInput])
     cleanup()
 
     // A hand-declared route named its own protocol at creation, so editing it
@@ -737,7 +814,8 @@ describe('hand-declared providers', () => {
       declaredRoutes: ['acme-gateway'],
     })
     openEditor('acme-gateway')
-    expect(fields()).toEqual([en.keyInput, en.customDisplayName, en.baseUrl, en.customApi])
+    // A hand-declared route's models are undescribed, so the image default applies.
+    expect(fields()).toEqual([en.keyInput, en.customDisplayName, en.baseUrl, en.customApi, en.defaultImageInput])
   })
 
   it('renames a declared route and falls back to its id when the name is cleared', async () => {

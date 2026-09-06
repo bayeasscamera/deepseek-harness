@@ -44,6 +44,15 @@ function numberOf(model: ModelDraft, key: string): number | undefined {
   return typeof value === 'number' ? value : undefined
 }
 
+/**
+ * Whether the row declares image input itself. Absent means "no answer here",
+ * so the route's default or the catalog still applies — clearing the checkbox
+ * is inheritance, not a text-only declaration.
+ */
+function declaresImageInput(model: ModelDraft): boolean {
+  return Array.isArray(model.input) && model.input.includes('image')
+}
+
 /** What an interrogation needs, taken from the live form. */
 export interface ProbeTarget {
   /** Settings namespace whose adapter family answers. */
@@ -210,7 +219,10 @@ export function ModelListEditor(props: ModelListEditorProps): ReactNode {
     })
   }
 
-  const patch = (index: number, next: Record<string, string | number | undefined>): void => {
+  const patch = (
+    index: number,
+    next: Record<string, string | number | readonly string[] | undefined>,
+  ): void => {
     onChange(models.map((model, at) => {
       if (at !== index) return model
       // Rebuilt rather than spread over: an emptied optional field has to leave
@@ -415,6 +427,16 @@ export function ModelListEditor(props: ModelListEditorProps): ReactNode {
                     aria-label={`${t('modelMaxTokens')} ${index + 1}`}
                     disabled={disabled}
                     onChange={(event) => { editCapacity(index, 'maxTokens', event.target.value) }}
+                  />
+                </label>
+                <label className={styles['modelField']}>
+                  <span className={styles['modelFieldLabel']}>{t('modelImageInput')}</span>
+                  <input
+                    type="checkbox"
+                    checked={declaresImageInput(model)}
+                    aria-label={`${t('modelImageInput')} ${index + 1}`}
+                    disabled={disabled}
+                    onChange={(event) => { patch(index, { input: event.target.checked ? ['text', 'image'] : undefined }) }}
                   />
                 </label>
               </div>

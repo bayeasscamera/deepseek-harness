@@ -46,6 +46,9 @@
           - option "openai-completions" [selected]
           - option "openai-responses"
           - option "anthropic-messages"
+        - text: 默认图片输入
+        - checkbox "默认图片输入"
+        - paragraph: 对没有单独图片设置的模型生效；目录中已有记载的模型保持其原有模态。
         - region "模型目录":
           - text: 模型目录 已自定义模型目录
           - button "恢复默认模型"

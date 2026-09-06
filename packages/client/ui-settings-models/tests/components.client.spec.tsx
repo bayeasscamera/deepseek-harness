@@ -874,6 +874,15 @@ describe('ModelsSection', () => {
     expect(update).not.toHaveBeenCalled()
   })
 
+  it('offers no image-input controls on the DeepSeek card', async () => {
+    await mountDeepSeekCard()
+    fireEvent.click(screen.getByText(en.customized))
+    // The DeepSeek family hard-codes text-only input, so neither the route
+    // default nor a per-model declaration has anything to edit here.
+    expect(screen.queryByLabelText(en.defaultImageInput)).toBeNull()
+    expect(screen.queryByText(en.modelImageInput)).toBeNull()
+  })
+
   it('edits a pi-ai profile with the curated fields only', async () => {
     const { mutate } = await mountSection()
     fireEvent.click(screen.getByRole('button', { name: openaiCopy(en.editProvider) }))

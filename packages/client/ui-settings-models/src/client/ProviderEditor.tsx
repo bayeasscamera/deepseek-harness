@@ -10,7 +10,8 @@
  * both families, DeepSeek's id/name/context-window model catalog, and the
  * display name and wire protocol of a pi-ai route the adapter does not ship —
  * the two fields the create card asked that route for, editable here for the
- * same reason).
+ * same reason — plus pi-ai's route-level image-input default, a fallback that
+ * reaches only models with no modality answer of their own).
  * Reasoning effort is deliberately absent: it is a per-MODEL capability, and
  * the models under one provider disagree about it, so a provider-scoped
  * control can only be set to a value some of them reject. The composer's
@@ -341,6 +342,11 @@ export function ProviderEditor(props: ProviderEditorProps): ReactNode {
     const models = modelDrafts(modelsOverridden ? customModels : inheritedModels())
     const defaultContextWindow = getPath(fallback, ['defaultContextWindow'])
     const defaultMaxTokens = getPath(fallback, ['maxTokens'])
+    const storedDefaultInput = getPath(draft, ['defaultInput'])
+    // Reads the stored override, not the effective value: `defaultInput` is a
+    // fallback for models the catalog does not describe, so an absent key
+    // means "inherit the adapter default" and unchecking restores it.
+    const defaultImageDeclared = Array.isArray(storedDefaultInput) && storedDefaultInput.includes('image')
     const keyPlaceholder = keyLocked
       ? t('keyEnvLocked')
       : keyState?.configured === true && props.credentialRequired !== true
@@ -444,6 +450,28 @@ export function ProviderEditor(props: ProviderEditorProps): ReactNode {
                     {probeApi === undefined ? <option value="">{t('customApiUnset')}</option> : null}
                     {protocols.map(choice => <option key={choice} value={choice}>{choice}</option>)}
                   </select>
+                </div>
+              )
+              : null}
+            {/* The route-level image default reaches only models with no
+                `input` of their own and no catalog description, so the
+                per-model checkboxes below stay the precise instrument. */}
+            {family === 'pi-ai'
+              ? (
+                <div className={styles['field']}>
+                  <span className={styles['fieldLabel']}>{t('defaultImageInput')}</span>
+                  <input
+                    type="checkbox"
+                    checked={defaultImageDeclared}
+                    aria-label={t('defaultImageInput')}
+                    disabled={disabled}
+                    onChange={(event) => {
+                      setDraft(current => event.target.checked
+                        ? setPath(current, ['defaultInput'], ['text', 'image'])
+                        : deletePath(current, ['defaultInput']))
+                    }}
+                  />
+                  <p className={styles['advancedHint']}>{t('defaultImageInputHint')}</p>
                 </div>
               )
               : null}
