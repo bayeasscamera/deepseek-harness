@@ -261,8 +261,8 @@ export function apply(ctx: Context, config: Config): void {
   // Cross-call guidance follows the filesystem sections and precedes product sections.
   ctx.systemPrompt.section({
     name: 'tool:jobs',
-    order: ctx.systemPrompt.getSectionOrder('TOOL_JOBS'),
-    text: 'Track every background job id you start. You are notified in-session when a job finishes — do not busy-poll or sleep on one; keep working on independent steps and do not duplicate a running job\'s work. Before giving a final answer, collect every still-relevant job with job_output (set wait: true only when you are genuinely blocked on it), and job_kill jobs that stopped mattering.',
+order: ctx.systemPrompt.getSectionOrder('TOOL_JOBS'),
+    text: 'Track every background job id you start. Never end a turn while a job your next step depends on is still running — instead block on it with job_output (set wait: true; re-read after a timed-out wait while it still runs) until it settles, then continue the dependent step. Launch a command in the background only when independent work remains in this same turn; otherwise run it in the foreground so the work completes before the turn ends. You are notified in-session when a job finishes — do not busy-poll or sleep on one; keep working on independent steps and do not duplicate a running job\'s work. Before giving a final answer, collect every still-relevant job with job_output, and job_kill jobs that stopped mattering.',
   })
 
   // Use the exact lifecycle owner; reusable ids could resolve to a replacement.
