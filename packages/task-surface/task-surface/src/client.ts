@@ -1,13 +1,13 @@
 /**
- * Client-namespace projection of the task-surface domain: a pure re-export
- * of the package's browser-safe value surface. Client code imports ONLY the
- * client namespace (repo discipline), so `./client` projects the same
- * single-source content the root entry serves to host consumers — zero
- * duplication; host-side projection and invariant surfaces stay on the
- * root and `./invariant` entries.
+ * Client-namespace projection of the task-surface domain. Client code imports
+ * ONLY the client namespace (repo discipline), so `./client` carries the
+ * browser-safe value surface: types, runtime constants, limits, parser, and
+ * validator. The host-only projection definition stays on the root entry and
+ * the invariant companion on `./invariant`.
  * @module @deepseek-ai/dsh-task-surface/client
  */
 
+/* jscpd:ignore-start -- client namespace projects the browser-safe subset of the root barrel */
 export type * from './types.ts'
 export {
   TASK_SURFACE_PRESENTATION_META_KIND,
@@ -26,3 +26,4 @@ export {
 } from './parser.ts'
 export { formatTaskSurfaceSubmission, validateTaskSurfaceSubmission } from './validator.ts'
 export type { TaskSurfaceSubmissionIssue } from './validator.ts'
+/* jscpd:ignore-end */

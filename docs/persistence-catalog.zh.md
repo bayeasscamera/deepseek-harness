@@ -802,6 +802,26 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 
 来源：[`packages/subagent/tool-subagent/src/model-selection-state.ts:17`](../packages/subagent/tool-subagent/src/model-selection-state.ts)
 
+### `task-surface/*`
+
+<a id="task-surfacedismissed--log-only"></a>
+
+#### `task-surface/dismissed` — log-only
+
+```ts persistence-catalog
+/**
+ * Surface dismissed without a submission. Retried dismissals reuse the
+ * same dismissalId and return the original result without appending
+ * another event.
+ */
+'task-surface/dismissed': {
+  readonly surfaceId: TaskSurfaceId
+  readonly dismissalId: TaskSurfaceDismissalId
+}
+```
+
+来源：[`packages/task-surface/task-surface/src/types.ts:330`](../packages/task-surface/task-surface/src/types.ts)
+
 ### `team/*`
 
 <a id="teammember--log-only"></a>
