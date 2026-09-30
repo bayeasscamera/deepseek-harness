@@ -134,7 +134,9 @@ export function apply(ctx: Context, config: Config = {}): void {
     return provider
   })
   ctx.effect(function* () {
-    yield async () => { await provider.dispose() }
+    yield async () => {
+      await provider.dispose()
+    }
   }, 'skill-filesystem watcher')
   ctx.on('fs/observed', (target, _observation, actor) => {
     if (mutationToolName(actor) === undefined) return
@@ -161,15 +163,24 @@ export class FileSystemSkillProvider implements SkillProvider {
     this.name = config.providerName ?? 'filesystem'
     this.includeDefaultRoots = config.includeDefaultRoots ?? true
     this.dshHome = resolveDshHome(config.dshHome)
-    this.agentsHome = resolve(config.agentsHome ?? process.env.DSH_AGENTS_HOME ?? join(homedir(), '.agents'))
+    this.agentsHome = resolve(
+      config.agentsHome ?? process.env.DSH_AGENTS_HOME ?? join(homedir(), '.agents'),
+    )
     this.customSkillDirs = (config.customSkillDirs ?? []).map(root => resolve(root))
     this.watchManager = new SkillWatchManager(ctx, control.invalidate, resolveWatchConfig(config))
-    control.signal.addEventListener('abort', () => { void this.dispose() }, { once: true })
+    control.signal.addEventListener(
+      'abort',
+      () => {
+        void this.dispose()
+      },
+      { once: true },
+    )
     // The environment bundled root is a default root: an isolated provider
     // must see only its explicit roots, or every such provider would
     // re-discover the app's bundled skills under its own provider name.
-    const bundledSkillDir = config.bundledSkillDir
-      ?? (this.includeDefaultRoots ? process.env.DSH_BUNDLED_SKILL_DIR : undefined)
+    const bundledSkillDir =
+      config.bundledSkillDir ??
+      (this.includeDefaultRoots ? process.env.DSH_BUNDLED_SKILL_DIR : undefined)
     this.bundledSkillDir = bundledSkillDir === undefined ? undefined : resolve(bundledSkillDir)
   }
 
@@ -203,20 +214,28 @@ export class FileSystemSkillProvider implements SkillProvider {
    * @param options - lookup options whose signal cancels filesystem reads.
    * @returns the full local skill, or `undefined` if the file disappeared.
    */
-  async get(candidate: SkillCandidate, options: SkillLookupOptions): Promise<SkillDefinition | undefined> {
+  async get(
+    candidate: SkillCandidate,
+    options: SkillLookupOptions,
+  ): Promise<SkillDefinition | undefined> {
     const locator = candidate.locator as LocalLocator
-    const parsed = await parseSkillFile(locator.path, this.ctx, options.signal, candidate.source === 'bundled')
+    const parsed = await parseSkillFile(
+      locator.path,
+      this.ctx,
+      options.signal,
+      candidate.source === 'bundled',
+    )
     if (parsed === undefined) return undefined
     return {
       name: parsed.name,
       description: parsed.description,
-      ...parsed.whenToUse !== undefined ? { whenToUse: parsed.whenToUse } : {},
+      ...(parsed.whenToUse !== undefined ? { whenToUse: parsed.whenToUse } : {}),
       invocation: parsed.invocation,
       source: candidate.source,
       provider: this.name,
       resourceBase: { kind: 'directory', path: locator.directory },
       path: locator.path,
-      ...parsed.metadata !== undefined ? { metadata: parsed.metadata } : {},
+      ...(parsed.metadata !== undefined ? { metadata: parsed.metadata } : {}),
       content: parsed.content,
     }
   }
@@ -243,19 +262,41 @@ export class FileSystemSkillProvider implements SkillProvider {
     if (this.includeDefaultRoots && cwd !== undefined) {
       const projectRoot = await findProjectRoot(resolve(cwd), optionalFileSystem(this.ctx))
       roots.push(
-        { path: join(projectRoot, '.dsh/skills'), source: 'project-dsh', rank: PROJECT_DSH_RANK, projectRoot },
-        { path: join(projectRoot, '.agents/skills'), source: 'project-agents', rank: PROJECT_AGENTS_RANK, projectRoot },
+        {
+          path: join(projectRoot, '.dsh/skills'),
+          source: 'project-dsh',
+          rank: PROJECT_DSH_RANK,
+          projectRoot,
+        },
+        {
+          path: join(projectRoot, '.agents/skills'),
+          source: 'project-agents',
+          rank: PROJECT_AGENTS_RANK,
+          projectRoot,
+        },
       )
     }
-    roots.push(...this.customSkillDirs.map(path => ({ path, source: 'custom' as const, rank: CUSTOM_RANK })))
+    roots.push(
+      ...this.customSkillDirs.map(path => ({ path, source: 'custom' as const, rank: CUSTOM_RANK })),
+    )
     if (this.includeDefaultRoots) {
       roots.push(
-        { path: join(this.dshHome, 'skills'), source: 'user-dsh', rank: USER_DSH_RANK, skipSystem: true },
+        {
+          path: join(this.dshHome, 'skills'),
+          source: 'user-dsh',
+          rank: USER_DSH_RANK,
+          skipSystem: true,
+        },
         { path: join(this.agentsHome, 'skills'), source: 'user-agents', rank: USER_AGENTS_RANK },
       )
     }
     if (this.bundledSkillDir !== undefined) {
-      roots.push({ path: this.bundledSkillDir, source: 'bundled', rank: BUNDLED_SKILL_RANK, trustedHost: true })
+      roots.push({
+        path: this.bundledSkillDir,
+        source: 'bundled',
+        rank: BUNDLED_SKILL_RANK,
+        trustedHost: true,
+      })
     }
     return roots
   }
@@ -332,7 +373,8 @@ class SkillWatchManager {
   observeHostMutation(path: string): void {
     if (this.closing) return
     const normalized = resolve(path)
-    if (![...this.roots.values()].some(state => isPotentialSkillPath(state.root, normalized))) return
+    if (![...this.roots.values()].some(state => isPotentialSkillPath(state.root, normalized)))
+      return
     this.invalidate()
   }
 
@@ -342,12 +384,14 @@ class SkillWatchManager {
     const states = [...this.roots.values()]
     this.roots.clear()
     this.projects.clear()
-    await Promise.all(states.map(async (state) => {
-      await settleWatcherOpening(state.opening)
-      const watcher = state.watcher
-      state.watcher = undefined
-      if (watcher !== undefined) await this.closeWatcher(watcher)
-    }))
+    await Promise.all(
+      states.map(async (state) => {
+        await settleWatcherOpening(state.opening)
+        const watcher = state.watcher
+        state.watcher = undefined
+        if (watcher !== undefined) await this.closeWatcher(watcher)
+      }),
+    )
   }
 
   private async retainRoot(root: SkillRoot, owner: string): Promise<void> {
@@ -425,7 +469,9 @@ class SkillWatchManager {
       // oxlint-disable-next-line typescript/no-unnecessary-condition -- teardown can race awaited watcher startup
       if (!this.closing) {
         state.unhealthy = true
-        this.ctx.logger.warn(`skill-filesystem: failed to watch ${state.root.path}: ${errorMessage(error)}`)
+        this.ctx.logger.warn(
+          `skill-filesystem: failed to watch ${state.root.path}: ${errorMessage(error)}`,
+        )
       }
       throw error
     }
@@ -436,9 +482,10 @@ class SkillWatchManager {
   private async openStableWatcher(state: RootWatchState): Promise<WatchHandle | undefined> {
     while (!this.closing && state.owners.size > 0) {
       const mode = await resolveRootWatchMode(state.root.path, this.config.followSymlinks)
-      const watcher = mode.kind === 'ancestor'
-        ? this.openAncestorWatcher(state, mode)
-        : await this.openRootWatcher(state, mode)
+      const watcher =
+        mode.kind === 'ancestor'
+          ? this.openAncestorWatcher(state, mode)
+          : await this.openRootWatcher(state, mode)
       const current = await resolveRootWatchMode(state.root.path, this.config.followSymlinks)
       /* v8 ignore else -- A host path transition between the two probes is timing-dependent. */
       if (sameWatchMode(mode, current)) return watcher
@@ -449,14 +496,21 @@ class SkillWatchManager {
     return undefined
   }
 
-  private openAncestorWatcher(state: RootWatchState, mode: Extract<RootWatchMode, { kind: 'ancestor' }>): WatchHandle {
+  private openAncestorWatcher(
+    state: RootWatchState,
+    mode: Extract<RootWatchMode, { kind: 'ancestor' }>,
+  ): WatchHandle {
     const listener = (_current: Stats, _previous: Stats): void => {
       void this.handleAncestorWatchEvent(state, mode)
     }
-    watchFile(mode.nextPath, {
-      persistent: false,
-      interval: this.config.pollIntervalMs,
-    }, listener)
+    watchFile(
+      mode.nextPath,
+      {
+        persistent: false,
+        interval: this.config.pollIntervalMs,
+      },
+      listener,
+    )
     return {
       mode,
       close() {
@@ -484,7 +538,10 @@ class SkillWatchManager {
     this.scheduleRewatch(state)
   }
 
-  private async openRootWatcher(state: RootWatchState, mode: Extract<RootWatchMode, { kind: 'root' }>): Promise<WatchHandle> {
+  private async openRootWatcher(
+    state: RootWatchState,
+    mode: Extract<RootWatchMode, { kind: 'root' }>,
+  ): Promise<WatchHandle> {
     const watcher = chokidar.watch(mode.anchor, {
       // Chokidar owns late native fs.watch errors only for persistent watchers;
       // this provider's effect explicitly closes every handle at teardown.
@@ -511,7 +568,9 @@ class SkillWatchManager {
       await this.closeWatcher(handle)
       signal.throwIfAborted()
     }
-    const onAbort = (): void => { readiness.reject(signal.reason) }
+    const onAbort = (): void => {
+      readiness.reject(signal.reason)
+    }
     signal.addEventListener('abort', onAbort, { once: true })
     const onError = (error: unknown): void => {
       if (!ready) {
@@ -526,7 +585,9 @@ class SkillWatchManager {
       readiness.resolve(undefined)
     })
     for (const event of ['add', 'addDir', 'change', 'unlink', 'unlinkDir'] as const) {
-      watcher.on(event, (path) => { this.handleWatchEvent(state, mode, event, path) })
+      watcher.on(event, (path) => {
+        this.handleWatchEvent(state, mode, event, path)
+      })
     }
     try {
       await readiness.promise
@@ -546,7 +607,8 @@ class SkillWatchManager {
     path: string,
   ): void {
     const target = resolve(path)
-    if (this.closing || !isRelevantWatchEvent({ ...state.root, path: mode.anchor }, event, target)) return
+    if (this.closing || !isRelevantWatchEvent({ ...state.root, path: mode.anchor }, event, target))
+      return
     this.queueInvalidation()
     if (target === mode.anchor && event === 'unlinkDir') {
       state.unhealthy = true
@@ -556,7 +618,9 @@ class SkillWatchManager {
 
   private handleWatcherError(state: RootWatchState, error: unknown): void {
     if (this.closing) return
-    this.ctx.logger.warn(`skill-filesystem: watcher for ${state.root.path} failed: ${errorMessage(error)}`)
+    this.ctx.logger.warn(
+      `skill-filesystem: watcher for ${state.root.path} failed: ${errorMessage(error)}`,
+    )
     state.unhealthy = true
     this.queueInvalidation()
     this.scheduleRewatch(state)
@@ -606,7 +670,8 @@ async function settleWatcherOpening(opening: Promise<void> | undefined): Promise
 }
 
 function resolveWatchConfig(config: Config): ResolvedWatchConfig {
-  const stabilityThresholdMs = config.watchStabilityThresholdMs ?? DEFAULT_WATCH_STABILITY_THRESHOLD_MS
+  const stabilityThresholdMs =
+    config.watchStabilityThresholdMs ?? DEFAULT_WATCH_STABILITY_THRESHOLD_MS
   const pollIntervalMs = config.watchPollIntervalMs ?? DEFAULT_WATCH_POLL_INTERVAL_MS
   const maxProjects = config.watchMaxProjects ?? DEFAULT_WATCH_MAX_PROJECTS
   assertPositiveInteger('watchStabilityThresholdMs', stabilityThresholdMs)
@@ -628,10 +693,11 @@ async function resolveRootWatchMode(root: string, followSymlinks: boolean): Prom
     try {
       const info = await stat(candidate)
       if (info.isDirectory()) {
-        const preserveRootLink = candidate === root
-          && !followSymlinks
-          && (await lstat(candidate)).isSymbolicLink()
-        const anchor = preserveRootLink ? resolve(candidate) : await canonicalizeWatchPath(candidate)
+        const preserveRootLink =
+          candidate === root && !followSymlinks && (await lstat(candidate)).isSymbolicLink()
+        const anchor = preserveRootLink
+          ? resolve(candidate)
+          : await canonicalizeWatchPath(candidate)
         if (candidate === root) return { kind: 'root', anchor }
         const firstSegment = relative(candidate, root).split(sep)[0]
         /* v8 ignore next -- candidate is a strict ancestor of root. */
@@ -650,16 +716,14 @@ async function resolveRootWatchMode(root: string, followSymlinks: boolean): Prom
 }
 
 function sameWatchMode(left: RootWatchMode, right: RootWatchMode): boolean {
-  return left.kind === right.kind
-    && left.anchor === right.anchor
-    && (left.kind === 'root' || (right.kind === 'ancestor' && left.nextPath === right.nextPath))
+  return (
+    left.kind === right.kind &&
+    left.anchor === right.anchor &&
+    (left.kind === 'root' || (right.kind === 'ancestor' && left.nextPath === right.nextPath))
+  )
 }
 
-function isRelevantWatchEvent(
-  root: SkillRoot,
-  event: SkillWatchEvent,
-  path: string,
-): boolean {
+function isRelevantWatchEvent(root: SkillRoot, event: SkillWatchEvent, path: string): boolean {
   const segments = containedSegments(root.path, path)
   if (segments === undefined) return false
   if (segments.length === 0) return event === 'addDir' || event === 'unlinkDir'
@@ -668,19 +732,19 @@ function isRelevantWatchEvent(
     if (event === 'addDir' || event === 'unlinkDir') return true
     return segments[0]?.endsWith('.md') === true
   }
-  return segments.length === 2
-    && segments[1] === 'SKILL.md'
-    && event !== 'addDir'
-    && event !== 'unlinkDir'
+  return (
+    segments.length === 2 &&
+    segments[1] === 'SKILL.md' &&
+    event !== 'addDir' &&
+    event !== 'unlinkDir'
+  )
 }
 
 function isPotentialSkillPath(root: SkillRoot, path: string): boolean {
   const segments = containedSegments(root.path, path)
   if (segments === undefined || segments.length === 0 || segments.length > 2) return false
   if (root.skipSystem === true && segments[0] === '.system') return false
-  return segments.length === 1
-    ? segments[0]?.endsWith('.md') === true
-    : segments[1] === 'SKILL.md'
+  return segments.length === 1 ? segments[0]?.endsWith('.md') === true : segments[1] === 'SKILL.md'
 }
 
 function containedSegments(root: string, path: string): string[] | undefined {
@@ -707,32 +771,135 @@ function isAbsentPathError(error: unknown): boolean {
 }
 
 function isAbsentSkillPathError(error: unknown): boolean {
-  return isAbsentPathError(error)
-    || hasErrorCode(error, 'FS_NOT_FOUND')
-    || hasErrorCode(error, 'FS_NOT_DIRECTORY')
+  return (
+    isAbsentPathError(error) ||
+    hasErrorCode(error, 'FS_NOT_FOUND') ||
+    hasErrorCode(error, 'FS_NOT_DIRECTORY')
+  )
 }
 
 function hasErrorCode(error: unknown, code: string): boolean {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === code
 }
 
-async function discoverRoot(root: SkillRoot, ctx: Context, provider: string): Promise<SkillCandidate[]> {
+/**
+ * How one folder carries a skill: the manifest to parse and the folder its
+ * relative resources resolve against. The same pair is what discovery stores
+ * as a candidate locator, so an install writes the layout discovery reads back.
+ */
+export interface SkillLocation {
+  /** Absolute manifest path: `<directory>/SKILL.md`, or a flat markdown file. */
+  readonly path: string
+  /** Folder relative resource references resolve against. */
+  readonly directory: string
+  /** How the skill is stored: a folder with its manifest, or a flat file. */
+  readonly kind: 'directory' | 'file'
+}
+
+/**
+ * Decide how one listed entry carries a skill, by the rule discovery applies to
+ * every root: a directory carries `<directory>/SKILL.md`, and a flat markdown
+ * file is a skill of its own whose resources resolve against the root folder.
+ * @param entry - one listed root entry, with its name, kind, and path.
+ * @param rootPath - folder the entry was listed from.
+ * @returns the manifest and resource folder, or undefined when the entry carries no skill.
+ */
+export function skillSourceOf(
+  entry: {
+    readonly name: string
+    readonly type: 'directory' | 'file' | 'other'
+    readonly path: string
+  },
+  rootPath: string,
+): SkillLocation | undefined {
+  if (entry.type === 'directory') {
+    return { path: join(entry.path, 'SKILL.md'), directory: entry.path, kind: 'directory' }
+  }
+  if (entry.type === 'file' && entry.name.endsWith('.md')) {
+    return { path: entry.path, directory: rootPath, kind: 'file' }
+  }
+  return undefined
+}
+
+/** Deepest level a folder scan descends while looking for skills. */
+const SKILL_SOURCE_SCAN_DEPTH = 4
+
+/**
+ * Collect every skill a folder carries, at any depth, so a catalog grouped in
+ * sub-folders reads as the set it is instead of one unrecognized folder. A
+ * folder holding its own `SKILL.md` is a single skill and is not descended
+ * into, matching what discovery accepts; any other folder is scanned for skill
+ * folders and flat markdown files. Symbolic links and dot-prefixed entries are
+ * skipped, and the scan stops at `SKILL_SOURCE_SCAN_DEPTH` so a picked folder
+ * can never walk the whole filesystem.
+ * @param directory - absolute folder to scan.
+ * @returns the manifest and resource folder of each skill found, name-ordered.
+ */
+export async function findSkillSources(directory: string): Promise<SkillLocation[]> {
+  const own = join(directory, 'SKILL.md')
+  if (await isFilePath(own)) return [{ path: own, directory, kind: 'directory' }]
+  const sources: SkillLocation[] = []
+  await collectSkillSources(directory, SKILL_SOURCE_SCAN_DEPTH, sources)
+  return sources
+}
+
+/** Depth-first scan feeding `findSkillSources`, one level per call. */
+async function collectSkillSources(
+  directory: string,
+  remainingDepth: number,
+  sources: SkillLocation[],
+): Promise<void> {
+  let entries
+  try {
+    entries = await readdir(directory, { withFileTypes: true, encoding: 'utf8' })
+  } catch {
+    // A folder the host cannot list, because it is gone, unreadable, or not a
+    // folder at all, holds no skill the scan could install. Skipping it keeps
+    // the skills the rest of the tree holds importable.
+    return
+  }
+  for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+    // A link can point back up the tree and a dot folder holds build residue,
+    // so neither is a skill folder to descend into.
+    if (entry.isSymbolicLink() || entry.name.startsWith('.')) continue
+    const path = join(directory, entry.name)
+    if (entry.isDirectory()) {
+      const manifest = join(path, 'SKILL.md')
+      if (await isFilePath(manifest)) {
+        sources.push({ path: manifest, directory: path, kind: 'directory' })
+        continue
+      }
+      if (remainingDepth > 0) await collectSkillSources(path, remainingDepth - 1, sources)
+    } else if (entry.isFile() && entry.name.endsWith('.md')) {
+      sources.push({ path, directory, kind: 'file' })
+    }
+  }
+}
+
+async function isFilePath(path: string): Promise<boolean> {
+  return await stat(path).then(
+    info => info.isFile(),
+    () => false,
+  )
+}
+
+async function discoverRoot(
+  root: SkillRoot,
+  ctx: Context,
+  provider: string,
+): Promise<SkillCandidate[]> {
   const skills: SkillCandidate[] = []
   const entries = await listSkillRootEntries(root, ctx)
   for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
     if (root.skipSystem && entry.name === '.system') continue
-    const locator = entry.type === 'directory'
-      ? { path: join(entry.path, 'SKILL.md'), directory: entry.path }
-      : entry.type === 'file' && entry.name.endsWith('.md')
-        ? { path: entry.path, directory: root.path }
-        : undefined
+    const locator = skillSourceOf(entry, root.path)
     if (locator === undefined) continue
     const parsed = await parseSkillFile(locator.path, ctx, undefined, root.trustedHost === true)
     if (parsed === undefined) continue
     skills.push({
       name: parsed.name,
       description: parsed.description,
-      ...parsed.whenToUse !== undefined ? { whenToUse: parsed.whenToUse } : {},
+      ...(parsed.whenToUse !== undefined ? { whenToUse: parsed.whenToUse } : {}),
       invocation: parsed.invocation,
       provider,
       source: root.source,
@@ -740,7 +907,7 @@ async function discoverRoot(root: SkillRoot, ctx: Context, provider: string): Pr
       locator,
       resourceBase: { kind: 'directory', path: locator.directory },
       path: locator.path,
-      ...parsed.metadata !== undefined ? { metadata: parsed.metadata } : {},
+      ...(parsed.metadata !== undefined ? { metadata: parsed.metadata } : {}),
     })
   }
   return skills
@@ -748,11 +915,15 @@ async function discoverRoot(root: SkillRoot, ctx: Context, provider: string): Pr
 
 async function listSkillRootEntries(root: SkillRoot, ctx: Context): Promise<SkillRootEntry[]> {
   const fs = optionalFileSystem(ctx)
-  if (fs !== undefined && root.trustedHost !== true) return await listSkillRootEntriesFromFileSystem(root, fs)
+  if (fs !== undefined && root.trustedHost !== true)
+    return await listSkillRootEntriesFromFileSystem(root, fs)
   return await listSkillRootEntriesFromNode(root, ctx)
 }
 
-async function listSkillRootEntriesFromFileSystem(root: SkillRoot, fs: FileSystem): Promise<SkillRootEntry[]> {
+async function listSkillRootEntriesFromFileSystem(
+  root: SkillRoot,
+  fs: FileSystem,
+): Promise<SkillRootEntry[]> {
   try {
     return (await fsListDir(fs, root.path)).map(entryFromFs)
   } catch (error) {
@@ -770,7 +941,10 @@ function entryFromFs(entry: FsDirEntry): SkillRootEntry {
   return { name: entry.name, type: entry.type, path: entry.target.displayPath }
 }
 
-async function listSkillRootEntriesFromNode(root: SkillRoot, ctx: Context): Promise<SkillRootEntry[]> {
+async function listSkillRootEntriesFromNode(
+  root: SkillRoot,
+  ctx: Context,
+): Promise<SkillRootEntry[]> {
   let entries
   try {
     entries = await readdir(root.path, { withFileTypes: true, encoding: 'utf8' })
@@ -790,7 +964,12 @@ async function listSkillRootEntriesFromNode(root: SkillRoot, ctx: Context): Prom
   return result
 }
 
-async function parseSkillFile(path: string, ctx: Context, signal?: AbortSignal, trustedHost = false): Promise<ParsedSkill | undefined> {
+async function parseSkillFile(
+  path: string,
+  ctx: Context,
+  signal?: AbortSignal,
+  trustedHost = false,
+): Promise<ParsedSkill | undefined> {
   const raw = await readSkillText(ctx, path, signal, trustedHost)
   signal?.throwIfAborted()
   if (raw === undefined) {
@@ -821,7 +1000,9 @@ async function parseSkillFile(path: string, ctx: Context, signal?: AbortSignal, 
   try {
     invocation = parseInvocationPolicy(parsed.data)
   } catch (error) {
-    ctx.logger.warn(`skill file ${path} ignored: invalid invocation frontmatter: ${errorMessage(error)}`)
+    ctx.logger.warn(
+      `skill file ${path} ignored: invalid invocation frontmatter: ${errorMessage(error)}`,
+    )
     return undefined
   }
   return {
@@ -838,7 +1019,12 @@ function optionalFileSystem(ctx: Context): FileSystem | undefined {
   return ctx.get('fs')
 }
 
-async function readSkillText(ctx: Context, path: string, signal?: AbortSignal, trustedHost = false): Promise<string | undefined> {
+async function readSkillText(
+  ctx: Context,
+  path: string,
+  signal?: AbortSignal,
+  trustedHost = false,
+): Promise<string | undefined> {
   signal?.throwIfAborted()
   const fs = optionalFileSystem(ctx)
   if (fs !== undefined && !trustedHost) {
@@ -853,7 +1039,12 @@ async function readSkillText(ctx: Context, path: string, signal?: AbortSignal, t
   }
 }
 
-async function readSkillTextFromFileSystem(ctx: Context, fs: FileSystem, path: string, signal?: AbortSignal): Promise<string | undefined> {
+async function readSkillTextFromFileSystem(
+  ctx: Context,
+  fs: FileSystem,
+  path: string,
+  signal?: AbortSignal,
+): Promise<string | undefined> {
   // A missing or temporarily inaccessible skill file is not fatal to discovery.
   signal?.throwIfAborted()
   let target
@@ -888,7 +1079,11 @@ function fsReadErrorMessage(target: FsTarget, error: unknown): string {
   return `failed to read text file at ${target.displayPath}: ${errorMessage(error)}`
 }
 
-async function nodeEntryKind(fullPath: string, entry: { isDirectory(): boolean; isFile(): boolean; isSymbolicLink(): boolean }, ctx: Context): Promise<'directory' | 'file' | undefined> {
+async function nodeEntryKind(
+  fullPath: string,
+  entry: { isDirectory(): boolean; isFile(): boolean; isSymbolicLink(): boolean },
+  ctx: Context,
+): Promise<'directory' | 'file' | undefined> {
   if (entry.isDirectory()) return 'directory'
   if (entry.isFile()) return 'file'
   /* v8 ignore next -- Non-file directory entries such as FIFOs are platform-specific and intentionally skipped. */
@@ -901,12 +1096,16 @@ async function nodeEntryKind(fullPath: string, entry: { isDirectory(): boolean; 
     /* v8 ignore next -- The special-file symlink fixture relies on POSIX /dev/null. */
     return undefined
   } catch (error) {
-    ctx.logger.warn(`skill entry ${fullPath} ignored: failed to follow symbolic link: ${errorMessage(error)}`)
+    ctx.logger.warn(
+      `skill entry ${fullPath} ignored: failed to follow symbolic link: ${errorMessage(error)}`,
+    )
     return undefined
   }
 }
 
-function parseFrontmatter(raw: string): { data: Record<string, unknown>; body: string } | undefined {
+function parseFrontmatter(
+  raw: string,
+): { data: Record<string, unknown>; body: string } | undefined {
   const firstLineEnd = raw.indexOf('\n')
   if (firstLineEnd < 0) return undefined
   const firstLine = raw.slice(0, firstLineEnd).replace(/\r$/, '')
@@ -920,7 +1119,41 @@ function parseFrontmatter(raw: string): { data: Record<string, unknown>; body: s
   return { data: parsed as Record<string, unknown>, body: raw.slice(closing.bodyStart) }
 }
 
-function findClosingFrontmatter(raw: string, start: number): { start: number; bodyStart: number } | undefined {
+/**
+ * Validate one raw SKILL.md document with the same contract discovery accepts:
+ * YAML frontmatter carrying a kebab-case `name`, a `description`, and a
+ * parseable invocation policy. Used by surfaces that install skill folders
+ * outside the watcher loop, so their acceptance matches `discoverRoot`.
+ * @param raw - the full markdown file content.
+ * @returns the declared skill name, or the rejection category.
+ */
+export function validateSkillDocument(
+  raw: string,
+): { readonly name: string } | { readonly error: 'invalid-frontmatter' } {
+  let parsed
+  try {
+    parsed = parseFrontmatter(raw)
+  } catch {
+    // parseYaml throws only on malformed YAML frontmatter: same rejection.
+    return { error: 'invalid-frontmatter' }
+  }
+  if (parsed === undefined) return { error: 'invalid-frontmatter' }
+  const name = stringField(parsed.data, 'name')
+  const description = stringField(parsed.data, 'description')
+  if (name === undefined || description === undefined) return { error: 'invalid-frontmatter' }
+  if (!isSkillName(name)) return { error: 'invalid-frontmatter' }
+  try {
+    parseInvocationPolicy(parsed.data)
+  } catch {
+    return { error: 'invalid-frontmatter' }
+  }
+  return { name }
+}
+
+function findClosingFrontmatter(
+  raw: string,
+  start: number,
+): { start: number; bodyStart: number } | undefined {
   let lineStart = start
   while (lineStart <= raw.length) {
     const nextNewline = raw.indexOf('\n', lineStart)
@@ -962,7 +1195,7 @@ async function pathExistsInFileSystem(path: string, fs: FileSystem): Promise<boo
     return false
   }
   try {
-    return await fs.stat(target) !== undefined
+    return (await fs.stat(target)) !== undefined
   } catch {
     // Transient stat failures make only this git-root candidate unusable.
     return false
@@ -984,7 +1217,10 @@ function stringField(data: Record<string, unknown>, key: string): string | undef
   return typeof value === 'string' && value.length > 0 ? value : undefined
 }
 
-function optionalString(data: Record<string, unknown>, key: string): { [K in typeof key]?: string } {
+function optionalString(
+  data: Record<string, unknown>,
+  key: string,
+): { [K in typeof key]?: string } {
   const value = data[key]
   return typeof value === 'string' && value.length > 0 ? { [key]: value } : {}
 }
@@ -1001,7 +1237,11 @@ function parseInvocationPolicy(data: Record<string, unknown>): SkillInvocationPo
   }
 }
 
-function rejectLegacyInvocationKey(data: Record<string, unknown>, legacy: string, canonical: string): void {
+function rejectLegacyInvocationKey(
+  data: Record<string, unknown>,
+  legacy: string,
+  canonical: string,
+): void {
   if (Object.hasOwn(data, legacy)) {
     throw new Error(`frontmatter field "${legacy}" is unsupported; use "${canonical}"`)
   }

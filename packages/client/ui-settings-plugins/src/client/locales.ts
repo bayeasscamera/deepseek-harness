@@ -2,21 +2,80 @@
 
 /** Locale keys these surfaces render. */
 export type PluginsSettingsLocaleKey =
-  | 'nav' | 'title' | 'intro' | 'tabs' | 'configurableTab' | 'empty'
-  | 'overridden' | 'reset' | 'readOnly' | 'expand' | 'collapse'
-  | 'save' | 'saving' | 'discard' | 'unsaved' | 'saveFailed' | 'invalidNumber'
-  | 'bashTitle' | 'bashDescription' | 'bashTimeoutMs' | 'bashTimeoutMsHint'
-  | 'bashMaxOutputBytes' | 'bashMaxOutputBytesHint'
-  | 'agentLoopTitle' | 'agentLoopDescription' | 'agentLoopMaxParallel' | 'agentLoopMaxParallelHint'
-  | 'webSearchTitle' | 'webSearchDescription'
-  | 'webSearchApiKey' | 'webSearchApiKeyHint' | 'webSearchApiKeySet' | 'webSearchApiKeyUnset'
-  | 'webSearchBaseUrl' | 'webSearchBaseUrlHint' | 'webSearchMaxUses' | 'webSearchMaxUsesHint'
-  | 'subagentModelSelectionTitle' | 'subagentModelSelectionDescription'
-  | 'subagentModelSelectionToggle' | 'subagentModelSelectionChoose' | 'subagentModelSelectionAllowed'
-  | 'subagentModelSelectionLoading' | 'subagentModelSelectionLoadFailed' | 'subagentModelSelectionRetry'
-  | 'subagentModelSelectionPartial' | 'subagentModelSelectionUnavailable'
-  | 'subagentModelSelectionUnavailableGroup' | 'subagentModelSelectionEmpty'
-  | 'subagentModelSelectionRequired' | 'subagentModelSelectionConflict' | 'subagentModelSelectionOff'
+  | 'nav'
+  | 'title'
+  | 'intro'
+  | 'tabs'
+  | 'configurableTab'
+  | 'empty'
+  | 'overridden'
+  | 'reset'
+  | 'readOnly'
+  | 'expand'
+  | 'collapse'
+  | 'save'
+  | 'saving'
+  | 'discard'
+  | 'unsaved'
+  | 'saveFailed'
+  | 'invalidNumber'
+  | 'bashTitle'
+  | 'bashDescription'
+  | 'bashTimeoutMs'
+  | 'bashTimeoutMsHint'
+  | 'bashMaxOutputBytes'
+  | 'bashMaxOutputBytesHint'
+  | 'agentLoopTitle'
+  | 'agentLoopDescription'
+  | 'agentLoopMaxParallel'
+  | 'agentLoopMaxParallelHint'
+  | 'webSearchTitle'
+  | 'webSearchDescription'
+  | 'webSearchApiKey'
+  | 'webSearchApiKeyHint'
+  | 'webSearchApiKeySet'
+  | 'webSearchApiKeyUnset'
+  | 'webSearchBaseUrl'
+  | 'webSearchBaseUrlHint'
+  | 'webSearchMaxUses'
+  | 'webSearchMaxUsesHint'
+  | 'subagentModelSelectionTitle'
+  | 'subagentModelSelectionDescription'
+  | 'subagentModelSelectionToggle'
+  | 'subagentModelSelectionChoose'
+  | 'subagentModelSelectionAllowed'
+  | 'subagentModelSelectionLoading'
+  | 'subagentModelSelectionLoadFailed'
+  | 'subagentModelSelectionRetry'
+  | 'subagentModelSelectionPartial'
+  | 'subagentModelSelectionUnavailable'
+  | 'subagentModelSelectionUnavailableGroup'
+  | 'subagentModelSelectionEmpty'
+  | 'subagentModelSelectionRequired'
+  | 'subagentModelSelectionConflict'
+  | 'subagentModelSelectionOff'
+  | 'skillsTab'
+  | 'skillsEmpty'
+  | 'skillsLoading'
+  | 'skillsLoadFailed'
+  | 'skillsRetry'
+  | 'skillsOpenDirectory'
+  | 'skillsOpenDirectoryHint'
+  | 'skillsSource'
+  | 'skillsPath'
+  | 'skillsOpened'
+  | 'skillsOpenFailed'
+  | 'skillsCopyPath'
+  | 'skillsName'
+  | 'skillsDescription'
+  | 'skillsImport'
+  | 'skillsImporting'
+  | 'skillsImported'
+  | 'skillsImportFailed'
+  | 'skillsImportMissing'
+  | 'skillsImportInvalid'
+  | 'skillsImportExists'
+  | 'skillsRefresh'
 
 /** English copy. */
 export const en: Record<PluginsSettingsLocaleKey, string> = {
@@ -60,18 +119,44 @@ export const en: Record<PluginsSettingsLocaleKey, string> = {
   subagentModelSelectionTitle: 'Subagent',
   subagentModelSelectionDescription: 'Control which models agents may choose for subagents.',
   subagentModelSelectionToggle: 'Allow agents to choose models for subagents',
-  subagentModelSelectionChoose: 'When enabled, agents can choose a provider, model, and reasoning effort for each subagent from the authorized models below. Applies only to new sessions.',
+  subagentModelSelectionChoose:
+    'When enabled, agents can choose a provider, model, and reasoning effort for each subagent from the authorized models below. Applies only to new sessions.',
   subagentModelSelectionAllowed: 'Models agents may choose',
   subagentModelSelectionLoading: 'Loading models…',
   subagentModelSelectionLoadFailed: 'Models could not be loaded.',
   subagentModelSelectionRetry: 'Retry',
-  subagentModelSelectionPartial: 'Some model providers could not be loaded; saved choices remain removable.',
+  subagentModelSelectionPartial:
+    'Some model providers could not be loaded; saved choices remain removable.',
   subagentModelSelectionUnavailable: 'Currently unavailable',
   subagentModelSelectionUnavailableGroup: 'Saved but currently unavailable',
   subagentModelSelectionEmpty: 'No model provider currently advertises a model.',
   subagentModelSelectionRequired: 'Select at least one model before saving.',
   subagentModelSelectionConflict: 'Settings changed elsewhere. Discard your draft and try again.',
-  subagentModelSelectionOff: 'Subagents use configured defaults or inherit the parent agent\'s model. Saved model choices are retained.',
+  subagentModelSelectionOff:
+    "Subagents use configured defaults or inherit the parent agent's model. Saved model choices are retained.",
+  skillsTab: 'Skills',
+  skillsEmpty: 'No skills are registered in this deployment.',
+  skillsLoading: 'Loading skills…',
+  skillsLoadFailed: 'Skills could not be loaded.',
+  skillsRetry: 'Retry',
+  skillsOpenDirectory: 'Open skills folder',
+  skillsOpenDirectoryHint: 'Place a skill folder containing a SKILL.md file there to install it.',
+  skillsSource: 'Source',
+  skillsPath: 'Path',
+  skillsImport: 'Import skill',
+  skillsImporting: 'Importing…',
+  skillsImported: 'Skills imported:',
+  skillsImportFailed: 'Import failed.',
+  skillsImportMissing: 'The selected folder carries no skill file.',
+  skillsImportInvalid:
+    'A skill file needs a name (kebab-case) and a description in its frontmatter.',
+  skillsImportExists: 'A skill with this name is already installed.',
+  skillsRefresh: 'Refresh',
+  skillsOpened: 'Opened in file manager.',
+  skillsOpenFailed: 'Could not open the folder automatically.',
+  skillsCopyPath: 'Copy path',
+  skillsName: 'Name',
+  skillsDescription: 'Description',
 }
 
 /** Simplified Chinese copy. */
@@ -116,7 +201,8 @@ export const zh: Record<PluginsSettingsLocaleKey, string> = {
   subagentModelSelectionTitle: 'Subagent',
   subagentModelSelectionDescription: '控制 Agent 为 Subagent 选择模型的权限。',
   subagentModelSelectionToggle: '允许 Agent 为 Subagent 选择模型',
-  subagentModelSelectionChoose: '开启后，Agent 可以从下方授权模型中，为每个 Subagent 选择提供方、模型和推理强度。仅影响新会话。',
+  subagentModelSelectionChoose:
+    '开启后，Agent 可以从下方授权模型中，为每个 Subagent 选择提供方、模型和推理强度。仅影响新会话。',
   subagentModelSelectionAllowed: 'Agent 可选择的模型',
   subagentModelSelectionLoading: '正在加载模型…',
   subagentModelSelectionLoadFailed: '无法加载模型。',
@@ -127,5 +213,28 @@ export const zh: Record<PluginsSettingsLocaleKey, string> = {
   subagentModelSelectionEmpty: '当前没有模型提供方公布模型。',
   subagentModelSelectionRequired: '保存前请至少选择一个模型。',
   subagentModelSelectionConflict: '设置已在其他位置更新。请放弃修改后重试。',
-  subagentModelSelectionOff: '关闭后，Subagent 使用配置的默认模型或继承父 Agent 的模型；已选模型会保留。',
+  subagentModelSelectionOff:
+    '关闭后，Subagent 使用配置的默认模型或继承父 Agent 的模型；已选模型会保留。',
+  skillsTab: 'Skills',
+  skillsEmpty: '本部署未注册任何 Skill。',
+  skillsLoading: '正在加载 Skill…',
+  skillsLoadFailed: '无法加载 Skill。',
+  skillsRetry: '重试',
+  skillsOpenDirectory: '打开 Skill 文件夹',
+  skillsOpenDirectoryHint: '将包含 SKILL.md 的文件夹放入其中即可安装 Skill。',
+  skillsSource: '来源',
+  skillsPath: '路径',
+  skillsImport: '导入 Skill',
+  skillsImporting: '正在导入…',
+  skillsImported: '已导入的 skills：',
+  skillsImportFailed: '导入失败。',
+  skillsImportMissing: '所选文件夹不包含任何 skill 文件。',
+  skillsImportInvalid: 'skill 文件的 frontmatter 需要合法的 kebab-case name 和 description。',
+  skillsImportExists: '同名 skill 已存在。',
+  skillsRefresh: '刷新',
+  skillsOpened: '已在文件管理器中打开。',
+  skillsOpenFailed: '无法自动打开文件夹。',
+  skillsCopyPath: '复制路径',
+  skillsName: '名称',
+  skillsDescription: '描述',
 }

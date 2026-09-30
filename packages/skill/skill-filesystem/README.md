@@ -39,6 +39,8 @@ A skill is either a directory bundle `<name>/SKILL.md` or a flat file `<name>.md
 
 The catalog and the body have separate lifecycles: discovery parses frontmatter into the catalog entry, and every load re-reads the current file, so editing a skill body needs no versioning or cache invalidation.
 
+`findSkillSources` applies that same rule to a folder the operator picked rather than a root this provider scans: a folder carrying its own `SKILL.md` is one skill, and any other folder is searched for skill folders and flat markdown files up to `SKILL_SOURCE_SCAN_DEPTH` levels, skipping dot-prefixed entries and symbolic links. The settings surface imports a pick through it, so a catalog installs exactly as a later scan will list it.
+
 ### Roots and priority
 
 Default roots are scanned in this provider's rank order:

@@ -21,7 +21,13 @@
       "path": "../../credentials/credentials"
     },
     {
+      "path": "../../core/scope"
+    },
+    {
       "path": "../../core/session"
+    },
+    {
+      "path": "../../util/home-paths"
     },
     {
       "path": "../../util/native-command"
@@ -31,6 +37,12 @@
     },
     {
       "path": "../../typert/protocol"
+    },
+    {
+      "path": "../../skill/skill"
+    },
+    {
+      "path": "../../skill/skill-filesystem"
     }
   ]
 }

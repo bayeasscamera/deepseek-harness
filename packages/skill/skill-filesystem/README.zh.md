@@ -39,6 +39,8 @@ skill 可以是被扫描根目录顶层的目录 bundle `<name>/SKILL.md`，也�
 
 目录与正文具有独立的生命周期：发现阶段把 frontmatter 解析进目录条目，每次加载都会重新读取当前文件，因此编辑 skill 正文无需版本化或缓存失效。
 
+`findSkillSources` 对操作者选中的文件夹应用同一条规则，而不是本 provider 扫描的根：自带 `SKILL.md` 的文件夹就是一个 skill，其他文件夹则在其中查找 skill 目录与平铺的 markdown 文件，最多下探 `SKILL_SOURCE_SCAN_DEPTH` 层，并跳过点开头的条目与符号链接。设置界面通过它导入选中的内容，因此一个目录集的安装结果与后续扫描列出的结果一致。
+
 ### 根目录与优先级
 
 默认根按该提供方的 rank 顺序扫描：

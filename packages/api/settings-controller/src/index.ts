@@ -7,7 +7,19 @@
  * @module @deepseek-ai/dsh-api-settings-controller
  */
 
-import { dirname } from 'node:path'
+import {
+  cp,
+  link,
+  mkdir,
+  mkdtemp,
+  readFile,
+  realpath,
+  rename,
+  rm,
+  stat,
+  unlink,
+} from 'node:fs/promises'
+import { dirname, join, sep } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import Schema from '@deepseek-ai/schemastery'
 // Type-only: resolves the `agentPresets` Context augmentation this controller reads.
@@ -17,25 +29,52 @@ import {
   openNativePath,
   openNativeTextFile,
 } from '@deepseek-ai/dsh-native-command'
-import type { SettingsDescriptor, SettingsPathOp, SettingsProvider } from '@deepseek-ai/dsh-settings'
+// Type-only: resolves the `skills` Context augmentation this controller reads.
+import type {} from '@deepseek-ai/dsh-skill'
+import type { SkillSummary } from '@deepseek-ai/dsh-skill'
+// Type-only: resolves the discovered-skill location the installer reads.
+import type { SkillLocation } from '@deepseek-ai/dsh-skill-filesystem'
 import type {
-  SettingsDescribeValue, SettingsNamespaceView, SettingsPathOpView,
+  SettingsDescriptor,
+  SettingsPathOp,
+  SettingsProvider,
+} from '@deepseek-ai/dsh-settings'
+import type {
+  SettingsDescribeValue,
+  SettingsNamespaceView,
+  SettingsPathOpView,
 } from '@deepseek-ai/dsh-settings/types'
 import { Remote, RemoteError, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import { z } from 'zod'
 import { CredentialsController } from './credentials.ts'
-import type { AgentPresetDirectoryOpenValue, SettingsDocumentOpenValue } from './types.ts'
+import { SkillListing } from './skill-listing.ts'
+import type {
+  AgentPresetDirectoryOpenValue,
+  SettingsDocumentOpenValue,
+  SkillDirectoryOpenValue,
+  SkillImportValue,
+  SkillListEntry,
+} from './types.ts'
 
 export { CredentialsController } from './credentials.ts'
 export type * from './types.ts'
 
 const settingsNamespaceRequestSchema = z.object({ ns: z.string().min(1) })
 
-/** Native document-opening policy. */
+/** Staging folder prefix for a skill copy waiting for its rename into place. */
+const SKILL_IMPORT_STAGING_PREFIX = '.dsh-import-'
+
+/** Native document-opening policy and skills-listing roots. */
 export interface Config {
   /** Override platform desktop-opener detection. */
   readonly nativeOpen?: boolean
+  /** DeepSeek Harness config root; defaults to `$DSH_HOME` or `~/.dsh`. */
+  readonly dshHome?: string
+  /** Shared agent config root; defaults to `$DSH_AGENTS_HOME` or `~/.agents`. */
+  readonly agentsHome?: string
+  /** Additional skill roots scanned after project roots and before user roots. */
+  readonly customSkillDirs?: string[]
 }
 
 /** Read abort state afresh after an awaited provider or opener call. */
@@ -63,10 +102,13 @@ function namespaceView(descriptor: SettingsDescriptor): SettingsNamespaceView {
     ns: String(descriptor.ns),
     schema: descriptor.schema as JsonValue,
     value: descriptor.value as JsonValue,
-    ...descriptor.base === undefined ? {} : { base: descriptor.base as JsonValue },
-    ...descriptor.user === undefined ? {} : { user: descriptor.user as JsonValue },
+    ...(descriptor.base === undefined ? {} : { base: descriptor.base as JsonValue }),
+    ...(descriptor.user === undefined ? {} : { user: descriptor.user as JsonValue }),
     applies: descriptor.applies,
-    secrets: (descriptor.secrets ?? []).map(secret => ({ path: [...secret.path], set: secret.set })),
+    secrets: (descriptor.secrets ?? []).map(secret => ({
+      path: [...secret.path],
+      set: secret.set,
+    })),
     revision: descriptor.revision,
   }
 }
@@ -86,24 +128,39 @@ declare module '@deepseek-ai/cordis' {
  * `settings/conflict` or `settings/rejected` with the service's message.
  */
 export class SettingsController extends TypertRemoteService {
-  static Config: Schema<Config> = Schema.object({ nativeOpen: Schema.boolean() })
+  static Config: Schema<Config> = Schema.object({
+    nativeOpen: Schema.boolean(),
+    dshHome: Schema.string(),
+    agentsHome: Schema.string(),
+    customSkillDirs: Schema.array(Schema.string()),
+  })
 
   private readonly openPath: (path: string, signal: AbortSignal) => Promise<void>
   private readonly openTextFile: (path: string, signal: AbortSignal) => Promise<void>
   private readonly canOpenPath: () => boolean
+  private readonly listing: SkillListing
+  private importing: Promise<SkillImportValue[]> | undefined
 
   /**
    * Register the settings namespace and mount the credentials namespace beside
    * it. Both namespaces stay registered when a provider is absent so calls can
    * return the configuration API's actionable missing-provider diagnostic.
    * @param ctx - Host context where settings and credential providers may be mounted.
+   * @param config - native-opening policy and the skills listing's local roots.
+   * @param internals - replaceable host integrations for direct unit tests.
    */
   constructor(ctx: Context, config: Config = {}, internals: SettingsControllerInternals = {}) {
     super(ctx, 'settingsController', { namespace: 'settings' })
     this.openPath = internals.openPath ?? openNativePath
     this.openTextFile = internals.openTextFile ?? openNativeTextFile
-    this.canOpenPath = internals.canOpenPath
-      ?? (() => config.nativeOpen ?? (internals.openPath !== undefined || canOpenNativePath()))
+    this.canOpenPath =
+      internals.canOpenPath ??
+      (() => config.nativeOpen ?? (internals.openPath !== undefined || canOpenNativePath()))
+    this.listing = new SkillListing(ctx, {
+      ...(config.dshHome === undefined ? {} : { dshHome: config.dshHome }),
+      ...(config.agentsHome === undefined ? {} : { agentsHome: config.agentsHome }),
+      ...(config.customSkillDirs === undefined ? {} : { customSkillDirs: config.customSkillDirs }),
+    })
     ctx.plugin(CredentialsController)
   }
 
@@ -194,24 +251,42 @@ export class SettingsController extends TypertRemoteService {
   @Remote
   async openSettingsDocument(signal: AbortSignal): Promise<SettingsDocumentOpenValue> {
     const settings = this.provider()
-    if (isAborted(signal)) throw new RemoteError('gateway/cancelled', 'settings document open was aborted', {})
+    if (isAborted(signal))
+      throw new RemoteError('gateway/cancelled', 'settings document open was aborted', {})
     let path: string | undefined
     try {
       path = await settings.prepareDocument()
     } catch (error: unknown) {
-      if (isAborted(signal)) throw new RemoteError('gateway/cancelled', 'settings document preparation was aborted', {})
-      throw new RemoteError('gateway/internal', `settings document preparation failed: ${messageOf(error)}`, {}, { cause: error })
+      if (isAborted(signal))
+        throw new RemoteError('gateway/cancelled', 'settings document preparation was aborted', {})
+      throw new RemoteError(
+        'gateway/internal',
+        `settings document preparation failed: ${messageOf(error)}`,
+        {},
+        { cause: error },
+      )
     }
     if (path === undefined) {
-      throw new RemoteError('gateway/internal', 'settings provider has no local document to open', {})
+      throw new RemoteError(
+        'gateway/internal',
+        'settings provider has no local document to open',
+        {},
+      )
     }
-    if (isAborted(signal)) throw new RemoteError('gateway/cancelled', 'settings document open was aborted', {})
+    if (isAborted(signal))
+      throw new RemoteError('gateway/cancelled', 'settings document open was aborted', {})
     try {
       await this.openTextFile(path, signal)
       return { opened: true }
     } catch (error: unknown) {
-      if (isAborted(signal)) throw new RemoteError('gateway/cancelled', 'settings document open was aborted', {})
-      throw new RemoteError('gateway/internal', `path open failed: ${messageOf(error)}`, {}, { cause: error })
+      if (isAborted(signal))
+        throw new RemoteError('gateway/cancelled', 'settings document open was aborted', {})
+      throw new RemoteError(
+        'gateway/internal',
+        `path open failed: ${messageOf(error)}`,
+        {},
+        { cause: error },
+      )
     }
   }
 
@@ -232,11 +307,10 @@ export class SettingsController extends TypertRemoteService {
     }
     const presets = this.ctx.get('agentPresets')
     if (presets === undefined) {
-      throw new RemoteError(
-        'agent-preset/not-found',
-        'this deployment composes no agent presets',
-        { agentPreset, available: [] },
-      )
+      throw new RemoteError('agent-preset/not-found', 'this deployment composes no agent presets', {
+        agentPreset,
+        available: [],
+      })
     }
     const preset = await presets.resolve(agentPreset)
     if (preset.trust !== 'user') {
@@ -247,13 +321,196 @@ export class SettingsController extends TypertRemoteService {
       )
     }
     const directory = dirname(preset.path)
-    if (!this.canOpenPath()) return { opened: false, path: directory }
+    return this.revealDirectory(directory, signal)
+  }
+
+  /**
+   * List the skills this deployment installs without a session: the skill
+   * registry's global rows plus the settings scope's local roots (`user-dsh`,
+   * `user-agents`, `custom`), discovered in a scope no agent reads.
+   * @returns all discovered skills; empty means the deployment composes no skill registry.
+   * @throws RemoteError when the registry is mounted but listing fails.
+   */
+  @Remote
+  async listSkills(): Promise<SkillListEntry[]> {
+    return this.entriesOf(await this.listing.list())
+  }
+
+  /**
+   * Open the user skill directory in the native file manager, or return its path.
+   * @param signal - caller lifetime; abort terminates the native command.
+   * @returns an opened confirmation or the resolved directory path for text display.
+   * @throws RemoteError when the native open fails or is aborted.
+   */
+  @Remote
+  async openUserSkillsDirectory(signal: AbortSignal): Promise<SkillDirectoryOpenValue> {
+    return this.revealDirectory(this.listing.userSkillsDirectory(), signal)
+  }
+
+  /**
+   * Re-scan the local skill roots and return the merged catalog, replacing the
+   * cached discovery. Used by the Skills tab's refresh action after skill
+   * folders changed on disk while no file watcher was mounted.
+   * @returns all discovered skills after the rescan.
+   * @throws RemoteError when the registry is mounted but discovery fails.
+   */
+  @Remote
+  async refreshSkills(): Promise<SkillListEntry[]> {
+    return this.entriesOf(await this.listing.refresh())
+  }
+
+  /**
+   * Install every skill a picked folder or file carries, read the way
+   * discovery reads them: a folder with its own `SKILL.md` is one skill, and
+   * any other folder is scanned for skill folders and flat markdown files, so
+   * a catalog grouped in sub-folders installs whole instead of being refused as
+   * an unrecognized folder. Each skill is validated through the discovery
+   * provider's acceptance contract, staged beside its target, and moved into
+   * place in one step, so the catalog only ever observes a complete skill. A
+   * skill whose declared name is already installed is refused instead of
+   * overwritten. Discovery caches, so callers list through `refreshSkills()`
+   * to see what was installed.
+   * @param source - absolute folder or markdown file chosen on the host.
+   * @returns one outcome per skill found: the installed name and path, or the refusal cause.
+   * @throws RemoteError when the request is invalid, the path is unreadable, or a copy fails.
+   */
+  @Remote
+  async importSkills(source: string): Promise<SkillImportValue[]> {
+    if (source.length === 0) {
+      throw new RemoteError('gateway/bad-request', 'skill source must not be empty', {})
+    }
+    const info = await stat(source).catch(() => undefined)
+    if (info === undefined) {
+      throw new RemoteError('gateway/bad-request', `skill source does not exist: ${source}`, {})
+    }
+    const root = this.listing.userSkillsDirectory()
+    if (await containsDirectory(source, root)) {
+      // Copying the skill root into itself would recurse through the staging
+      // copy an install creates, so the request never reaches discovery.
+      throw new RemoteError(
+        'gateway/bad-request',
+        `skill source must not contain the user skill directory: ${source} (skills live in ${root})`,
+        {},
+      )
+    }
+    // Imported lazily: the provider is an optional peer, and import validation
+    // shares the exact acceptance contract discovery applies.
+    const { findSkillSources } = await import('@deepseek-ai/dsh-skill-filesystem')
+    const locations = info.isDirectory()
+      ? await findSkillSources(source)
+      : source.endsWith('.md')
+        ? [{ path: source, directory: dirname(source), kind: 'file' as const }]
+        : []
+    if (locations.length === 0) {
+      return [{ imported: false, reason: 'missing-skill-file', detail: source }]
+    }
+    // One install at a time: a caller arriving during a running install joins
+    // it instead of racing it, so a second copy can never merge into a target
+    // the first copy is still filling.
+    const running = (this.importing ??= (async (): Promise<SkillImportValue[]> => {
+      const results: SkillImportValue[] = []
+      for (const location of locations) {
+        results.push(await this.installSkill(location, root))
+      }
+      return results
+    })().finally(() => {
+      this.importing = undefined
+    }))
+    return await running
+  }
+
+  /**
+   * Validate one discovered skill and install it under its declared name. A
+   * skill stored as a folder installs whole, side files included; a flat
+   * markdown file installs as one file beside the folders, which is the layout
+   * discovery reads back.
+   * @param location - the manifest and folder discovery located the skill in.
+   * @param root - the user skill directory every install target sits in.
+   * @returns the installed name and path, or the refusal cause.
+   */
+  private async installSkill(location: SkillLocation, root: string): Promise<SkillImportValue> {
+    // Imported lazily: the provider is an optional peer, and import validation
+    // shares the exact acceptance contract discovery applies.
+    const { validateSkillDocument } = await import('@deepseek-ai/dsh-skill-filesystem')
+    // Discovery just confirmed the manifest is a readable file, so a failure
+    // here is the host refusing IO rather than a folder that carries no skill,
+    // and the caller is better served by the error than by a silent skip.
+    const validated = validateSkillDocument(await readFile(location.path, 'utf8'))
+    if ('error' in validated) {
+      return { imported: false, reason: 'invalid-frontmatter', detail: validated.error }
+    }
+    // The accepted name is kebab-case, so it carries no separator and the
+    // target is always one child of the user skill directory.
+    const target = join(root, location.kind === 'file' ? `${validated.name}.md` : validated.name)
+    await mkdir(root, { recursive: true })
+    const staging = await mkdtemp(join(root, `${SKILL_IMPORT_STAGING_PREFIX}${validated.name}-`))
     try {
-      await this.openPath(directory, signal)
+      if (location.kind === 'directory') {
+        await cp(location.directory, staging, { recursive: true, verbatimSymlinks: true })
+        try {
+          // A move refuses a target that holds files, so a complete staging
+          // copy meeting an installed skill is a name collision.
+          await rename(staging, target)
+        } catch {
+          return { imported: false, reason: 'exists', detail: target }
+        }
+      } else {
+        const staged = join(staging, `${validated.name}.md`)
+        await cp(location.path, staged, { verbatimSymlinks: true })
+        try {
+          // A link refuses an existing destination, which a move over a file
+          // would silently replace.
+          await link(staged, target)
+        } catch {
+          return { imported: false, reason: 'exists', detail: target }
+        }
+        await unlink(staged)
+      }
+    } finally {
+      // Clears the staging copy when the copy or the move failed, and does
+      // nothing once the move carried the skill away.
+      await rm(staging, { recursive: true, force: true })
+    }
+    return { imported: true, name: validated.name, path: target }
+  }
+
+  /** Project one discovery summary onto the wire entry, dropping internal fields. */
+  private entriesOf(list: readonly SkillSummary[]): SkillListEntry[] {
+    return list.map((s) => {
+      const path = s.resourceBase?.kind === 'directory' ? s.resourceBase.path : undefined
+      return {
+        name: s.name,
+        description: s.description,
+        source: s.source,
+        ...(path !== undefined ? { path } : {}),
+      }
+    })
+  }
+
+  /**
+   * Reveal one directory in the native file manager, or report its path when the
+   * deployment has no native opener.
+   * @param path - absolute directory to open.
+   * @param signal - caller lifetime; abort terminates the native command.
+   * @returns an opened confirmation or the directory for text display.
+   * @throws RemoteError when the native open fails or is aborted.
+   */
+  private async revealDirectory(
+    path: string,
+    signal: AbortSignal,
+  ): Promise<AgentPresetDirectoryOpenValue> {
+    if (!this.canOpenPath()) return { opened: false, path }
+    try {
+      await this.openPath(path, signal)
       return { opened: true }
     } catch (error: unknown) {
       if (signal.aborted) throw new RemoteError('gateway/cancelled', 'path open was aborted', {})
-      throw new RemoteError('gateway/internal', `path open failed: ${messageOf(error)}`, {}, { cause: error })
+      throw new RemoteError(
+        'gateway/internal',
+        `path open failed: ${messageOf(error)}`,
+        {},
+        { cause: error },
+      )
     }
   }
 
@@ -265,7 +522,9 @@ export class SettingsController extends TypertRemoteService {
   ): Promise<SettingsNamespaceView> {
     const parsed = settingsNamespaceRequestSchema.safeParse({ ns })
     if (!parsed.success) {
-      throw new RemoteError('gateway/bad-request', `invalid payload for settings.${mode}`, { issues: parsed.error.issues })
+      throw new RemoteError('gateway/bad-request', `invalid payload for settings.${mode}`, {
+        issues: parsed.error.issues,
+      })
     }
     const settings = this.provider()
     const namespace = parsed.data.ns
@@ -276,11 +535,17 @@ export class SettingsController extends TypertRemoteService {
     } catch (error: unknown) {
       throw rejected(ns, error)
     }
-    const descriptor = settings.describe({ redactSecrets: true }).find(candidate => candidate.ns === namespace)
+    const descriptor = settings
+      .describe({ redactSecrets: true })
+      .find(candidate => candidate.ns === namespace)
     if (descriptor === undefined) {
       // The write committed but the namespace vanished before this read: only a
       // concurrent registrant disposal can produce it.
-      throw new RemoteError('gateway/internal', `settings namespace "${ns}" was disposed after the ${mode}`, {})
+      throw new RemoteError(
+        'gateway/internal',
+        `settings namespace "${ns}" was disposed after the ${mode}`,
+        {},
+      )
     }
     return namespaceView(descriptor)
   }
@@ -303,6 +568,25 @@ function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
+/**
+ * Report whether `contained` is `container` itself or one of its parents, by
+ * resolved path rather than by spelling, so a relative pick or a symlinked
+ * spelling of the same folder is still recognised.
+ * @param container - folder a picked source must not enclose.
+ * @param contained - folder whose containment decides the answer.
+ * @returns true when `contained` resolves to `container` or below it.
+ */
+async function containsDirectory(container: string, contained: string): Promise<boolean> {
+  const present = await stat(contained).then(
+    info => info.isDirectory(),
+    () => false,
+  )
+  // A skill directory that does not exist yet is inside no source folder.
+  if (!present) return false
+  const [outer, inner] = await Promise.all([realpath(container), realpath(contained)])
+  return inner === outer || inner.startsWith(`${outer}${sep}`)
+}
+
 interface SettingsConflict {
   readonly code: 'SETTINGS_CONFLICT'
   readonly message: string
@@ -312,10 +596,13 @@ interface SettingsConflict {
 
 function settingsConflictOf(error: unknown): SettingsConflict | undefined {
   if (typeof error !== 'object' || error === null) return undefined
-  if (Reflect.get(error, 'code') !== 'SETTINGS_CONFLICT'
-    || typeof Reflect.get(error, 'message') !== 'string'
-    || typeof Reflect.get(error, 'expected') !== 'number'
-    || typeof Reflect.get(error, 'actual') !== 'number') return undefined
+  if (
+    Reflect.get(error, 'code') !== 'SETTINGS_CONFLICT' ||
+    typeof Reflect.get(error, 'message') !== 'string' ||
+    typeof Reflect.get(error, 'expected') !== 'number' ||
+    typeof Reflect.get(error, 'actual') !== 'number'
+  )
+    return undefined
   return error as SettingsConflict
 }
 

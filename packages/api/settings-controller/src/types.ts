@@ -37,3 +37,28 @@ export interface SettingsDocumentOpenValue {
 export type AgentPresetDirectoryOpenValue =
   | { readonly opened: true }
   | { readonly opened: false; readonly path: string }
+
+/** Summary of one skill as returned by the global settings skill-list endpoint. */
+export interface SkillListEntry {
+  /** Kebab-case skill identifier. */
+  readonly name: string
+  /** Short routing description. */
+  readonly description: string
+  /** Origin bucket (e.g. `'user-dsh'`, `'user-agents'`). */
+  readonly source: string
+  /** Absolute path to the skill's own directory when the provider has one. */
+  readonly path?: string
+}
+
+/** Result of opening the user skill directory in the native file manager. */
+export type SkillDirectoryOpenValue =
+  | { readonly opened: true }
+  | { readonly opened: false; readonly path: string }
+
+/** Why an import was rejected; the UI maps each code to a localized cause. */
+export type SkillImportRejection = 'missing-skill-file' | 'invalid-frontmatter' | 'exists'
+
+/** Result of importing one skill folder into the user skill directory. */
+export type SkillImportValue =
+  | { readonly imported: true; readonly name: string; readonly path: string }
+  | { readonly imported: false; readonly reason: SkillImportRejection; readonly detail: string }

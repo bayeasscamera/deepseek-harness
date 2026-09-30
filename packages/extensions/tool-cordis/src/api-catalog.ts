@@ -2093,6 +2093,34 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'an opened confirmation or the resolved directory for text display.',
         throws: ['RemoteError when the preset is missing, read-only, invalid, or cannot be opened.'],
       },
+      {
+        signature: '@Remote async listSkills(): Promise<SkillListEntry[]>',
+        description: 'List the skills this deployment installs without a session: the skill registry\'s global rows plus the settings scope\'s local roots (`user-dsh`, `user-agents`, `custom`), discovered in a scope no agent reads.',
+        parameters: [],
+        returns: 'all discovered skills; empty means the deployment composes no skill registry.',
+        throws: ['RemoteError when the registry is mounted but listing fails.'],
+      },
+      {
+        signature: '@Remote async openUserSkillsDirectory(signal: AbortSignal): Promise<SkillDirectoryOpenValue>',
+        description: 'Open the user skill directory in the native file manager, or return its path.',
+        parameters: [{ name: 'signal', description: 'caller lifetime; abort terminates the native command.' }],
+        returns: 'an opened confirmation or the resolved directory path for text display.',
+        throws: ['RemoteError when the native open fails or is aborted.'],
+      },
+      {
+        signature: '@Remote async refreshSkills(): Promise<SkillListEntry[]>',
+        description: 'Re-scan the local skill roots and return the merged catalog, replacing the cached discovery. Used by the Skills tab\'s refresh action after skill folders changed on disk while no file watcher was mounted.',
+        parameters: [],
+        returns: 'all discovered skills after the rescan.',
+        throws: ['RemoteError when the registry is mounted but discovery fails.'],
+      },
+      {
+        signature: '@Remote async importSkills(source: string): Promise<SkillImportValue[]>',
+        description: 'Install every skill a picked folder or file carries, read the way discovery reads them: a folder with its own `SKILL.md` is one skill, and any other folder is scanned for skill folders and flat markdown files, so a catalog grouped in sub-folders installs whole instead of being refused as an unrecognized folder. Each skill is validated through the discovery provider\'s acceptance contract, staged beside its target, and moved into place in one step, so the catalog only ever observes a complete skill. A skill whose declared name is already installed is refused instead of overwritten. Discovery caches, so callers list through `refreshSkills()` to see what was installed.',
+        parameters: [{ name: 'source', description: 'absolute folder or markdown file chosen on the host.' }],
+        returns: 'one outcome per skill found: the installed name and path, or the refusal cause.',
+        throws: ['RemoteError when the request is invalid, the path is unreadable, or a copy fails.'],
+      },
     ],
   },
   {
@@ -5556,12 +5584,28 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface SkillDefinition extends SkillSummary {\n    readonly content: string;\n    readonly path?: string;\n    readonly metadata?: Readonly<Record<string, unknown>>;\n}',
   },
   {
+    name: 'SkillDirectoryOpenValue',
+    declaration: 'export type SkillDirectoryOpenValue = {\n    readonly opened: true;\n} | {\n    readonly opened: false;\n    readonly path: string;\n};',
+  },
+  {
     name: 'SkillEntry',
     declaration: 'export interface SkillEntry {\n    readonly name: string;\n    readonly description: string;\n    readonly whenToUse?: string;\n    readonly modelInvocable: boolean;\n}',
   },
   {
+    name: 'SkillImportRejection',
+    declaration: 'export type SkillImportRejection = \'missing-skill-file\' | \'invalid-frontmatter\' | \'exists\';',
+  },
+  {
+    name: 'SkillImportValue',
+    declaration: 'export type SkillImportValue = {\n    readonly imported: true;\n    readonly name: string;\n    readonly path: string;\n} | {\n    readonly imported: false;\n    readonly reason: SkillImportRejection;\n    readonly detail: string;\n};',
+  },
+  {
     name: 'SkillInvocationPolicy',
     declaration: 'export interface SkillInvocationPolicy {\n    readonly modelInvocable: boolean;\n    readonly userInvocable: boolean;\n}',
+  },
+  {
+    name: 'SkillListEntry',
+    declaration: 'export interface SkillListEntry {\n    readonly name: string;\n    readonly description: string;\n    readonly source: string;\n    readonly path?: string;\n}',
   },
   {
     name: 'SkillListRequest',

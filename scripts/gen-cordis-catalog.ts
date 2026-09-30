@@ -146,39 +146,72 @@ export const SERVICE_PAGE: Record<string, string> = {
  * to a model as `cordis_runtime_inspect what:"client"`).
  */
 export const SERVICE_WALK_EXEMPTIONS: Record<string, string> = {
-  agent: 'not a service: the DX accessor field on Agent.ctx (root accessor defaulting to undefined) — docs/subsystems/core.md owns the Agent handle',
-  appReady: 'not a service: launcher-provided successful-startup signal — packages/boot/cmdline/README.md owns the launcher contract',
-  appExit: 'not a service: launcher-provided bounded process-exit callback — packages/boot/cmdline/README.md owns the launcher contract',
-  cmdlineArgs: 'not a service: launcher-provided immutable app argument accessor — packages/boot/cmdline/README.md owns the launcher contract',
-  configuredAgentIdentities: 'not a service: launcher-provided boot-context value (ConfiguredAgentIdentities | undefined) — packages/core/agent-loop/README.md owns this launcher contract',
-  launcherSessionQueryPath: 'not a service: launcher-provided boot-context value (string | undefined) — packages/session-query/session-query-sqlite/README.md owns this launcher contract',
-  dshHomePath: 'not a service: boot-provided root accessor function (typeof dshHomePath | undefined) for Loader !!js config expressions — packages/boot/app-boot/README.md owns the boot contract',
-  launchEnvironment: 'not a service: launcher-provided root accessor value (LaunchEnvironmentSnapshot | undefined) — packages/util/launch-environment/README.md owns this launcher contract',
-  connection: 'interface-typed (HostConnectionHandle); implementing class HostConnectionService is declared in rpc-host.ts — packages/client/connection/README.md owns the API',
-  fileUpload: 'client-side browser upload service — packages/client/file-upload/README.md owns the API',
-  uiRenderer: 'client-side interface-typed browser service — packages/client/ui-renderer/README.md owns the API',
-  uiSession: 'client-side Session source adapter — packages/client/ui-session/README.md owns the API',
-  uiConversation: 'client-side Conversation registries and assembler — packages/client/ui-conversation/README.md owns the API',
-  uiWorkspace: 'client-side Workspace navigation adapter — packages/client/ui-workspace/README.md owns the API',
-  settingsSchema: 'client-side schema introspection service — packages/client/ui-settings/README.md owns the API',
-  settingsScope: 'client-side settings-namespace transport service — packages/client/ui-settings/README.md owns the API',
-  chatFileMentions: 'client-side slot-contract accessor (ChatFileMentions) — packages/client/ui-chat/README.md owns the API',
-  commandUi: 'client-side interface-typed browser service — packages/client/ui-commands/README.md owns the API',
-  conversation: 'client-side interface-typed browser service — packages/client/ui-conversation/README.md owns the API',
-  layout: 'client-side interface-typed browser service — packages/client/ui-layout/README.md owns the API',
-  locale: 'client-side interface-typed browser service — packages/client/locale/README.md owns the API',
-  modelDirectories: 'client-side interface-typed browser service — packages/client/ui-model-selection/README.md owns the API',
-  modules: 'client-side interface-typed browser service — packages/client/modules/README.md owns the API',
-  remote: 'client-side interface-typed gateway accessor (ClientRemote) — packages/api/gateway/README.md owns the API',
-  sessionLogDownload: 'client-side browser download controller — packages/session-query/session-log-export/README.md owns the API',
-  inputTriggers: 'client-side interface-typed browser service — packages/client/ui-input-trigger/README.md owns the API',
-  timer: 'client-side dynamic-package timer service — packages/extensions/cordis-client-runner/README.md owns the API',
-  slots: 'client-side interface-typed browser service — packages/client/ui-renderer/README.md owns the API',
-  theme: 'client-side interface-typed browser service — packages/client/ui-theme/README.md owns the API',
-  workspaces: 'client-side interface-typed browser service — packages/api/workspace-controller/README.md owns the API',
-  resources: 'client-side resource model (protocol providers, pins, live sources) — packages/client/resources/README.md owns the API',
-  sidebarRight: 'client-side right-Sidebar navigation face — packages/client/ui-sidebar-right/README.md owns the API',
-  sidebarRightTabs: 'client-side right-Sidebar tab-type registry — packages/client/ui-sidebar-right/README.md owns the API',
+  agent:
+    'not a service: the DX accessor field on Agent.ctx (root accessor defaulting to undefined) — docs/subsystems/core.md owns the Agent handle',
+  appReady:
+    'not a service: launcher-provided successful-startup signal — packages/boot/cmdline/README.md owns the launcher contract',
+  appExit:
+    'not a service: launcher-provided bounded process-exit callback — packages/boot/cmdline/README.md owns the launcher contract',
+  cmdlineArgs:
+    'not a service: launcher-provided immutable app argument accessor — packages/boot/cmdline/README.md owns the launcher contract',
+  configuredAgentIdentities:
+    'not a service: launcher-provided boot-context value (ConfiguredAgentIdentities | undefined) — packages/core/agent-loop/README.md owns this launcher contract',
+  launcherSessionQueryPath:
+    'not a service: launcher-provided boot-context value (string | undefined) — packages/session-query/session-query-sqlite/README.md owns this launcher contract',
+  dshHomePath:
+    'not a service: boot-provided root accessor function (typeof dshHomePath | undefined) for Loader !!js config expressions — packages/boot/app-boot/README.md owns the boot contract',
+  launchEnvironment:
+    'not a service: launcher-provided root accessor value (LaunchEnvironmentSnapshot | undefined) — packages/util/launch-environment/README.md owns this launcher contract',
+  connection:
+    'interface-typed (HostConnectionHandle); implementing class HostConnectionService is declared in rpc-host.ts — packages/client/connection/README.md owns the API',
+  fileUpload:
+    'client-side browser upload service — packages/client/file-upload/README.md owns the API',
+  uiRenderer:
+    'client-side interface-typed browser service — packages/client/ui-renderer/README.md owns the API',
+  uiSession:
+    'client-side Session source adapter — packages/client/ui-session/README.md owns the API',
+  uiConversation:
+    'client-side Conversation registries and assembler — packages/client/ui-conversation/README.md owns the API',
+  uiWorkspace:
+    'client-side Workspace navigation adapter — packages/client/ui-workspace/README.md owns the API',
+  settingsSchema:
+    'client-side schema introspection service — packages/client/ui-settings/README.md owns the API',
+  settingsScope:
+    'client-side settings-namespace transport service — packages/client/ui-settings/README.md owns the API',
+  chatFileMentions:
+    'client-side slot-contract accessor (ChatFileMentions) — packages/client/ui-chat/README.md owns the API',
+  commandUi:
+    'client-side interface-typed browser service — packages/client/ui-commands/README.md owns the API',
+  conversation:
+    'client-side interface-typed browser service — packages/client/ui-conversation/README.md owns the API',
+  layout:
+    'client-side interface-typed browser service — packages/client/ui-layout/README.md owns the API',
+  locale:
+    'client-side interface-typed browser service — packages/client/locale/README.md owns the API',
+  modelDirectories:
+    'client-side interface-typed browser service — packages/client/ui-model-selection/README.md owns the API',
+  modules:
+    'client-side interface-typed browser service — packages/client/modules/README.md owns the API',
+  remote:
+    'client-side interface-typed gateway accessor (ClientRemote) — packages/api/gateway/README.md owns the API',
+  sessionLogDownload:
+    'client-side browser download controller — packages/session-query/session-log-export/README.md owns the API',
+  inputTriggers:
+    'client-side interface-typed browser service — packages/client/ui-input-trigger/README.md owns the API',
+  timer:
+    'client-side dynamic-package timer service — packages/extensions/cordis-client-runner/README.md owns the API',
+  slots:
+    'client-side interface-typed browser service — packages/client/ui-renderer/README.md owns the API',
+  theme:
+    'client-side interface-typed browser service — packages/client/ui-theme/README.md owns the API',
+  workspaces:
+    'client-side interface-typed browser service — packages/api/workspace-controller/README.md owns the API',
+  resources:
+    'client-side resource model (protocol providers, pins, live sources) — packages/client/resources/README.md owns the API',
+  sidebarRight:
+    'client-side right-Sidebar navigation face — packages/client/ui-sidebar-right/README.md owns the API',
+  sidebarRightTabs:
+    'client-side right-Sidebar tab-type registry — packages/client/ui-sidebar-right/README.md owns the API',
 }
 
 /**
@@ -189,30 +222,30 @@ export const SERVICE_WALK_EXEMPTIONS: Record<string, string> = {
  * {@link EVENT_WALK_EXEMPTIONS} names each one with its documentation owner.
  */
 export const EVENT_SCOPE_PAGE: Record<string, string> = {
-  'agent': 'core.md',
+  agent: 'core.md',
   'agent-loop': 'core.md',
   'agent-preset': 'core.md',
   'api-session': 'session.md',
-  'approval': 'approval.md',
-  'commands': 'commands.md',
-  'cordis': 'extensions.md',
-  'authorization': 'credentials.md',
-  'credentials': 'credentials.md',
-  'domain': 'storage.md',
-  'fs': 'filesystem.md',
-  'goal': 'goal.md',
-  'llm': 'llm-streaming.md',
-  'session': 'session.md',
-  'settings': 'settings.md',
-  'skills': 'skills.md',
-  'subagent': 'subagent.md',
+  approval: 'approval.md',
+  commands: 'commands.md',
+  cordis: 'extensions.md',
+  authorization: 'credentials.md',
+  credentials: 'credentials.md',
+  domain: 'storage.md',
+  fs: 'filesystem.md',
+  goal: 'goal.md',
+  llm: 'llm-streaming.md',
+  session: 'session.md',
+  settings: 'settings.md',
+  skills: 'skills.md',
+  subagent: 'subagent.md',
   'system-prompt': 'system-prompt.md',
   'session-telemetry': 'session-telemetry.md',
-  'feedback': 'feedback.md',
-  'tools': 'tools.md',
+  feedback: 'feedback.md',
+  tools: 'tools.md',
   'user-questions': 'user-questions.md',
-  'webserver': 'web-server.md',
-  'workflow': 'workflow.md',
+  webserver: 'web-server.md',
+  workflow: 'workflow.md',
 }
 
 /**
@@ -226,15 +259,24 @@ export const EVENT_SCOPE_PAGE: Record<string, string> = {
  * exemption cannot mask another declaration in that scope.
  */
 export const EVENT_WALK_EXEMPTIONS: Record<string, string> = {
-  'command/executed': 'client-face local command acknowledgment — packages/client/ui-commands/README.md owns the API',
-  'connection/reset': 'client-face transport signal — packages/api/session-controller/README.md owns the API',
-  'locale/change': 'client-face locale switch signal — packages/client/locale/README.md owns the API',
-  'slash/input-begin-command': 'client-face slash-input protocol — packages/client/ui-input-trigger/README.md owns the API',
-  'slash/input-consume-token': 'client-face slash-input protocol — packages/client/ui-input-trigger/README.md owns the API',
-  'slash/input-insert-reference': 'client-face slash-input protocol — packages/client/ui-input-trigger/README.md owns the API',
-  'slash/input-insert-text': 'client-face slash-input protocol — packages/client/ui-input-trigger/README.md owns the API',
-  'slots/changed': 'client-face slot invalidation signal — packages/client/ui-renderer/README.md owns the API',
-  'theme/change': 'client-face theme switch signal — packages/client/ui-theme/README.md owns the API',
+  'command/executed':
+    'client-face local command acknowledgment — packages/client/ui-commands/README.md owns the API',
+  'connection/reset':
+    'client-face transport signal — packages/api/session-controller/README.md owns the API',
+  'locale/change':
+    'client-face locale switch signal — packages/client/locale/README.md owns the API',
+  'slash/input-begin-command':
+    'client-face slash-input protocol — packages/client/ui-input-trigger/README.md owns the API',
+  'slash/input-consume-token':
+    'client-face slash-input protocol — packages/client/ui-input-trigger/README.md owns the API',
+  'slash/input-insert-reference':
+    'client-face slash-input protocol — packages/client/ui-input-trigger/README.md owns the API',
+  'slash/input-insert-text':
+    'client-face slash-input protocol — packages/client/ui-input-trigger/README.md owns the API',
+  'slots/changed':
+    'client-face slot invalidation signal — packages/client/ui-renderer/README.md owns the API',
+  'theme/change':
+    'client-face theme switch signal — packages/client/ui-theme/README.md owns the API',
 }
 
 /**
@@ -572,6 +614,9 @@ export const LINK_MAP: Readonly<Record<string, string>> = {
   SettingsDescribeValue: 'settings.md',
   SettingsDocumentOpenValue: 'settings.md',
   AgentPresetDirectoryOpenValue: 'settings.md',
+  SkillListEntry: 'settings.md',
+  SkillImportValue: 'settings.md',
+  SkillDirectoryOpenValue: 'settings.md',
   SettingsNamespaceView: 'settings.md',
   SettingsPathOpView: 'settings.md',
   SettingsSecretView: 'settings.md',
@@ -684,58 +729,105 @@ export const FOUNDATION_TYPE_NAMES: ReadonlySet<string> = new Set([
 /** Project types deliberately documented outside the subsystems catalog. */
 export const TYPE_LINK_EXEMPTIONS: Readonly<Record<string, string>> = {
   z: 'schemastery schema constructor is owned by vendor/schemastery (vendored upstream)',
-  BeginCommandRequest: 'event-local request contract is owned by packages/client/ui-input-trigger/src/types.ts',
-  InsertReferenceRequest: 'event-local request contract is owned by packages/client/ui-input-trigger/src/types.ts',
-  ConsumeTokenRequest: 'event-local request contract is owned by packages/client/ui-input-trigger/src/types.ts',
-  InsertTextRequest: 'event-local request contract is owned by packages/client/ui-input-trigger/src/types.ts',
+  BeginCommandRequest:
+    'event-local request contract is owned by packages/client/ui-input-trigger/src/types.ts',
+  InsertReferenceRequest:
+    'event-local request contract is owned by packages/client/ui-input-trigger/src/types.ts',
+  ConsumeTokenRequest:
+    'event-local request contract is owned by packages/client/ui-input-trigger/src/types.ts',
+  InsertTextRequest:
+    'event-local request contract is owned by packages/client/ui-input-trigger/src/types.ts',
   AgentHandle: 'agent ownership handle is owned by packages/core/agent/README.md',
   AgentPreset: 'discovered preset record is owned by packages/preset/agent-presets/README.md',
   AgentPresetRoster: 'path-free preset roster is owned by packages/preset/agent-presets/README.md',
-  AgentPresetDocument: 'preset composition view is owned by packages/preset/agent-presets/README.md',
-  AgentPresetComposition: 'flattened composition rows are owned by packages/preset/agent-presets/README.md',
+  AgentPresetDocument:
+    'preset composition view is owned by packages/preset/agent-presets/README.md',
+  AgentPresetComposition:
+    'flattened composition rows are owned by packages/preset/agent-presets/README.md',
   PresetMetadata: 'preset display text is owned by packages/preset/agent-presets/README.md',
-  BashEnvContributor: 'service-local extension type is owned by packages/shell/tool-bash/src/index.ts',
-  BashEnvVariableInfo: 'service-local metadata type is owned by packages/shell/tool-bash/src/index.ts',
-  CompactionAgentContext: 'compaction service input is owned by packages/compaction/compaction/src/index.ts',
-  ManualCompactAgentContext: 'manual compaction service input is owned by packages/compaction/compaction/src/index.ts',
+  BashEnvContributor:
+    'service-local extension type is owned by packages/shell/tool-bash/src/index.ts',
+  BashEnvVariableInfo:
+    'service-local metadata type is owned by packages/shell/tool-bash/src/index.ts',
+  CompactionAgentContext:
+    'compaction service input is owned by packages/compaction/compaction/src/index.ts',
+  ManualCompactAgentContext:
+    'manual compaction service input is owned by packages/compaction/compaction/src/index.ts',
   ClientResponse: 'wire response message is owned by packages/client/connection/src/rpc.ts',
-  ApprovalRequestId: 'dynamic Plugin approval identity is owned by packages/extensions/cordis-host-runner/src/types.ts',
-  CordisErrorDetails: 'Cordis runtime error payload is owned by packages/extensions/cordis-host-runner/src/types.ts',
-  CordisInspectPlatform: 'Cordis inspect platform identity is owned by packages/extensions/cordis-host-runner/src/types.ts',
-  CordisInspectProviderManifest: 'Cordis inspect provider manifest is owned by packages/extensions/cordis-host-runner/src/types.ts',
-  CordisInspectProviderView: 'Cordis inspect provider view is owned by packages/extensions/cordis-host-runner/src/types.ts',
-  CordisInspectQueryRequest: 'Cordis inspect transport payload is owned by packages/extensions/cordis-host-runner/src/types.ts',
-  CordisInspectQueryResolution: 'Cordis inspect query result is owned by packages/extensions/cordis-host-runner/src/types.ts',
-  CordisInspectQueryResolved: 'Cordis inspect transport payload is owned by packages/extensions/cordis-host-runner/src/types.ts',
-  CordisInspectRequestId: 'Cordis inspect request identity is owned by packages/extensions/cordis-host-runner/src/types.ts',
-  CordisInspectResolveAck: 'Cordis inspect resolution acknowledgement is owned by packages/extensions/cordis-host-runner/src/types.ts',
-  CordisDynamicPackageId: 'dynamic Package identity is owned by packages/extensions/cordis-host-runner/src/types.ts',
-  CordisDynamicPluginId: 'dynamic Plugin identity is owned by packages/extensions/cordis-host-runner/src/types.ts',
-  CordisDynamicPluginRunId: 'dynamic Plugin run identity is owned by packages/extensions/cordis-host-runner/src/types.ts',
-  CordisDynamicRunMode: 'dynamic Plugin activation mode is owned by packages/extensions/cordis-host-runner/src/types.ts',
-  DynamicCordisClientSource: 'dynamic-package payload contract is owned by packages/extensions/cordis-host-runner/src/types.ts',
-  DynamicCordisDefineReceipt: 'dynamic-package payload contract is owned by packages/extensions/cordis-host-runner/src/types.ts',
-  DynamicCordisDefineRequest: 'dynamic-package payload contract is owned by packages/extensions/cordis-host-runner/src/types.ts',
-  DynamicCordisHostHalfResult: 'dynamic-package payload contract is owned by packages/extensions/cordis-host-runner/src/types.ts',
-  DynamicCordisInventoryRow: 'dynamic-package payload contract is owned by packages/extensions/cordis-host-runner/src/types.ts',
-  DynamicCordisInvokeResult: 'dynamic-package payload contract is owned by packages/extensions/cordis-host-runner/src/types.ts',
-  DynamicCordisPackageInspection: 'dynamic Package source inspection is owned by packages/extensions/cordis-host-runner/src/registry.ts',
-  DynamicCordisPluginInspection: 'dynamic Plugin inspection is owned by packages/extensions/cordis-host-runner/src/registry.ts',
-  DynamicCordisRequestResolved: 'dynamic-package payload contract is owned by packages/extensions/cordis-host-runner/src/types.ts',
-  DynamicCordisRetracted: 'dynamic-package payload contract is owned by packages/extensions/cordis-host-runner/src/types.ts',
-  DynamicCordisRunRequest: 'dynamic-package payload contract is owned by packages/extensions/cordis-host-runner/src/types.ts',
-  DynamicCordisPackage: 'dynamic-package payload contract is owned by packages/extensions/cordis-host-runner/src/types.ts',
-  DynamicCordisReference: 'dynamic Plugin reference is owned by packages/extensions/cordis-host-runner/src/registry.ts',
-  DynamicCordisRenderFailure: 'dynamic-package payload contract is owned by packages/extensions/cordis-host-runner/src/types.ts',
-  DynamicCordisResolveAck: 'dynamic-package payload contract is owned by packages/extensions/cordis-host-runner/src/types.ts',
-  DynamicCordisRunResolution: 'dynamic-package payload contract is owned by packages/extensions/cordis-host-runner/src/types.ts',
-  DynamicCordisRunResponse: 'dynamic-package payload contract is owned by packages/extensions/cordis-host-runner/src/types.ts',
-  DynamicCordisSnapshotRow: 'dynamic-package payload contract is owned by packages/extensions/cordis-host-runner/src/types.ts',
-  DynamicCordisStopResponse: 'dynamic Plugin stop result is owned by packages/extensions/cordis-host-runner/src/types.ts',
-  DynamicCordisUndefineReceipt: 'dynamic-package payload contract is owned by packages/extensions/cordis-host-runner/src/types.ts',
-  HostCordisInspectProviderRegistration: 'Host inspect provider registration is owned by packages/extensions/cordis-host-runner/src/inspect-registry.ts',
-  DomainImpl: 'domain implementation contract is owned by packages/storage/storage-domain/README.md',
-  CommandExecution: 'executor return contract is owned by packages/interaction/commands/src/index.ts',
+  ApprovalRequestId:
+    'dynamic Plugin approval identity is owned by packages/extensions/cordis-host-runner/src/types.ts',
+  CordisErrorDetails:
+    'Cordis runtime error payload is owned by packages/extensions/cordis-host-runner/src/types.ts',
+  CordisInspectPlatform:
+    'Cordis inspect platform identity is owned by packages/extensions/cordis-host-runner/src/types.ts',
+  CordisInspectProviderManifest:
+    'Cordis inspect provider manifest is owned by packages/extensions/cordis-host-runner/src/types.ts',
+  CordisInspectProviderView:
+    'Cordis inspect provider view is owned by packages/extensions/cordis-host-runner/src/types.ts',
+  CordisInspectQueryRequest:
+    'Cordis inspect transport payload is owned by packages/extensions/cordis-host-runner/src/types.ts',
+  CordisInspectQueryResolution:
+    'Cordis inspect query result is owned by packages/extensions/cordis-host-runner/src/types.ts',
+  CordisInspectQueryResolved:
+    'Cordis inspect transport payload is owned by packages/extensions/cordis-host-runner/src/types.ts',
+  CordisInspectRequestId:
+    'Cordis inspect request identity is owned by packages/extensions/cordis-host-runner/src/types.ts',
+  CordisInspectResolveAck:
+    'Cordis inspect resolution acknowledgement is owned by packages/extensions/cordis-host-runner/src/types.ts',
+  CordisDynamicPackageId:
+    'dynamic Package identity is owned by packages/extensions/cordis-host-runner/src/types.ts',
+  CordisDynamicPluginId:
+    'dynamic Plugin identity is owned by packages/extensions/cordis-host-runner/src/types.ts',
+  CordisDynamicPluginRunId:
+    'dynamic Plugin run identity is owned by packages/extensions/cordis-host-runner/src/types.ts',
+  CordisDynamicRunMode:
+    'dynamic Plugin activation mode is owned by packages/extensions/cordis-host-runner/src/types.ts',
+  DynamicCordisClientSource:
+    'dynamic-package payload contract is owned by packages/extensions/cordis-host-runner/src/types.ts',
+  DynamicCordisDefineReceipt:
+    'dynamic-package payload contract is owned by packages/extensions/cordis-host-runner/src/types.ts',
+  DynamicCordisDefineRequest:
+    'dynamic-package payload contract is owned by packages/extensions/cordis-host-runner/src/types.ts',
+  DynamicCordisHostHalfResult:
+    'dynamic-package payload contract is owned by packages/extensions/cordis-host-runner/src/types.ts',
+  DynamicCordisInventoryRow:
+    'dynamic-package payload contract is owned by packages/extensions/cordis-host-runner/src/types.ts',
+  DynamicCordisInvokeResult:
+    'dynamic-package payload contract is owned by packages/extensions/cordis-host-runner/src/types.ts',
+  DynamicCordisPackageInspection:
+    'dynamic Package source inspection is owned by packages/extensions/cordis-host-runner/src/registry.ts',
+  DynamicCordisPluginInspection:
+    'dynamic Plugin inspection is owned by packages/extensions/cordis-host-runner/src/registry.ts',
+  DynamicCordisRequestResolved:
+    'dynamic-package payload contract is owned by packages/extensions/cordis-host-runner/src/types.ts',
+  DynamicCordisRetracted:
+    'dynamic-package payload contract is owned by packages/extensions/cordis-host-runner/src/types.ts',
+  DynamicCordisRunRequest:
+    'dynamic-package payload contract is owned by packages/extensions/cordis-host-runner/src/types.ts',
+  DynamicCordisPackage:
+    'dynamic-package payload contract is owned by packages/extensions/cordis-host-runner/src/types.ts',
+  DynamicCordisReference:
+    'dynamic Plugin reference is owned by packages/extensions/cordis-host-runner/src/registry.ts',
+  DynamicCordisRenderFailure:
+    'dynamic-package payload contract is owned by packages/extensions/cordis-host-runner/src/types.ts',
+  DynamicCordisResolveAck:
+    'dynamic-package payload contract is owned by packages/extensions/cordis-host-runner/src/types.ts',
+  DynamicCordisRunResolution:
+    'dynamic-package payload contract is owned by packages/extensions/cordis-host-runner/src/types.ts',
+  DynamicCordisRunResponse:
+    'dynamic-package payload contract is owned by packages/extensions/cordis-host-runner/src/types.ts',
+  DynamicCordisSnapshotRow:
+    'dynamic-package payload contract is owned by packages/extensions/cordis-host-runner/src/types.ts',
+  DynamicCordisStopResponse:
+    'dynamic Plugin stop result is owned by packages/extensions/cordis-host-runner/src/types.ts',
+  DynamicCordisUndefineReceipt:
+    'dynamic-package payload contract is owned by packages/extensions/cordis-host-runner/src/types.ts',
+  HostCordisInspectProviderRegistration:
+    'Host inspect provider registration is owned by packages/extensions/cordis-host-runner/src/inspect-registry.ts',
+  DomainImpl:
+    'domain implementation contract is owned by packages/storage/storage-domain/README.md',
+  CommandExecution:
+    'executor return contract is owned by packages/interaction/commands/src/index.ts',
   'z.core.JSONSchema.BaseSchema': 'zod projection output is owned by the zod v4 API',
   'z.core.ToJSONSchemaParams': 'zod projection parameters are owned by the zod v4 API',
   TypertDisposer: 'Typert lifecycle contract is owned by packages/typert/protocol/README.md',
@@ -745,12 +837,16 @@ export const TYPE_LINK_EXEMPTIONS: Readonly<Record<string, string>> = {
   Translate: 'service-local bound translator is owned by packages/client/i18n/src/index.ts',
   WebUpgradeRoute:
     'upgrade route registration contract is owned by packages/host/webserver/src/index.ts',
-  InvariantRegistration: 'service-local lifecycle handle is owned by packages/runtime-diagnostics/invariants/README.md',
+  InvariantRegistration:
+    'service-local lifecycle handle is owned by packages/runtime-diagnostics/invariants/README.md',
   JsonValue: 'JSON value union is owned by packages/core/session/src/json.ts',
-  KnobState: 'projection unit state fields are owned by packages/interaction/permission-presets/README.md',
-  PermissionSelect: 'permissions projection payload is owned by packages/interaction/permission-presets/src/types.ts',
+  KnobState:
+    'projection unit state fields are owned by packages/interaction/permission-presets/README.md',
+  PermissionSelect:
+    'permissions projection payload is owned by packages/interaction/permission-presets/src/types.ts',
   PromptAssembly: 'assembly result is owned by packages/core/system-prompt/README.md',
-  RequestRunId: 'dynamic-package payload contract is owned by packages/extensions/cordis-host-runner/src/types.ts',
+  RequestRunId:
+    'dynamic-package payload contract is owned by packages/extensions/cordis-host-runner/src/types.ts',
   RpcReceipt: 'carrier-layer receipt is owned by packages/client/connection/src/rpc.ts',
   Sandbox: 'external E2B SDK handle is owned by packages/e2b/e2b/README.md',
   SessionForkSource: 'service-local fork input is owned by packages/core/session/src/index.ts',
@@ -759,14 +855,22 @@ export const TYPE_LINK_EXEMPTIONS: Readonly<Record<string, string>> = {
   WorkflowAgentEndInfo: 'event-local snapshot is owned by packages/workflow/workflow/src/index.ts',
   WorkflowAgentInfo: 'event-local snapshot is owned by packages/workflow/workflow/src/index.ts',
   WorkflowResultInfo: 'event-local snapshot is owned by packages/workflow/workflow/src/index.ts',
-  WorkspaceByteRange: 'Host workspace file endpoint contract is owned by packages/api/workspace-files/README.md',
-  WorkspaceDirectoryListing: 'Host workspace file endpoint contract is owned by packages/api/workspace-files/README.md',
-  WorkspaceFileBytes: 'Host workspace file endpoint contract is owned by packages/api/workspace-files/README.md',
-  WorkspaceFileChange: 'Host workspace file endpoint contract is owned by packages/api/workspace-files/README.md',
-  WorkspaceFileWatchFrame: 'Host workspace file endpoint contract is owned by packages/api/workspace-files/README.md',
-  WorkspaceFileRange: 'Host workspace file endpoint contract is owned by packages/api/workspace-files/README.md',
-  WorkspaceFileStat: 'Host workspace file endpoint contract is owned by packages/api/workspace-files/README.md',
-  WorkspaceFileText: 'Host workspace file endpoint contract is owned by packages/api/workspace-files/README.md',
+  WorkspaceByteRange:
+    'Host workspace file endpoint contract is owned by packages/api/workspace-files/README.md',
+  WorkspaceDirectoryListing:
+    'Host workspace file endpoint contract is owned by packages/api/workspace-files/README.md',
+  WorkspaceFileBytes:
+    'Host workspace file endpoint contract is owned by packages/api/workspace-files/README.md',
+  WorkspaceFileChange:
+    'Host workspace file endpoint contract is owned by packages/api/workspace-files/README.md',
+  WorkspaceFileWatchFrame:
+    'Host workspace file endpoint contract is owned by packages/api/workspace-files/README.md',
+  WorkspaceFileRange:
+    'Host workspace file endpoint contract is owned by packages/api/workspace-files/README.md',
+  WorkspaceFileStat:
+    'Host workspace file endpoint contract is owned by packages/api/workspace-files/README.md',
+  WorkspaceFileText:
+    'Host workspace file endpoint contract is owned by packages/api/workspace-files/README.md',
 }
 
 /** Repository data policy consumed by the Cordis catalog projector. */
@@ -775,70 +879,176 @@ export const CORDIS_CATALOG_POLICY: CordisCatalogPolicy = {
   foundationTypeNames: FOUNDATION_TYPE_NAMES,
   typeLinkExemptions: TYPE_LINK_EXEMPTIONS,
   runtimeServiceExclusions: new Set(['cordisInspect', 'dynamicCordisRunner']),
-  runtimeServices: [{
-    key: 'timer',
-    type: 'TimerService',
-    abstract: false,
-    doc: 'Disposable timer helpers mixed into Cordis contexts.',
-    source: 'vendor/timer/src/index.ts:12',
-    methods: [
-      {
-        signature: 'timeout(callback: () => void, delay: number): () => void',
-        jsDoc: '/** Run a callback once and return its disposer. */',
-      },
-      {
-        signature: 'timeout(delay: number): Promise<void>',
-        jsDoc: '/** Resolve after a delay; disposal rejects the pending promise. */',
-      },
-      {
-        signature: 'interval(callback: () => void, delay: number): () => void',
-        jsDoc: '/** Run a callback repeatedly and return its disposer. */',
-      },
-      {
-        signature: 'interval<R = any>(delay: number): AsyncIterableIterator<void, R, void>',
-        jsDoc: '/** Return an async iterator of timer ticks. */',
-      },
-      {
-        signature: 'throttle<F extends (...args: any[]) => void>(callback: F, delay: number, noTrailing?: boolean): F & { dispose: () => void }',
-        jsDoc: '/** Return a throttled function whose timer is disposed with the current fiber. */',
-      },
-      {
-        signature: 'debounce<F extends (...args: any[]) => void>(callback: F, delay: number): F & { dispose: () => void }',
-        jsDoc: '/** Return a debounced function whose timer is disposed with the current fiber. */',
-      },
-    ],
-  }],
+  runtimeServices: [
+    {
+      key: 'timer',
+      type: 'TimerService',
+      abstract: false,
+      doc: 'Disposable timer helpers mixed into Cordis contexts.',
+      source: 'vendor/timer/src/index.ts:12',
+      methods: [
+        {
+          signature: 'timeout(callback: () => void, delay: number): () => void',
+          jsDoc: '/** Run a callback once and return its disposer. */',
+        },
+        {
+          signature: 'timeout(delay: number): Promise<void>',
+          jsDoc: '/** Resolve after a delay; disposal rejects the pending promise. */',
+        },
+        {
+          signature: 'interval(callback: () => void, delay: number): () => void',
+          jsDoc: '/** Run a callback repeatedly and return its disposer. */',
+        },
+        {
+          signature: 'interval<R = any>(delay: number): AsyncIterableIterator<void, R, void>',
+          jsDoc: '/** Return an async iterator of timer ticks. */',
+        },
+        {
+          signature:
+            'throttle<F extends (...args: any[]) => void>(callback: F, delay: number, noTrailing?: boolean): F & { dispose: () => void }',
+          jsDoc:
+            '/** Return a throttled function whose timer is disposed with the current fiber. */',
+        },
+        {
+          signature:
+            'debounce<F extends (...args: any[]) => void>(callback: F, delay: number): F & { dispose: () => void }',
+          jsDoc:
+            '/** Return a debounced function whose timer is disposed with the current fiber. */',
+        },
+      ],
+    },
+  ],
   inheritedEvents: [
-    { name: 'internal/plugin', summary: 'A plugin fiber was created.', source: 'vendor/cordis/src/events.ts:328' },
-    { name: 'internal/status', summary: 'A fiber changed lifecycle state.', source: 'vendor/cordis/src/events.ts:330' },
-    { name: 'internal/service', summary: 'Interception hook for a service binding (no core producer).', source: 'vendor/cordis/src/events.ts:332' },
-    { name: 'internal/update', summary: 'Waterfall: a fiber config update is being applied.', source: 'vendor/cordis/src/events.ts:334' },
-    { name: 'internal/get', summary: 'Waterfall: a service is being read from the store.', source: 'vendor/cordis/src/events.ts:336' },
-    { name: 'internal/set', summary: 'Waterfall: a service is being written to the store.', source: 'vendor/cordis/src/events.ts:338' },
-    { name: 'internal/listener', summary: 'A listener was registered.', source: 'vendor/cordis/src/events.ts:340' },
-    { name: 'internal/dispatch', summary: 'An event is being dispatched to listeners.', source: 'vendor/cordis/src/events.ts:342' },
-    { name: 'hmr/change', summary: 'A watched source file changed on disk.', source: 'vendor/hmr/src/index.ts:20' },
-    { name: 'hmr/reload', summary: 'Plugins are being reloaded after a change.', source: 'vendor/hmr/src/index.ts:21' },
-    { name: 'exit', summary: 'The process is exiting on a signal.', source: 'vendor/loader/src/index.ts:23' },
-    { name: 'loader/config-update', summary: 'The loader config tree changed.', source: 'vendor/loader/src/index.ts:24' },
-    { name: 'loader/entry-init', summary: 'A config entry is being initialized.', source: 'vendor/loader/src/index.ts:25' },
-    { name: 'loader/partial-dispose', summary: 'An entry is being partially disposed on reload.', source: 'vendor/loader/src/index.ts:26' },
-    { name: 'loader/patch-context', summary: 'A context is being patched during a reload.', source: 'vendor/loader/src/index.ts:27' },
+    {
+      name: 'internal/plugin',
+      summary: 'A plugin fiber was created.',
+      source: 'vendor/cordis/src/events.ts:328',
+    },
+    {
+      name: 'internal/status',
+      summary: 'A fiber changed lifecycle state.',
+      source: 'vendor/cordis/src/events.ts:330',
+    },
+    {
+      name: 'internal/service',
+      summary: 'Interception hook for a service binding (no core producer).',
+      source: 'vendor/cordis/src/events.ts:332',
+    },
+    {
+      name: 'internal/update',
+      summary: 'Waterfall: a fiber config update is being applied.',
+      source: 'vendor/cordis/src/events.ts:334',
+    },
+    {
+      name: 'internal/get',
+      summary: 'Waterfall: a service is being read from the store.',
+      source: 'vendor/cordis/src/events.ts:336',
+    },
+    {
+      name: 'internal/set',
+      summary: 'Waterfall: a service is being written to the store.',
+      source: 'vendor/cordis/src/events.ts:338',
+    },
+    {
+      name: 'internal/listener',
+      summary: 'A listener was registered.',
+      source: 'vendor/cordis/src/events.ts:340',
+    },
+    {
+      name: 'internal/dispatch',
+      summary: 'An event is being dispatched to listeners.',
+      source: 'vendor/cordis/src/events.ts:342',
+    },
+    {
+      name: 'hmr/change',
+      summary: 'A watched source file changed on disk.',
+      source: 'vendor/hmr/src/index.ts:20',
+    },
+    {
+      name: 'hmr/reload',
+      summary: 'Plugins are being reloaded after a change.',
+      source: 'vendor/hmr/src/index.ts:21',
+    },
+    {
+      name: 'exit',
+      summary: 'The process is exiting on a signal.',
+      source: 'vendor/loader/src/index.ts:23',
+    },
+    {
+      name: 'loader/config-update',
+      summary: 'The loader config tree changed.',
+      source: 'vendor/loader/src/index.ts:24',
+    },
+    {
+      name: 'loader/entry-init',
+      summary: 'A config entry is being initialized.',
+      source: 'vendor/loader/src/index.ts:25',
+    },
+    {
+      name: 'loader/partial-dispose',
+      summary: 'An entry is being partially disposed on reload.',
+      source: 'vendor/loader/src/index.ts:26',
+    },
+    {
+      name: 'loader/patch-context',
+      summary: 'A context is being patched during a reload.',
+      source: 'vendor/loader/src/index.ts:27',
+    },
   ],
   inheritedServices: [
-    { name: 'ctx.on / ctx.once', summary: 'Register an event listener (disposable).', source: 'vendor/cordis/src/events.ts:34' },
-    { name: 'ctx.emit / ctx.parallel / ctx.serial / ctx.bail / ctx.waterfall', summary: 'Dispatch an event (sync / awaited / first-bail / short-circuit chain).', source: 'vendor/cordis/src/events.ts:34' },
-    { name: 'ctx.plugin / ctx.inject', summary: 'Load a plugin / declare required services.', source: 'vendor/cordis/src/registry.ts:164' },
-    { name: 'ctx.effect', summary: 'Register a disposable side effect tied to the fiber.', source: 'vendor/cordis/src/fiber.ts:9' },
-    { name: 'ctx.get / ctx.set / ctx.provide / ctx.accessor / ctx.mixin', summary: 'Low-level service-store access and binding.', source: 'vendor/cordis/src/reflect.ts:7' },
-    { name: 'ctx.extend / ctx.isolate / ctx.intercept', summary: 'Derive a child context (scoped services / isolation / interception).', source: 'vendor/cordis/src/context.ts:42' },
-    { name: 'ctx.root / ctx.fiber / ctx.registry / ctx.reflect / ctx.events / ctx.logger', summary: 'Ambient handles onto the running context graph.', source: 'vendor/cordis/src/context.ts:16' },
-    { name: 'ctx.timer (+ interval / timeout / throttle / debounce)', summary: 'Disposable timer helpers. The `timer` key is provided at runtime; the four supported helpers are mixed onto ctx directly (declared via Pick).', source: 'vendor/timer/src/index.ts:4' },
-    { name: 'ctx.loader', summary: 'The config Loader that booted the app (present under the loader).', source: 'vendor/loader/src/index.ts:30' },
-    { name: 'ctx.hmr', summary: 'The hot-module-reload watcher (present under the hmr plugin).', source: 'vendor/hmr/src/index.ts:15' },
+    {
+      name: 'ctx.on / ctx.once',
+      summary: 'Register an event listener (disposable).',
+      source: 'vendor/cordis/src/events.ts:34',
+    },
+    {
+      name: 'ctx.emit / ctx.parallel / ctx.serial / ctx.bail / ctx.waterfall',
+      summary: 'Dispatch an event (sync / awaited / first-bail / short-circuit chain).',
+      source: 'vendor/cordis/src/events.ts:34',
+    },
+    {
+      name: 'ctx.plugin / ctx.inject',
+      summary: 'Load a plugin / declare required services.',
+      source: 'vendor/cordis/src/registry.ts:164',
+    },
+    {
+      name: 'ctx.effect',
+      summary: 'Register a disposable side effect tied to the fiber.',
+      source: 'vendor/cordis/src/fiber.ts:9',
+    },
+    {
+      name: 'ctx.get / ctx.set / ctx.provide / ctx.accessor / ctx.mixin',
+      summary: 'Low-level service-store access and binding.',
+      source: 'vendor/cordis/src/reflect.ts:7',
+    },
+    {
+      name: 'ctx.extend / ctx.isolate / ctx.intercept',
+      summary: 'Derive a child context (scoped services / isolation / interception).',
+      source: 'vendor/cordis/src/context.ts:42',
+    },
+    {
+      name: 'ctx.root / ctx.fiber / ctx.registry / ctx.reflect / ctx.events / ctx.logger',
+      summary: 'Ambient handles onto the running context graph.',
+      source: 'vendor/cordis/src/context.ts:16',
+    },
+    {
+      name: 'ctx.timer (+ interval / timeout / throttle / debounce)',
+      summary:
+        'Disposable timer helpers. The `timer` key is provided at runtime; the four supported helpers are mixed onto ctx directly (declared via Pick).',
+      source: 'vendor/timer/src/index.ts:4',
+    },
+    {
+      name: 'ctx.loader',
+      summary: 'The config Loader that booted the app (present under the loader).',
+      source: 'vendor/loader/src/index.ts:30',
+    },
+    {
+      name: 'ctx.hmr',
+      summary: 'The hot-module-reload watcher (present under the hmr plugin).',
+      source: 'vendor/hmr/src/index.ts:15',
+    },
   ],
 }
-
 
 /**
  * Splice a page's generated Cordis API region into its Markdown content.
@@ -857,7 +1067,9 @@ export function spliceRegion(content: string, region: string): string {
   const begins = lines.flatMap((line, index) => (line === REGION_BEGIN ? [index] : []))
   const ends = lines.flatMap((line, index) => (line === REGION_END ? [index] : []))
   if (begins.length !== 1 || ends.length !== 1) {
-    throw new Error(`expected exactly 1 cordis-surface region, found ${begins.length} BEGIN/${ends.length} END; add the BEGIN/END cordis-surface markers once`)
+    throw new Error(
+      `expected exactly 1 cordis-surface region, found ${begins.length} BEGIN/${ends.length} END; add the BEGIN/END cordis-surface markers once`,
+    )
   }
   const begin = begins[0] ?? -1
   const end = ends[0] ?? -1
@@ -888,7 +1100,11 @@ export interface WalkPartitionMaps {
 }
 
 /** Project paired Markdown destinations in one generated region to the page's locale. */
-export function localizePageRegion(region: string, pageRel: string, scanRoot: string = root): string {
+export function localizePageRegion(
+  region: string,
+  pageRel: string,
+  scanRoot: string = root,
+): string {
   if (!pageRel.endsWith('.zh.md')) return region
   const manifest = parseTranslationPairingManifest(
     readFileSync(resolve(scanRoot, 'scripts/translation-pairing.manifest.json'), 'utf8'),
@@ -913,19 +1129,34 @@ export function localizePageRegion(region: string, pageRel: string, scanRoot: st
  * @param maps - the curated page maps and walk exemptions.
  * @returns one message per violation, empty when the partition holds.
  */
-export function walkPartitionProblems(input: WalkPartitionInput, maps: WalkPartitionMaps): string[] {
+export function walkPartitionProblems(
+  input: WalkPartitionInput,
+  maps: WalkPartitionMaps,
+): string[] {
   const problems: string[] = []
   for (const [key, source] of input.renderedKeys) {
-    if (!Object.hasOwn(maps.servicePage, key)) problems.push(`service ctx.${key} (${source}) has no SERVICE_PAGE entry; every service maps to exactly one subsystems page.`)
+    if (!Object.hasOwn(maps.servicePage, key))
+      problems.push(
+        `service ctx.${key} (${source}) has no SERVICE_PAGE entry; every service maps to exactly one subsystems page.`,
+      )
   }
   for (const scope of [...input.renderedScopes].sort()) {
-    if (!Object.hasOwn(maps.eventScopePage, scope)) problems.push(`event scope '${scope}/*' has no EVENT_SCOPE_PAGE entry; every event scope maps to exactly one subsystems page.`)
+    if (!Object.hasOwn(maps.eventScopePage, scope))
+      problems.push(
+        `event scope '${scope}/*' has no EVENT_SCOPE_PAGE entry; every event scope maps to exactly one subsystems page.`,
+      )
   }
   for (const key of Object.keys(maps.servicePage)) {
-    if (!input.renderedKeys.has(key)) problems.push(`SERVICE_PAGE maps 'ctx.${key}' but the projection discovers no such service; remove the stale entry.`)
+    if (!input.renderedKeys.has(key))
+      problems.push(
+        `SERVICE_PAGE maps 'ctx.${key}' but the projection discovers no such service; remove the stale entry.`,
+      )
   }
   for (const scope of Object.keys(maps.eventScopePage)) {
-    if (!input.renderedScopes.has(scope)) problems.push(`EVENT_SCOPE_PAGE maps '${scope}/*' but the projection discovers no such scope; remove the stale entry.`)
+    if (!input.renderedScopes.has(scope))
+      problems.push(
+        `EVENT_SCOPE_PAGE maps '${scope}/*' but the projection discovers no such scope; remove the stale entry.`,
+      )
   }
   // The rendering projection only sees a Context key it can resolve to a
   // documented service class. The independent scan reads EVERY Context merge
@@ -935,12 +1166,20 @@ export function walkPartitionProblems(input: WalkPartitionInput, maps: WalkParti
     const rendered = input.renderedKeys.has(key)
     const exempt = Object.hasOwn(maps.serviceWalkExemptions, key)
     if (!rendered && !exempt) {
-      problems.push(`ctx.${key} (${rel}) is declared in a Context merge but invisible to the rendering projection; map it in SERVICE_PAGE (after making it renderable) or name it in SERVICE_WALK_EXEMPTIONS with its documentation owner.`)
+      problems.push(
+        `ctx.${key} (${rel}) is declared in a Context merge but invisible to the rendering projection; map it in SERVICE_PAGE (after making it renderable) or name it in SERVICE_WALK_EXEMPTIONS with its documentation owner.`,
+      )
     }
-    if (rendered && exempt) problems.push(`ctx.${key} is rendered by the projection but still listed in SERVICE_WALK_EXEMPTIONS; remove the stale exemption.`)
+    if (rendered && exempt)
+      problems.push(
+        `ctx.${key} is rendered by the projection but still listed in SERVICE_WALK_EXEMPTIONS; remove the stale exemption.`,
+      )
   }
   for (const key of Object.keys(maps.serviceWalkExemptions)) {
-    if (!input.declaredKeys.has(key)) problems.push(`SERVICE_WALK_EXEMPTIONS names 'ctx.${key}' but no Context merge declares it; remove the stale exemption.`)
+    if (!input.declaredKeys.has(key))
+      problems.push(
+        `SERVICE_WALK_EXEMPTIONS names 'ctx.${key}' but no Context merge declares it; remove the stale exemption.`,
+      )
   }
   // The event mirror of the service backstop: the projection walks only files
   // reachable from host-face package exports, so a client-face or unreachable
@@ -949,12 +1188,20 @@ export function walkPartitionProblems(input: WalkPartitionInput, maps: WalkParti
     const rendered = input.renderedEventNames.has(name)
     const exempt = Object.hasOwn(maps.eventWalkExemptions, name)
     if (!rendered && !exempt) {
-      problems.push(`event '${name}' (${rel}) is declared in an Events merge but invisible to the rendering projection; make it renderable (mapped via EVENT_SCOPE_PAGE) or name it in EVENT_WALK_EXEMPTIONS with its documentation owner.`)
+      problems.push(
+        `event '${name}' (${rel}) is declared in an Events merge but invisible to the rendering projection; make it renderable (mapped via EVENT_SCOPE_PAGE) or name it in EVENT_WALK_EXEMPTIONS with its documentation owner.`,
+      )
     }
-    if (rendered && exempt) problems.push(`event '${name}' is rendered by the projection but still listed in EVENT_WALK_EXEMPTIONS; remove the stale exemption.`)
+    if (rendered && exempt)
+      problems.push(
+        `event '${name}' is rendered by the projection but still listed in EVENT_WALK_EXEMPTIONS; remove the stale exemption.`,
+      )
   }
   for (const name of Object.keys(maps.eventWalkExemptions)) {
-    if (!input.declaredEvents.has(name)) problems.push(`EVENT_WALK_EXEMPTIONS names '${name}' but no Events merge declares it; remove the stale exemption.`)
+    if (!input.declaredEvents.has(name))
+      problems.push(
+        `EVENT_WALK_EXEMPTIONS names '${name}' but no Events merge declares it; remove the stale exemption.`,
+      )
   }
   // Self-check the scan itself: everything the projection renders is declared
   // in a Context/Events merge the scan must also reach, so a rendered key or
@@ -962,10 +1209,16 @@ export function walkPartitionProblems(input: WalkPartitionInput, maps: WalkParti
   // block walk) — a partial blind spot that exemption staleness alone would
   // never appear.
   for (const key of input.renderedKeys.keys()) {
-    if (!input.declaredKeys.has(key)) problems.push(`ctx.${key} is rendered by the projection but the independent scan finds no Context merge declaring it; the scan has a blind spot (glob, prefilter, or module-block walk) — fix the scan, not the maps.`)
+    if (!input.declaredKeys.has(key))
+      problems.push(
+        `ctx.${key} is rendered by the projection but the independent scan finds no Context merge declaring it; the scan has a blind spot (glob, prefilter, or module-block walk) — fix the scan, not the maps.`,
+      )
   }
   for (const name of input.renderedEventNames) {
-    if (!input.declaredEvents.has(name)) problems.push(`event '${name}' is rendered by the projection but the independent scan finds no Events merge declaring it; the scan has a blind spot (glob, prefilter, or module-block walk) — fix the scan, not the maps.`)
+    if (!input.declaredEvents.has(name))
+      problems.push(
+        `event '${name}' is rendered by the projection but the independent scan finds no Events merge declaring it; the scan has a blind spot (glob, prefilter, or module-block walk) — fix the scan, not the maps.`,
+      )
   }
   return problems
 }
@@ -987,7 +1240,10 @@ export function computeOutputs(): [string, string][] {
 
   const declaredKeys = new Map<string, string>()
   const declaredEvents = new Map<string, string>()
-  for (const { rel, sf, body } of contextMergeFiles(root, ['packages/*/*/src/**/*.ts', 'packages/*/*/src/**/*.tsx'])) {
+  for (const { rel, sf, body } of contextMergeFiles(root, [
+    'packages/*/*/src/**/*.ts',
+    'packages/*/*/src/**/*.tsx',
+  ])) {
     for (const key of contextKeyMap(body, sf).keys()) {
       if (!declaredKeys.has(key)) declaredKeys.set(key, rel)
     }
@@ -995,21 +1251,29 @@ export function computeOutputs(): [string, string][] {
       if (!declaredEvents.has(name)) declaredEvents.set(name, rel)
     }
   }
-  const problems = walkPartitionProblems({
-    renderedKeys: new Map(services.map(s => [s.key, s.source])),
-    renderedScopes: new Set(events.map(e => e.scope)),
-    renderedEventNames: new Set(events.map(e => e.name)),
-    declaredKeys,
-    declaredEvents,
-  }, {
-    servicePage: SERVICE_PAGE,
-    serviceWalkExemptions: SERVICE_WALK_EXEMPTIONS,
-    eventScopePage: EVENT_SCOPE_PAGE,
-    eventWalkExemptions: EVENT_WALK_EXEMPTIONS,
-  })
-  if (problems.length > 0) throw new Error(`gen-cordis-catalog: ${problems.length} partition violation(s):\n${problems.map(p => `  ${p}`).join('\n')}`)
+  const problems = walkPartitionProblems(
+    {
+      renderedKeys: new Map(services.map(s => [s.key, s.source])),
+      renderedScopes: new Set(events.map(e => e.scope)),
+      renderedEventNames: new Set(events.map(e => e.name)),
+      declaredKeys,
+      declaredEvents,
+    },
+    {
+      servicePage: SERVICE_PAGE,
+      serviceWalkExemptions: SERVICE_WALK_EXEMPTIONS,
+      eventScopePage: EVENT_SCOPE_PAGE,
+      eventWalkExemptions: EVENT_WALK_EXEMPTIONS,
+    },
+  )
+  if (problems.length > 0)
+    throw new Error(
+      `gen-cordis-catalog: ${problems.length} partition violation(s):\n${problems.map(p => `  ${p}`).join('\n')}`,
+    )
 
-  const pages = [...new Set([...Object.values(SERVICE_PAGE), ...Object.values(EVENT_SCOPE_PAGE)])].sort()
+  const pages = [
+    ...new Set([...Object.values(SERVICE_PAGE), ...Object.values(EVENT_SCOPE_PAGE)]),
+  ].sort()
   const outputs: [string, string][] = [
     [OUT_INHERITED, renderInheritedPage(CORDIS_CATALOG_POLICY)],
     [OUT_RUNTIME_API, projector.renderRuntimeApi(model)],
@@ -1040,7 +1304,10 @@ export function computeOutputs(): [string, string][] {
       }
     }
   }
-  if (problems.length > 0) throw new Error(`gen-cordis-catalog: ${problems.length} page violation(s):\n${problems.map(p => `  ${p}`).join('\n')}`)
+  if (problems.length > 0)
+    throw new Error(
+      `gen-cordis-catalog: ${problems.length} page violation(s):\n${problems.map(p => `  ${p}`).join('\n')}`,
+    )
   return outputs
 }
 
@@ -1056,7 +1323,11 @@ export function computeOutputs(): [string, string][] {
  * @param scanRoot - repository root override for tests.
  * @returns true when the record was refreshed.
  */
-export function maybeRecordPair(pageRel: string, before: Map<string, Buffer>, scanRoot: string = root): boolean {
+export function maybeRecordPair(
+  pageRel: string,
+  before: Map<string, Buffer>,
+  scanRoot: string = root,
+): boolean {
   const zhRel = pageRel.replace(/\.md$/, '.zh.md')
   const metaRel = pageRel.replace(/\.md$/, '.i18n.yaml')
   const metaAbs = resolve(scanRoot, metaRel)
@@ -1095,10 +1366,7 @@ export function maybeRecordPair(pageRel: string, before: Map<string, Buffer>, sc
  * @returns nothing; writes files or reports freshness through the process.
  */
 export function main(): void {
-  const outputs: [string, string][] = [
-    ...computeOutputs(),
-    ...renderCordisCoreApiPages(),
-  ]
+  const outputs: [string, string][] = [...computeOutputs(), ...renderCordisCoreApiPages()]
   if (process.argv.includes('--check')) {
     const stale: string[] = []
     for (const [out, content] of outputs) {
@@ -1114,10 +1382,14 @@ export function main(): void {
       if (committed !== content) stale.push(out)
     }
     if (stale.length === 0) {
-      console.log(`gen-cordis-catalog: ${outputs.length} generated file(s)/region(s) are up to date.`)
+      console.log(
+        `gen-cordis-catalog: ${outputs.length} generated file(s)/region(s) are up to date.`,
+      )
       process.exit(0)
     }
-    console.error(`gen-cordis-catalog: stale — ${stale.join(', ')}. Run \`pnpm run gen-cordis-catalog\` and commit the result.`)
+    console.error(
+      `gen-cordis-catalog: stale — ${stale.join(', ')}. Run \`pnpm run gen-cordis-catalog\` and commit the result.`,
+    )
     process.exit(1)
   }
 
@@ -1138,16 +1410,23 @@ export function main(): void {
     writeFileSync(destination, content)
     changedPages++
   }
-  for (const page of [...new Set([...Object.values(SERVICE_PAGE), ...Object.values(EVENT_SCOPE_PAGE)])]) {
+  for (const page of [
+    ...new Set([...Object.values(SERVICE_PAGE), ...Object.values(EVENT_SCOPE_PAGE)]),
+  ]) {
     const rel = `${SUBSYSTEMS_DIR}/${page}`
     const zhRel = rel.replace(/\.md$/, '.zh.md')
     const wroteEither = [rel, zhRel].some((side) => {
       const previous = before.get(side)
-      return previous !== undefined && previous.toString('utf8') !== readFileSync(resolve(root, side), 'utf8')
+      return (
+        previous !== undefined &&
+        previous.toString('utf8') !== readFileSync(resolve(root, side), 'utf8')
+      )
     })
     if (wroteEither && maybeRecordPair(rel, before)) recorded++
   }
-  console.log(`gen-cordis-catalog: ${outputs.length} artifact(s) computed, ${changedPages} written, ${recorded} pair record(s) refreshed.`)
+  console.log(
+    `gen-cordis-catalog: ${outputs.length} artifact(s) computed, ${changedPages} written, ${recorded} pair record(s) refreshed.`,
+  )
 }
 
 if (process.argv[1] && import.meta.filename === resolve(process.argv[1])) {

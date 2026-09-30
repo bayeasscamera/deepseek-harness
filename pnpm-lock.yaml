@@ -1092,15 +1092,27 @@ importers:
       '@deepseek-ai/dsh-credentials':
         specifier: workspace:^
         version: link:../../credentials/credentials
+      '@deepseek-ai/dsh-home-paths':
+        specifier: workspace:^
+        version: link:../../util/home-paths
       '@deepseek-ai/dsh-native-command':
         specifier: workspace:^
         version: link:../../util/native-command
+      '@deepseek-ai/dsh-scope':
+        specifier: workspace:^
+        version: link:../../core/scope
       '@deepseek-ai/dsh-session':
         specifier: workspace:^
         version: link:../../core/session
       '@deepseek-ai/dsh-settings':
         specifier: workspace:^
         version: link:../../settings/settings
+      '@deepseek-ai/dsh-skill':
+        specifier: workspace:^
+        version: link:../../skill/skill
+      '@deepseek-ai/dsh-skill-filesystem':
+        specifier: workspace:^
+        version: link:../../skill/skill-filesystem
       '@deepseek-ai/dsh-typert-protocol':
         specifier: workspace:^
         version: link:../../typert/protocol
@@ -3639,6 +3651,9 @@ importers:
       '@deepseek-ai/dsh-api-remotes':
         specifier: workspace:^
         version: link:../../api/remotes
+      '@deepseek-ai/dsh-api-settings-controller':
+        specifier: workspace:^
+        version: link:../../api/settings-controller
       '@deepseek-ai/dsh-client-locale':
         specifier: workspace:^
         version: link:../locale

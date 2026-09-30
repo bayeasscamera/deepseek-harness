@@ -1,0 +1,154 @@
+/** Layout styles for the Skills settings tab. */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+  padding: var(--space-4, 16px);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2, 8px);
+}
+
+.openBtn {
+  padding: 6px 14px;
+  border: 1px solid var(--color-border, #d1d5db);
+  border-radius: 6px;
+  background: var(--color-surface, #fff);
+  color: var(--color-text, #111827);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.openBtn:hover:not(:disabled) {
+  background: var(--color-surface-hover, #f3f4f6);
+}
+
+.openBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.openFeedback {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--color-text-secondary, #6b7280);
+}
+
+.openFeedbackError {
+  color: var(--color-danger, #dc2626);
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--color-text-secondary, #6b7280);
+  margin: 0;
+}
+
+.copyBtn {
+  padding: 2px 8px;
+  border: 1px solid var(--color-border, #d1d5db);
+  border-radius: 4px;
+  background: transparent;
+  font-size: 11px;
+  color: var(--color-text-secondary, #6b7280);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.copyBtn:hover {
+  background: var(--color-surface-hover, #f3f4f6);
+}
+
+.retryBtn {
+  margin-left: 8px;
+  padding: 2px 8px;
+  border: 1px solid var(--color-border, #d1d5db);
+  border-radius: 4px;
+  background: transparent;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.status {
+  font-size: 13px;
+  color: var(--color-text-secondary, #6b7280);
+  padding: var(--space-3, 12px) 0;
+}
+
+.statusError {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  color: var(--color-danger, #dc2626);
+  padding: var(--space-3, 12px) 0;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.th {
+  text-align: left;
+  padding: 6px 10px;
+  font-weight: 500;
+  color: var(--color-text-secondary, #6b7280);
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+  white-space: nowrap;
+}
+
+.row:hover td {
+  background: var(--color-surface-hover, #f9fafb);
+}
+
+.td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--color-border, #f3f4f6);
+  vertical-align: middle;
+}
+
+.name {
+  font-weight: 500;
+  color: var(--color-text, #111827);
+  white-space: nowrap;
+}
+
+.desc {
+  color: var(--color-text-secondary, #6b7280);
+  max-width: 320px;
+}
+
+.source {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--color-tag-bg, #f3f4f6);
+  color: var(--color-text-secondary, #6b7280);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.pathCell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 240px;
+}
+
+.pathText {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  color: var(--color-text-secondary, #6b7280);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

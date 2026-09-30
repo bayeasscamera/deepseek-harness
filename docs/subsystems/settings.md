@@ -345,6 +345,49 @@ Host service backing the generated `ctx.remote.settings` namespace. Every remote
  * @throws RemoteError when the preset is missing, read-only, invalid, or cannot be opened.
  */
 @Remote async openAgentPresetDirectory( agentPreset: string, signal: AbortSignal, ): Promise<AgentPresetDirectoryOpenValue>
+
+/**
+ * List the skills this deployment installs without a session: the skill
+ * registry's global rows plus the settings scope's local roots (`user-dsh`,
+ * `user-agents`, `custom`), discovered in a scope no agent reads.
+ * @returns all discovered skills; empty means the deployment composes no skill registry.
+ * @throws RemoteError when the registry is mounted but listing fails.
+ */
+@Remote async listSkills(): Promise<SkillListEntry[]>
+
+/**
+ * Open the user skill directory in the native file manager, or return its path.
+ * @param signal - caller lifetime; abort terminates the native command.
+ * @returns an opened confirmation or the resolved directory path for text display.
+ * @throws RemoteError when the native open fails or is aborted.
+ */
+@Remote async openUserSkillsDirectory(signal: AbortSignal): Promise<SkillDirectoryOpenValue>
+
+/**
+ * Re-scan the local skill roots and return the merged catalog, replacing the
+ * cached discovery. Used by the Skills tab's refresh action after skill
+ * folders changed on disk while no file watcher was mounted.
+ * @returns all discovered skills after the rescan.
+ * @throws RemoteError when the registry is mounted but discovery fails.
+ */
+@Remote async refreshSkills(): Promise<SkillListEntry[]>
+
+/**
+ * Install every skill a picked folder or file carries, read the way
+ * discovery reads them: a folder with its own `SKILL.md` is one skill, and
+ * any other folder is scanned for skill folders and flat markdown files, so
+ * a catalog grouped in sub-folders installs whole instead of being refused as
+ * an unrecognized folder. Each skill is validated through the discovery
+ * provider's acceptance contract, staged beside its target, and moved into
+ * place in one step, so the catalog only ever observes a complete skill. A
+ * skill whose declared name is already installed is refused instead of
+ * overwritten. Discovery caches, so callers list through `refreshSkills()`
+ * to see what was installed.
+ * @param source - absolute folder or markdown file chosen on the host.
+ * @returns one outcome per skill found: the installed name and path, or the refusal cause.
+ * @throws RemoteError when the request is invalid, the path is unreadable, or a copy fails.
+ */
+@Remote async importSkills(source: string): Promise<SkillImportValue[]>
 ```
 
 Source: [`packages/api/settings-controller/src/index.ts`](../../packages/api/settings-controller/src/index.ts)
