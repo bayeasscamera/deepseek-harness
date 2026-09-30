@@ -2136,6 +2136,15 @@ importers:
         specifier: ^18.2.0
         version: 18.3.1
 
+  packages/client/locale-fr:
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-client-locale':
+        specifier: workspace:^
+        version: link:../locale
+
   packages/client/modules:
     devDependencies:
       '@deepseek-ai/cordis':
@@ -10318,6 +10327,25 @@ importers:
         specifier: workspace:^
         version: link:../web
 
+  packages/web/web-search-brave:
+    dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: link:../../../vendor/schemastery
+        version: link:../../../vendor/schemastery
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-http-proxy':
+        specifier: workspace:^
+        version: link:../../util/http-proxy
+      '@deepseek-ai/dsh-launch-environment':
+        specifier: workspace:^
+        version: link:../../util/launch-environment
+      '@deepseek-ai/dsh-web':
+        specifier: workspace:^
+        version: link:../web
+
   packages/web/web-search-deepseek:
     dependencies:
       '@deepseek-ai/schemastery':
@@ -10372,6 +10400,25 @@ importers:
         version: link:../web
 
   packages/web/web-search-perplexity:
+    dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: link:../../../vendor/schemastery
+        version: link:../../../vendor/schemastery
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-http-proxy':
+        specifier: workspace:^
+        version: link:../../util/http-proxy
+      '@deepseek-ai/dsh-launch-environment':
+        specifier: workspace:^
+        version: link:../../util/launch-environment
+      '@deepseek-ai/dsh-web':
+        specifier: workspace:^
+        version: link:../web
+
+  packages/web/web-search-tavily:
     dependencies:
       '@deepseek-ai/schemastery':
         specifier: link:../../../vendor/schemastery

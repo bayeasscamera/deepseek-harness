@@ -154,7 +154,16 @@ const SERVICE_ROLES: ServiceRole[] = [
     pkg: 'session',
     title: 'In-memory session store',
     mode: 'core',
-    consumers: ['agent-loop', 'agent', 'session-persistence', 'session-query', 'session-query-sqlite', 'subagent-in-process-driver', 'invariants', 'message-feedback'],
+    consumers: [
+      'agent-loop',
+      'agent',
+      'session-persistence',
+      'session-query',
+      'session-query-sqlite',
+      'subagent-in-process-driver',
+      'invariants',
+      'message-feedback',
+    ],
     note: 'Owns append-only Session instances and emits the durable session event feed.',
   },
   {
@@ -169,14 +178,14 @@ const SERVICE_ROLES: ServiceRole[] = [
     pkg: 'api-session-controller',
     title: 'Session-addressed file-reference Remote adapter',
     mode: 'core',
-    note: 'Delegates file-reference discovery through the Session Controller\'s established Agent lookup policy.',
+    note: "Delegates file-reference discovery through the Session Controller's established Agent lookup policy.",
   },
   {
     key: 'sessionSkillCatalog',
     pkg: 'api-session-controller',
     title: 'Session-addressed skill Remote adapter',
     mode: 'core',
-    note: 'Lists the Session composition\'s user-invocable skills without activating a cold Agent.',
+    note: "Lists the Session composition's user-invocable skills without activating a cold Agent.",
   },
   {
     key: 'credentialsController',
@@ -197,7 +206,7 @@ const SERVICE_ROLES: ServiceRole[] = [
     pkg: 'api-workspace-files',
     title: 'Host workspace file Remote service',
     mode: 'core',
-    note: 'Serves stat, paged text, byte windows, directory listings, and the change feed for files inside a Session\'s workspace root, confined by lstat, containment, and a stat re-check.',
+    note: "Serves stat, paged text, byte windows, directory listings, and the change feed for files inside a Session's workspace root, confined by lstat, containment, and a stat re-check.",
   },
   {
     key: 'workspaceController',
@@ -242,7 +251,15 @@ const SERVICE_ROLES: ServiceRole[] = [
     title: 'Durable session persistence seam',
     mode: 'seam',
     implementations: ['session-persistence-jsonl'],
-    consumers: ['agent-loop', 'tool-bash', 'hooks-claude-code', 'hooks-codex', 'session-query', 'session-query-sqlite', 'message-feedback'],
+    consumers: [
+      'agent-loop',
+      'tool-bash',
+      'hooks-claude-code',
+      'hooks-codex',
+      'session-query',
+      'session-query-sqlite',
+      'message-feedback',
+    ],
     note: 'The JSONL backend persists the SessionEvent vocabulary as one artifact per Session.',
   },
   {
@@ -367,7 +384,18 @@ const SERVICE_ROLES: ServiceRole[] = [
     pkg: 'tools',
     title: 'Tool registry and guarded execution pipeline',
     mode: 'core',
-    consumers: ['agent-loop', 'tool-ask-user', 'tool-bash', 'tool-cordis', 'tool-fs', 'tool-terminal', 'tool-skill', 'tool-subagent', 'tool-todo', 'tool-web'],
+    consumers: [
+      'agent-loop',
+      'tool-ask-user',
+      'tool-bash',
+      'tool-cordis',
+      'tool-fs',
+      'tool-terminal',
+      'tool-skill',
+      'tool-subagent',
+      'tool-todo',
+      'tool-web',
+    ],
     note: 'Registers capabilities, owns PTC mode transport, and routes calls through pre-policy, monotonic guards, around dispatch, post-policy, and final-result observation.',
   },
   {
@@ -469,7 +497,15 @@ const SERVICE_ROLES: ServiceRole[] = [
     title: 'Subprocess seam',
     mode: 'seam',
     implementations: ['subprocess-local', 'subprocess-e2b'],
-    consumers: ['bash-local', 'bash-sandbox', 'terminal-bash', 'lsp-stdio', 'subagent-acp', 'subagent-codex', 'subagent-claude-code'],
+    consumers: [
+      'bash-local',
+      'bash-sandbox',
+      'terminal-bash',
+      'lsp-stdio',
+      'subagent-acp',
+      'subagent-codex',
+      'subagent-claude-code',
+    ],
     note: 'The bash executors, the PTY shell backend, the LSP host, and the out-of-process ACP, Codex, and Claude Code subagent backends spawn through ctx.subprocess; the service owns process coordinates, tree/session lifetime, stdio dispositions, terminal mechanics, and kill escalation.',
   },
   {
@@ -566,7 +602,14 @@ const SERVICE_ROLES: ServiceRole[] = [
     pkg: 'subagent',
     title: 'Subagent provider and continuation service',
     mode: 'seam',
-    implementations: ['subagent-spawn-in-process', 'subagent-fork-in-process', 'subagent-acp', 'subagent-codex', 'subagent-claude-code', 'subagent-dsh-sdk'],
+    implementations: [
+      'subagent-spawn-in-process',
+      'subagent-fork-in-process',
+      'subagent-acp',
+      'subagent-codex',
+      'subagent-claude-code',
+      'subagent-dsh-sdk',
+    ],
     consumers: ['tool-subagent', 'tool-subagent-control', 'tool-ralph'],
     note: 'Providers implement transports; the service also owns optional Activation-based continuation orchestration, tool-subagent selects one-shot or continuable delegation, tool-subagent-control delivers follow-ups, and tool-ralph requires one fresh structured-output route.',
   },
@@ -599,7 +642,14 @@ const SERVICE_ROLES: ServiceRole[] = [
     pkg: 'web',
     title: 'Web access provider registry',
     mode: 'seam',
-    implementations: ['web-search-exa', 'web-search-perplexity', 'web-search-deepseek', 'web-fetch-http'],
+    implementations: [
+      'web-search-exa',
+      'web-search-perplexity',
+      'web-search-brave',
+      'web-search-tavily',
+      'web-search-deepseek',
+      'web-fetch-http',
+    ],
     consumers: ['tool-web'],
     note: 'Search and fetch providers register into one ctx.web seam; tool-web owns the stable model-facing names.',
   },
@@ -734,24 +784,31 @@ function assertServiceRolesComplete(services: readonly ServiceEntry[]): void {
   const missing = [...discovered].filter(key => !classified.has(key)).sort()
   const stale = [...classified].filter(key => !discovered.has(key)).sort()
   if (missing.length || stale.length) {
-    throw new Error([
-      missing.length ? `missing service role classification: ${missing.join(', ')}` : '',
-      stale.length ? `stale service role classification: ${stale.join(', ')}` : '',
-    ].filter(Boolean).join('; '))
+    throw new Error(
+      [
+        missing.length ? `missing service role classification: ${missing.join(', ')}` : '',
+        stale.length ? `stale service role classification: ${stale.join(', ')}` : '',
+      ]
+        .filter(Boolean)
+        .join('; '),
+    )
   }
 }
 
 function renderCapabilitySeams(pkgs: Pkg[], services: readonly ServiceEntry[]): string {
   assertServiceRolesComplete(services)
   const pkgsByShort = new Map(pkgs.map(pkg => [pkg.short, pkg]))
-  const maintenance = 'hybrid: services are discovered from Cordis declarations; interface/implementation/consumer roles are classified in `scripts/gen-doc-graphs.ts` with a completeness guard'
+  const maintenance =
+    'hybrid: services are discovered from Cordis declarations; interface/implementation/consumer roles are classified in `scripts/gen-doc-graphs.ts` with a completeness guard'
   const nodes = new Map<string, string>()
   const edges = new Set<string>()
   const companionEdges = new Set<string>()
   const addNode = (id: string, label: string): void => {
     if (!nodes.has(id)) nodes.set(id, `  ${id}["${escLabel(label)}"]`)
   }
-  const addEdge = (from: string, to: string): void => { edges.add(`  ${from} --> ${to}`) }
+  const addEdge = (from: string, to: string): void => {
+    edges.add(`  ${from} --> ${to}`)
+  }
   const lines = generatedHeader('Capability Seams And Core Services')
   lines.push(
     'A service can be a core spine service, a swappable capability seam, or a bundle/composition point. The graph shows the package that owns the service declaration, known implementation packages, and packages that consume the service directly.',
@@ -779,9 +836,16 @@ function renderCapabilitySeams(pkgs: Pkg[], services: readonly ServiceEntry[]): 
     }
   }
   lines.push(...nodes.values(), ...[...edges].sort(), ...[...companionEdges].sort())
-  lines.push('```', '', '| ctx key | Role | Owner | Implementations | Direct consumers | Companion plugins | Note |', '| --- | --- | --- | --- | --- | --- | --- |')
+  lines.push(
+    '```',
+    '',
+    '| ctx key | Role | Owner | Implementations | Direct consumers | Companion plugins | Note |',
+    '| --- | --- | --- | --- | --- | --- | --- |',
+  )
   for (const role of SERVICE_ROLES) {
-    lines.push(`| \`ctx.${role.key}\` | \`${role.mode}\` | ${pkgLink(pkgsByShort.get(role.pkg), role.pkg)} | ${pkgList(role.implementations, pkgsByShort)} | ${pkgList(role.consumers, pkgsByShort)} | ${pkgList(role.companions, pkgsByShort)} | ${tableCell(role.note)} |`)
+    lines.push(
+      `| \`ctx.${role.key}\` | \`${role.mode}\` | ${pkgLink(pkgsByShort.get(role.pkg), role.pkg)} | ${pkgList(role.implementations, pkgsByShort)} | ${pkgList(role.consumers, pkgsByShort)} | ${pkgList(role.companions, pkgsByShort)} | ${tableCell(role.note)} |`,
+    )
   }
   lines.push('', ...maintenanceFooter(maintenance))
   return lines.join('\n')
@@ -820,15 +884,17 @@ const APP_EXAMPLES = [
     title: 'DSH Base Composition',
     label: 'packages/bundle/base/cordis.patch.yml',
     config: 'packages/bundle/base/cordis.patch.yml',
-    summary: 'The dsh-base bundle patch shared by the web, headless, sdk, and acp profiles; their mode bundles and user layers patch over it, while sdk-minimal owns a separate standalone tree.',
+    summary:
+      'The dsh-base bundle patch shared by the web, headless, sdk, and acp profiles; their mode bundles and user layers patch over it, while sdk-minimal owns a separate standalone tree.',
   },
 ]
 
-type AppExample = typeof APP_EXAMPLES[number]
+type AppExample = (typeof APP_EXAMPLES)[number]
 
 function renderAppComposition(example: AppExample): string {
   const plugins = parseExampleCordis(example.config)
-  const maintenance = 'hybrid: the patch row list is parsed from its `cordis.yml`; app package expansion is curated from package source'
+  const maintenance =
+    'hybrid: the patch row list is parsed from its `cordis.yml`; app package expansion is curated from package source'
   const lines = generatedHeader(example.title)
   lines.push(
     example.summary,
@@ -863,7 +929,15 @@ type CallSiteIndex = Map<ts.SignatureDeclaration | ts.JSDocSignature, ts.CallExp
  * must appear here — the prefilter drops non-members before any branch runs,
  * so a branch for an unlisted name is silently dead.
  */
-const EVENT_API_METHODS = new Set(['on', 'once', 'emit', 'parallel', 'serial', 'waterfall', 'dispatch'])
+const EVENT_API_METHODS = new Set([
+  'on',
+  'once',
+  'emit',
+  'parallel',
+  'serial',
+  'waterfall',
+  'dispatch',
+])
 
 /**
  * Collect event dispatch/listener relations from real cross-file receiver types.
@@ -872,8 +946,8 @@ const EVENT_API_METHODS = new Set(['on', 'once', 'emit', 'parallel', 'serial', '
  * documents why: one program cannot hold both faces' Context merges), so a
  * Client package enters only when a host file imports it. Client-face
  * listeners on client-face events are therefore under-reported —
-   * `connection/reset` omits `ui-skill`/`ui-agent-preset`. Closing it needs a
-   * second Client program whose relations merge into these, not a wider seed.
+ * `connection/reset` omits `ui-skill`/`ui-agent-preset`. Closing it needs a
+ * second Client program whose relations merge into these, not a wider seed.
  */
 export class EventRelationCollector {
   private readonly relations = new Map<string, EventRelation>()
@@ -890,7 +964,10 @@ export class EventRelationCollector {
     private readonly sources: readonly PackageSource[],
   ) {
     this.contextType = this.declaredType('vendor/cordis/src/context.ts', 'Context')
-    this.agentDispatchType = this.declaredType('packages/core/agent/src/dispatch.ts', 'AgentEventDispatch')
+    this.agentDispatchType = this.declaredType(
+      'packages/core/agent/src/dispatch.ts',
+      'AgentEventDispatch',
+    )
     this.eventsServiceType = this.declaredType('vendor/cordis/src/events.ts', 'EventsService')
     this.packageSourceFiles = new Set(sources.map(source => source.sourceFile))
   }
@@ -904,9 +981,14 @@ export class EventRelationCollector {
   /** Resolve one named class/interface declaration to its merged instance type. */
   private declaredType(relativePath: string, name: string): ts.Type {
     const sourceFile = this.project.sourceFile(relativePath)
-    const declaration = sourceFile.statements.find((statement): statement is ts.ClassDeclaration | ts.InterfaceDeclaration => {
-      return (ts.isClassDeclaration(statement) || ts.isInterfaceDeclaration(statement)) && statement.name?.text === name
-    })
+    const declaration = sourceFile.statements.find(
+      (statement): statement is ts.ClassDeclaration | ts.InterfaceDeclaration => {
+        return (
+          (ts.isClassDeclaration(statement) || ts.isInterfaceDeclaration(statement)) &&
+          statement.name?.text === name
+        )
+      },
+    )
     const symbol = declaration?.name && this.project.checker.getSymbolAtLocation(declaration.name)
     if (!symbol) throw new Error(`cannot resolve TypeScript type ${name} from ${relativePath}`)
     return this.project.checker.getDeclaredTypeOfSymbol(symbol)
@@ -977,15 +1059,19 @@ export class EventRelationCollector {
         ? this.project.checker.getShorthandAssignmentValueSymbol(identifier.parent)
         : this.project.checker.getSymbolAtLocation(identifier)
       if (!local) return false
-      const symbol = local.flags & ts.SymbolFlags.Alias
-        ? this.project.checker.getAliasedSymbol(local)
-        : local
+      const symbol =
+        local.flags & ts.SymbolFlags.Alias ? this.project.checker.getAliasedSymbol(local) : local
       return symbol === ownerSymbol
     }
     const visit = (node: ts.Node): void => {
       if (!proven) return
-      if (ts.isIdentifier(node) && node !== name && node.text === name?.text
-        && !isDirectCallee(node) && refersToOwner(node)) {
+      if (
+        ts.isIdentifier(node) &&
+        node !== name &&
+        node.text === name?.text &&
+        !isDirectCallee(node) &&
+        refersToOwner(node)
+      ) {
         proven = false
         return
       }
@@ -1007,7 +1093,10 @@ export class EventRelationCollector {
               this.addDispatcher(name, source.pkg, 'emitAgentEvent')
             }
           }
-        } else if (ts.isPropertyAccessExpression(node.expression) && EVENT_API_METHODS.has(node.expression.name.text)) {
+        } else if (
+          ts.isPropertyAccessExpression(node.expression) &&
+          EVENT_API_METHODS.has(node.expression.name.text)
+        ) {
           const receiverKind = this.receiverKind(node.expression.expression)
           const method = node.expression.name.text
           if (receiverKind === 'events-service' && method === 'dispatch') {
@@ -1021,7 +1110,12 @@ export class EventRelationCollector {
             const eventNames = this.eventNamesFromCall(node, receiverKind)
             if (method === 'on' || method === 'once') {
               for (const event of eventNames) this.ensure(event).listeners.add(source.pkg)
-            } else if (method === 'emit' || method === 'parallel' || method === 'serial' || method === 'waterfall') {
+            } else if (
+              method === 'emit' ||
+              method === 'parallel' ||
+              method === 'serial' ||
+              method === 'waterfall'
+            ) {
               for (const event of eventNames) this.addDispatcher(event, source.pkg, method)
             }
           }
@@ -1037,30 +1131,39 @@ export class EventRelationCollector {
     if (!ts.isIdentifier(expression)) return false
     const local = this.project.checker.getSymbolAtLocation(expression)
     if (!local) return false
-    const symbol = local.flags & ts.SymbolFlags.Alias
-      ? this.project.checker.getAliasedSymbol(local)
-      : local
+    const symbol =
+      local.flags & ts.SymbolFlags.Alias ? this.project.checker.getAliasedSymbol(local) : local
     const declarations = symbol.declarations ?? []
     return declarations.some((declaration) => {
-      return ts.isFunctionDeclaration(declaration)
-        && declaration.name?.text === 'emitAgentEvent'
-        && this.project.relativePath(declaration.getSourceFile()) === 'packages/core/agent/src/dispatch.ts'
+      return (
+        ts.isFunctionDeclaration(declaration) &&
+        declaration.name?.text === 'emitAgentEvent' &&
+        this.project.relativePath(declaration.getSourceFile()) ===
+          'packages/core/agent/src/dispatch.ts'
+      )
     })
   }
 
   /** Classify a receiver using assignability to the repository's actual event API types. */
   private receiverKind(receiver: ts.Expression): EventReceiverKind | undefined {
     const type = this.project.checker.getTypeAtLocation(receiver)
-    if (type.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown | ts.TypeFlags.Never)) return undefined
-    if (this.project.checker.isTypeAssignableTo(type, this.eventsServiceType)) return 'events-service'
+    if (type.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown | ts.TypeFlags.Never))
+      return undefined
+    if (this.project.checker.isTypeAssignableTo(type, this.eventsServiceType))
+      return 'events-service'
     if (this.project.checker.isTypeAssignableTo(type, this.contextType)) return 'context'
-    if (this.project.checker.isTypeAssignableTo(type, this.agentDispatchType)) return 'agent-dispatch'
+    if (this.project.checker.isTypeAssignableTo(type, this.agentDispatchType))
+      return 'agent-dispatch'
     return undefined
   }
 
   /** Resolve the event-name argument for Context and fused agent dispatch calls. */
-  private eventNamesFromCall(call: ts.CallExpression, receiverKind: Exclude<EventReceiverKind, 'events-service'>): Set<string> {
-    const candidates = receiverKind === 'context' ? call.arguments.slice(0, 2) : call.arguments.slice(0, 1)
+  private eventNamesFromCall(
+    call: ts.CallExpression,
+    receiverKind: Exclude<EventReceiverKind, 'events-service'>,
+  ): Set<string> {
+    const candidates =
+      receiverKind === 'context' ? call.arguments.slice(0, 2) : call.arguments.slice(0, 1)
     for (const candidate of candidates) {
       const values = this.finiteStringValues(candidate)
       if (values) return values
@@ -1094,7 +1197,11 @@ export class EventRelationCollector {
     if (!symbol) return new Set()
     const events = new Set<string>()
     for (const declaration of symbol.declarations ?? []) {
-      if (ts.isVariableDeclaration(declaration) && declaration.initializer && isConstDeclaration(declaration)) {
+      if (
+        ts.isVariableDeclaration(declaration) &&
+        declaration.initializer &&
+        isConstDeclaration(declaration)
+      ) {
         addAll(events, this.eventNamesFromArgumentList(declaration.initializer, new Set(seen)))
       } else if (ts.isParameter(declaration)) {
         addAll(events, this.eventNamesFromParameter(declaration, seen))
@@ -1104,7 +1211,10 @@ export class EventRelationCollector {
   }
 
   /** Follow a non-exported local helper parameter back to every resolved call site. */
-  private eventNamesFromParameter(parameter: ts.ParameterDeclaration, seen: Set<ts.Node>): Set<string> {
+  private eventNamesFromParameter(
+    parameter: ts.ParameterDeclaration,
+    seen: Set<ts.Node>,
+  ): Set<string> {
     const owner = parameter.parent
     if (!ts.isFunctionDeclaration(owner) || hasExportModifier(owner)) return new Set()
     const index = owner.parameters.indexOf(parameter)
@@ -1132,10 +1242,13 @@ export class EventRelationCollector {
     return declarations.some((declaration) => {
       if (!ts.isParameter(declaration)) return false
       const method = declaration.parent
-      if (!ts.isMethodDeclaration(method) || !ts.isObjectLiteralExpression(method.parent)) return false
+      if (!ts.isMethodDeclaration(method) || !ts.isObjectLiteralExpression(method.parent))
+        return false
       const contextualType = this.project.checker.getContextualType(method.parent)
-      return contextualType !== undefined
-        && this.project.checker.isTypeAssignableTo(contextualType, this.agentDispatchType)
+      return (
+        contextualType !== undefined &&
+        this.project.checker.isTypeAssignableTo(contextualType, this.agentDispatchType)
+      )
     })
   }
 
@@ -1161,11 +1274,11 @@ export class EventRelationCollector {
 function isDirectCallee(identifier: ts.Identifier): boolean {
   let current: ts.Node = identifier
   while (
-    ts.isParenthesizedExpression(current.parent)
-    || ts.isAsExpression(current.parent)
-    || ts.isTypeAssertionExpression(current.parent)
-    || ts.isNonNullExpression(current.parent)
-    || ts.isSatisfiesExpression(current.parent)
+    ts.isParenthesizedExpression(current.parent) ||
+    ts.isAsExpression(current.parent) ||
+    ts.isTypeAssertionExpression(current.parent) ||
+    ts.isNonNullExpression(current.parent) ||
+    ts.isSatisfiesExpression(current.parent)
   ) {
     current = current.parent
   }
@@ -1176,11 +1289,11 @@ function isDirectCallee(identifier: ts.Identifier): boolean {
 function unwrapExpression(expression: ts.Expression): ts.Expression {
   let current = expression
   while (
-    ts.isParenthesizedExpression(current)
-    || ts.isAsExpression(current)
-    || ts.isTypeAssertionExpression(current)
-    || ts.isNonNullExpression(current)
-    || ts.isSatisfiesExpression(current)
+    ts.isParenthesizedExpression(current) ||
+    ts.isAsExpression(current) ||
+    ts.isTypeAssertionExpression(current) ||
+    ts.isNonNullExpression(current) ||
+    ts.isSatisfiesExpression(current)
   ) {
     current = current.expression
   }
@@ -1210,9 +1323,16 @@ function isConstDeclaration(declaration: ts.VariableDeclaration): boolean {
 
 /** Return whether a declaration is visible to callers outside its source module. */
 function hasExportModifier(node: ts.Node): boolean {
-  return ts.canHaveModifiers(node) && (ts.getModifiers(node)?.some((modifier) => {
-    return modifier.kind === ts.SyntaxKind.ExportKeyword || modifier.kind === ts.SyntaxKind.DefaultKeyword
-  }) ?? false)
+  return (
+    ts.canHaveModifiers(node) &&
+    (ts.getModifiers(node)?.some((modifier) => {
+      return (
+        modifier.kind === ts.SyntaxKind.ExportKeyword ||
+        modifier.kind === ts.SyntaxKind.DefaultKeyword
+      )
+    }) ??
+      false)
+  )
 }
 
 /** Add every member of source to target. */
@@ -1233,11 +1353,14 @@ function unionSets<T>(left: ReadonlySet<T>, right: ReadonlySet<T>): Set<T> {
  * @returns `packages/<group>/<pkg>/src` files tagged with their package name.
  */
 export function collectPackageSources(project: TypeScriptProject): PackageSource[] {
-  return project.sourceFiles().flatMap((sourceFile): PackageSource[] => {
-    const rel = project.relativePath(sourceFile)
-    const match = /^packages\/[^/]+\/([^/]+)\/src\/.+\.ts$/.exec(rel)
-    return match?.[1] ? [{ rel, pkg: match[1], sourceFile }] : []
-  }).sort((left, right) => left.rel.localeCompare(right.rel))
+  return project
+    .sourceFiles()
+    .flatMap((sourceFile): PackageSource[] => {
+      const rel = project.relativePath(sourceFile)
+      const match = /^packages\/[^/]+\/([^/]+)\/src\/.+\.ts$/.exec(rel)
+      return match?.[1] ? [{ rel, pkg: match[1], sourceFile }] : []
+    })
+    .sort((left, right) => left.rel.localeCompare(right.rel))
 }
 
 function collectEventRelations(): Map<string, EventRelation> {
@@ -1249,19 +1372,29 @@ function relationPackages(map: Map<string, Set<string>>, pkgsByShort: Map<string
   if (map.size === 0) return '-'
   return [...map.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([pkg, methods]) => `${pkgLink(pkgsByShort.get(pkg), pkg)} (${[...methods].sort().map(m => `\`${m}\``).join(', ')})`)
+    .map(
+      ([pkg, methods]) =>
+        `${pkgLink(pkgsByShort.get(pkg), pkg)} (${[...methods]
+          .sort()
+          .map(m => `\`${m}\``)
+          .join(', ')})`,
+    )
     .join(', ')
 }
 
 function listenerPackages(listeners: Set<string>, pkgsByShort: Map<string, Pkg>): string {
   if (listeners.size === 0) return '-'
-  return [...listeners].sort().map(pkg => pkgLink(pkgsByShort.get(pkg), pkg)).join(', ')
+  return [...listeners]
+    .sort()
+    .map(pkg => pkgLink(pkgsByShort.get(pkg), pkg))
+    .join(', ')
 }
 
 function renderEventRelations(pkgs: Pkg[], events: readonly EventEntry[]): string {
   const relations = collectEventRelations()
   const pkgsByShort = new Map(pkgs.map(pkg => [pkg.short, pkg]))
-  const maintenance = 'generated: Cordis event declarations and producer/listener edges are resolved from the repository TypeScript Program'
+  const maintenance =
+    'generated: Cordis event declarations and producer/listener edges are resolved from the repository TypeScript Program'
   const lines = generatedHeader('Event Producer And Consumer Matrix')
   lines.push(
     'This matrix shows which packages dispatch each harness-owned event and which packages listen to it. Events are many-to-many, so the dense relation data is presented as a table rather than one large graph. Receiver and event-name types also cover contained dispatch sites that deliberately bypass `ctx.emit`, such as subagent lifecycle containment.',
@@ -1270,8 +1403,13 @@ function renderEventRelations(pkgs: Pkg[], events: readonly EventEntry[]): strin
     '| --- | --- | --- | --- | --- |',
   )
   for (const event of [...events].sort((a, b) => a.name.localeCompare(b.name))) {
-    const relation = relations.get(event.name) ?? { dispatchers: new Map<string, Set<string>>(), listeners: new Set<string>() }
-    lines.push(`| \`${event.name}\` | \`${event.mode}\` | ${sourceLink(event.source)} | ${relationPackages(relation.dispatchers, pkgsByShort)} | ${listenerPackages(relation.listeners, pkgsByShort)} |`)
+    const relation = relations.get(event.name) ?? {
+      dispatchers: new Map<string, Set<string>>(),
+      listeners: new Set<string>(),
+    }
+    lines.push(
+      `| \`${event.name}\` | \`${event.mode}\` | ${sourceLink(event.source)} | ${relationPackages(relation.dispatchers, pkgsByShort)} | ${listenerPackages(relation.listeners, pkgsByShort)} |`,
+    )
   }
   // Every declared event needs a dispatcher: zero means dead vocabulary or an
   // unrecognized semantic dispatch form. Listener-free extension points remain
@@ -1286,19 +1424,27 @@ function renderEventRelations(pkgs: Pkg[], events: readonly EventEntry[]): strin
     .sort()
   if (undispatched.length > 0) {
     throw new Error(
-      `event-producer-consumer matrix: no dispatcher found for declared event${undispatched.length > 1 ? 's' : ''} `
-      + `${undispatched.map(name => `"${name}"`).join(', ')} — dead vocabulary, or a dispatch form the semantic scan misses `
-      + '(teach scripts/gen-doc-graphs.ts that form)',
+      `event-producer-consumer matrix: no dispatcher found for declared event${undispatched.length > 1 ? 's' : ''} ` +
+        `${undispatched.map(name => `"${name}"`).join(', ')} — dead vocabulary, or a dispatch form the semantic scan misses ` +
+        '(teach scripts/gen-doc-graphs.ts that form)',
     )
   }
   const declared = new Set(events.map(event => event.name))
   const extra = [...relations.keys()].filter(event => !declared.has(event)).sort()
   if (extra.length > 0) {
-    lines.push('', '## Non-harness or undeclared event strings seen in package source', '', '| Event string | Dispatchers | Listeners |', '| --- | --- | --- |')
+    lines.push(
+      '',
+      '## Non-harness or undeclared event strings seen in package source',
+      '',
+      '| Event string | Dispatchers | Listeners |',
+      '| --- | --- | --- |',
+    )
     for (const event of extra) {
       const relation = relations.get(event)
       if (!relation) continue
-      lines.push(`| \`${event}\` | ${relationPackages(relation.dispatchers, pkgsByShort)} | ${listenerPackages(relation.listeners, pkgsByShort)} |`)
+      lines.push(
+        `| \`${event}\` | ${relationPackages(relation.dispatchers, pkgsByShort)} | ${listenerPackages(relation.listeners, pkgsByShort)} |`,
+      )
     }
   }
   lines.push('', ...maintenanceFooter(maintenance))
@@ -1306,7 +1452,8 @@ function renderEventRelations(pkgs: Pkg[], events: readonly EventEntry[]): strin
 }
 
 function renderLifecycle(): string {
-  const maintenance = 'curated Mermaid sequence; exact event signatures live in the generated Cordis catalog'
+  const maintenance =
+    'curated Mermaid sequence; exact event signatures live in the generated Cordis catalog'
   return [
     ...generatedHeader('Agent Turn And Step Lifecycle'),
     'This sequence is the visual companion to [architecture.md](architecture.md#turn-flow). It keeps durable replay facts on `session/event` and live control/status on `agent/*`.',
@@ -1392,7 +1539,8 @@ function renderLifecycle(): string {
 }
 
 function renderToolPipeline(): string {
-  const maintenance = 'curated Mermaid flow; exact tool schemas and event signatures live in generated catalogs'
+  const maintenance =
+    'curated Mermaid flow; exact tool schemas and event signatures live in generated catalogs'
   return [
     ...generatedHeader('Tool Execution Pipeline'),
     'This graph shows where policy, hooks, sandboxing, filesystem guards, result rewriting, final-outcome observation, and UI rendering run without changing the loop. The `tools/pre-execute` waterfall runs first, monotonic guards run next, and the `tools/execute` and `tools/post-execute` waterfalls follow; the three waterfalls may transform a call. Definition-owned `finalizeContent` and `tools/result` run afterward.',
@@ -1449,7 +1597,7 @@ function renderToolPipeline(): string {
     '  allResults --> context',
     '```',
     '',
-    'Filesystem read-before-edit checks stay below `tool-fs` on `fs/*` events. Generic pre/post waterfalls host hooks and approval policy; `ctx.approval` resolves asks before monotonic guards, and owner policy that must not be reordered remains a registered guard. Around-dispatch concerns such as timeouts wrap `tools/execute`. The registry losslessly snapshots the candidate result and normalizes a snapshot failure before the visible definition\'s snapshotted `finalizeContent` callback enforces its synchronous content-only invariant. `tools/result` then observes the immutable, lossless-JSON outcome. This lets hooks span tool families without coupling the tools to one policy service. PTC mode sends both the reserved `run_code` transport and its serialized sub-calls through the pipeline; sub-calls carry the parent token, log `tool/code-dispatch`, return denials as binding rejections, and omit `additionalContexts` to preserve call/result adjacency.',
+    "Filesystem read-before-edit checks stay below `tool-fs` on `fs/*` events. Generic pre/post waterfalls host hooks and approval policy; `ctx.approval` resolves asks before monotonic guards, and owner policy that must not be reordered remains a registered guard. Around-dispatch concerns such as timeouts wrap `tools/execute`. The registry losslessly snapshots the candidate result and normalizes a snapshot failure before the visible definition's snapshotted `finalizeContent` callback enforces its synchronous content-only invariant. `tools/result` then observes the immutable, lossless-JSON outcome. This lets hooks span tool families without coupling the tools to one policy service. PTC mode sends both the reserved `run_code` transport and its serialized sub-calls through the pipeline; sub-calls carry the parent token, log `tool/code-dispatch`, return denials as binding rejections, and omit `additionalContexts` to preserve call/result adjacency.",
     '',
     ...maintenanceFooter(maintenance),
   ].join('\n')
@@ -1522,7 +1670,9 @@ function main(): void {
       console.log(`gen-doc-graphs: ${docs.length} graph doc(s) are up to date.`)
       return
     }
-    console.error(`gen-doc-graphs: stale graph doc(s): ${stale.join(', ')}. Run \`pnpm run gen-doc-graphs\` and commit the result.`)
+    console.error(
+      `gen-doc-graphs: stale graph doc(s): ${stale.join(', ')}. Run \`pnpm run gen-doc-graphs\` and commit the result.`,
+    )
     process.exit(1)
   }
 
