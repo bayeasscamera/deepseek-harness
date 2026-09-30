@@ -292,6 +292,24 @@ export interface Config {
 
 来源：[`packages/attachment/attachment-local/src/index.ts:61`](../packages/attachment/attachment-local/src/index.ts)
 
+<a id="deepseek-aidsh-auto-continue"></a>
+
+## `@deepseek-ai/dsh-auto-continue`
+
+```ts config-catalog
+/**
+ * Plugin config, validated by the same-named schemastery schema plus the
+ * load-time check in `apply` (misconfiguration fails loud: a non-integer or a
+ * value below 1 throws at plugin load, never a silent fall-back).
+ */
+export interface Config {
+  /** Consecutive continuations allowed before the turn closes truncated (default 8). */
+  maxConsecutive?: number
+}
+```
+
+Source: [`packages/guard/auto-continue/src/index.ts:27`](../packages/guard/auto-continue/src/index.ts)
+
 <a id="deepseek-aidsh-bash-local"></a>
 
 ## `@deepseek-ai/dsh-bash-local`
@@ -3286,6 +3304,30 @@ export interface Config {
 
 来源：[`packages/web/web-fetch-http/src/index.ts:32`](../packages/web/web-fetch-http/src/index.ts)
 
+<a id="deepseek-aidsh-web-search-brave"></a>
+
+## `@deepseek-ai/dsh-web-search-brave`
+
+需要：`web`
+
+```ts config-catalog
+/** Plugin config (all optional — `apply` fills env-var and constant defaults). */
+export interface Config {
+  /** Brave API key (`X-Subscription-Token`). Falls back to `$BRAVE_API_KEY`. Empty → provider unavailable. */
+  apiKey?: string
+  /** Endpoint base; `/web/search` is appended. Defaults to the public API. */
+  baseURL?: string
+  /** Default result count when a request carries no `maxResults`. Omitted = none. */
+  numResults?: number
+  /** Optional country bias sent as Brave's `country`. Omitted = none. */
+  country?: string
+  /** Optional search language sent as Brave's `search_lang`. Omitted = none. */
+  searchLang?: string
+}
+```
+
+来源：[`packages/web/web-search-brave/src/index.ts:31`](../packages/web/web-search-brave/src/index.ts)
+
 <a id="deepseek-aidsh-web-search-deepseek"></a>
 
 ## `@deepseek-ai/dsh-web-search-deepseek`
@@ -3362,6 +3404,32 @@ export interface Config {
 
 来源：[`packages/web/web-search-perplexity/src/index.ts:30`](../packages/web/web-search-perplexity/src/index.ts)
 
+<a id="deepseek-aidsh-web-search-tavily"></a>
+
+## `@deepseek-ai/dsh-web-search-tavily`
+
+需要：`web`
+
+```ts config-catalog
+/** Plugin config (all optional — `apply` fills env-var and constant defaults). */
+export interface Config {
+  /** Tavily API key. Falls back to `$TAVILY_API_KEY`. Empty → provider unavailable. */
+  apiKey?: string
+  /** Endpoint base; `/search` is appended. Defaults to the public API. */
+  baseURL?: string
+  /** Default result count when a request carries no `maxResults`. Omitted = none. */
+  numResults?: number
+  /** Retrieval depth sent as Tavily's `search_depth`. Defaults to `basic`. */
+  searchDepth?: 'basic' | 'advanced' | 'fast' | 'ultra-fast'
+  /** Optional topic sent as Tavily's `topic`. Omitted = no filter. */
+  topic?: 'general' | 'news' | 'finance'
+  /** Whether to request Tavily's LLM-generated answer as `content`. Defaults to true. */
+  includeAnswer?: boolean
+}
+```
+
+来源：[`packages/web/web-search-tavily/src/index.ts:33`](../packages/web/web-search-tavily/src/index.ts)
+
 <a id="deepseek-aidsh-webhook-github"></a>
 
 ## `@deepseek-ai/dsh-webhook-github`
@@ -3425,6 +3493,7 @@ export interface Config {
 - `@deepseek-ai/dsh-authorization` — 需要 `credentials`（[`packages/credentials/authorization/src/index.ts`](../packages/credentials/authorization/src/index.ts)）
 - `@deepseek-ai/dsh-client-file-upload` — 需要 `agents` · `attachments` · `commands` · `connection`（[`packages/client/file-upload/src/index.ts`](../packages/client/file-upload/src/index.ts)）
 - `@deepseek-ai/dsh-client-locale`（[`packages/client/locale/src/index.ts`](../packages/client/locale/src/index.ts)）
+- `@deepseek-ai/dsh-client-locale-fr`（[`packages/client/locale-fr/src/index.ts`](../packages/client/locale-fr/src/index.ts)）
 - `@deepseek-ai/dsh-client-modules` — 需要 `loader`（[`packages/client/modules/src/index.ts`](../packages/client/modules/src/index.ts)）
 - `@deepseek-ai/dsh-client-resources`（[`packages/client/resources/src/index.ts`](../packages/client/resources/src/index.ts)）
 - `@deepseek-ai/dsh-client-ui-agent-preset`（[`packages/client/ui-agent-preset/src/index.ts`](../packages/client/ui-agent-preset/src/index.ts)）

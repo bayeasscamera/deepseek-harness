@@ -96,11 +96,13 @@ turn/start
      tool/call* -> tools/pre-execute -> tools/execute -> tools/post-execute -> tool/result*
      step/end
      tools owe another request, or next-step input arrived -> claim -> next step
-  -> agent/turn-stopping
+  -> agent/turn-stopping               serial; payload carries the turn's pending ending
 turn/end
 ```
 
 `turn/*`, `step/*`, `user/message`, `assistant/message`, `assistant/attempt`, and `tool/*` are durable session events; the rest are live extension points across three domains. `agent/assistant-stream` publishes process-local start, transient chunk, and end frames. The loop commits the complete compact stream as one message or log-only attempt before a committed end frame, and the Web Session-follow adapter is the live event's only remote consumer. `agent/pre-step`, `agent/request`, `llm/stream`, and the three `tools/*` events are waterfalls, whose listeners must call `next()` to delegate; `agent/turn-stopping` is serial and has no `next()`.
+
+`agent/turn-stopping` fires only when the latest step closed the model's response obligation: a step that dispatched tool calls reopens it, so its results reach the model in another step before the turn may stop. The dispatch payload carries the turn's pending ending (`reason`) before `turn/end` commits it; `max-tokens` names an output-ceiling truncation, and the [auto-continue](../packages/guard/auto-continue/README.md) guard steers a continuation there so a truncated answer finishes in the same turn instead of waiting for a manual prompt. The durable record is independent: once any step hits the output ceiling, the recorded `turn/end` reason stays `max-tokens` even when a later step completes normally.
 
 Input reaches the driver through one inbox. Some messages wake it immediately; injected context waits in the inbox until another message does.
 

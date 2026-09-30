@@ -100,11 +100,13 @@ turn/start
      tool/call* -> tools/pre-execute -> tools/execute -> tools/post-execute -> tool/result*
      step/end
      tools owe another request, or next-step input arrived -> claim -> next step
-  -> agent/turn-stopping
+  -> agent/turn-stopping               serial; payload carries the turn's pending ending
 turn/end
 ```
 
 `turn/*`、`step/*`、`user/message`、`assistant/message`、`assistant/attempt` 和 `tool/*` 是持久会话事件；其余是分属三个事件域的实时扩展点。`agent/assistant-stream` 发布进程本地 start、瞬态 chunk 与 end frame。loop 会在 committed end frame 前把完整紧凑 stream 提交为一个 message 或仅日志 attempt；Web Session-follow adapter 是该 live event 唯一的远程消费方。`agent/pre-step`、`agent/request`、`llm/stream` 和三个 `tools/*` 事件是 waterfall（瀑布式事件），其监听器必须调用 `next()` 才能委托下去；`agent/turn-stopping` 是 serial 事件，没有 `next()`。
+
+`agent/turn-stopping` 只在最近一步闭合了模型的应答义务时触发：派发过工具调用的步骤会重新打开该义务，其结果必须先经下一步送达模型，轮次才允许停止。dispatch 的 payload 在 `turn/end` 提交之前携带轮次待提交的 ending（`reason`）；`max-tokens` 表示输出上限截断，[auto-continue](../packages/guard/auto-continue/README.zh.md) 守卫在此处 steer 一条续写提示，让被截断的回答在同一轮内完成，而不是等待手动续写。持久记录独立于控制流：只要任一步骤触及输出上限，已记录的 `turn/end` reason 就保持 `max-tokens`，即使后续步骤正常完成。
 
 输入通过同一个 inbox 到达驱动器。有些消息会立即唤醒它；注入的上下文会留在 inbox 中，直到另一条消息将其唤醒。
 
