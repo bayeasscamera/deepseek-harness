@@ -27,17 +27,19 @@ function errorOf(reason: unknown, fallback: string): Error {
   return reason instanceof Error ? reason : new Error(fallback)
 }
 
-protocol.registerSchemesAsPrivileged([{
-  scheme: SCHEME,
-  privileges: {
-    standard: true,
-    secure: true,
-    supportFetchAPI: true,
-    corsEnabled: false,
-    stream: true,
-    codeCache: true,
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: SCHEME,
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      corsEnabled: false,
+      stream: true,
+      codeCache: true,
+    },
   },
-}])
+])
 
 const MIME: Readonly<Record<string, string>> = {
   '.css': 'text/css; charset=utf-8',
@@ -54,18 +56,30 @@ interface RuntimeResources {
 
 function runtimeResources(): RuntimeResources {
   const development = !app.isPackaged
-  const node = (development ? process.env.DSH_DESKTOP_NODE_BINARY : undefined)
-    ?? join(process.resourcesPath, 'runtime', 'node', process.platform === 'win32' ? 'node.exe' : 'node')
-  const pnpm = (development ? process.env.DSH_DESKTOP_PNPM_ENTRY : undefined)
-    ?? join(process.resourcesPath, 'runtime', 'pnpm', 'bin', 'pnpm.mjs')
-  const seed = (development ? process.env.DSH_DESKTOP_SEED_DIR : undefined) ?? join(process.resourcesPath, 'seed')
+  const node =
+    (development ? process.env.DSH_DESKTOP_NODE_BINARY : undefined) ??
+    join(
+      process.resourcesPath,
+      'runtime',
+      'node',
+      process.platform === 'win32' ? 'node.exe' : 'node',
+    )
+  const pnpm =
+    (development ? process.env.DSH_DESKTOP_PNPM_ENTRY : undefined) ??
+    join(process.resourcesPath, 'runtime', 'pnpm', 'bin', 'pnpm.mjs')
+  const seed =
+    (development ? process.env.DSH_DESKTOP_SEED_DIR : undefined) ??
+    join(process.resourcesPath, 'seed')
   return { node, pnpm, seed }
 }
 
 function developmentProject(): string | undefined {
   const configured = process.env.DSH_DESKTOP_DEV_PROJECT_DIR
   if (configured === undefined || configured === '') return undefined
-  if (app.isPackaged) throw new Error('dsh desktop: development project override is unavailable in packaged applications')
+  if (app.isPackaged)
+    throw new Error(
+      'dsh desktop: development project override is unavailable in packaged applications',
+    )
   return resolve(configured)
 }
 
@@ -74,7 +88,9 @@ function developmentHostInspectPort(enabled: boolean): number | undefined {
   if (!enabled || configured === undefined || configured === '') return undefined
   const port = Number(configured)
   if (!Number.isSafeInteger(port) || port < 1 || port > 65_535) {
-    throw new Error('dsh desktop: DSH_DESKTOP_HOST_INSPECT_PORT must be an integer from 1 through 65535')
+    throw new Error(
+      'dsh desktop: DSH_DESKTOP_HOST_INSPECT_PORT must be an integer from 1 through 65535',
+    )
   }
   return port
 }
@@ -111,7 +127,8 @@ function assertDesktopSender(event: IpcMainInvokeEvent, hostnames: readonly stri
 }
 
 async function serveShellAsset(request: Request): Promise<Response> {
-  if (request.method !== 'GET' && request.method !== 'HEAD') return new Response(null, { status: 405 })
+  if (request.method !== 'GET' && request.method !== 'HEAD')
+    return new Response(null, { status: 405 })
   const root = resolve(app.getAppPath(), 'renderer')
   const url = new URL(request.url)
   let pathname: string
@@ -124,7 +141,9 @@ async function serveShellAsset(request: Request): Promise<Response> {
   if (target !== root && !target.startsWith(root + sep)) return new Response(null, { status: 403 })
   try {
     const body = request.method === 'HEAD' ? null : await readFile(target)
-    return new Response(body, { headers: { 'content-type': MIME[extname(target)] ?? 'application/octet-stream' } })
+    return new Response(body, {
+      headers: { 'content-type': MIME[extname(target)] ?? 'application/octet-stream' },
+    })
   } catch {
     return new Response(null, { status: 404 })
   }
@@ -184,13 +203,18 @@ async function main(): Promise<void> {
         }
       }
       if (healthFailure !== undefined && restartFailure !== undefined) {
-        throw new AggregateError([
-          errorOf(healthFailure, 'desktop project: staged health check failed'),
-          errorOf(restartFailure, 'desktop project: active backend restart failed'),
-        ], 'desktop project: staged health check and active backend restart failed')
+        throw new AggregateError(
+          [
+            errorOf(healthFailure, 'desktop project: staged health check failed'),
+            errorOf(restartFailure, 'desktop project: active backend restart failed'),
+          ],
+          'desktop project: staged health check and active backend restart failed',
+        )
       }
-      if (healthFailure !== undefined) throw errorOf(healthFailure, 'desktop project: staged health check failed')
-      if (restartFailure !== undefined) throw errorOf(restartFailure, 'desktop project: active backend restart failed')
+      if (healthFailure !== undefined)
+        throw errorOf(healthFailure, 'desktop project: staged health check failed')
+      if (restartFailure !== undefined)
+        throw errorOf(restartFailure, 'desktop project: active backend restart failed')
     },
     beforeActivate: async () => {
       const active = host
@@ -211,26 +235,27 @@ async function main(): Promise<void> {
   }
   host = await startHost()
 
-  const updates = new DesktopUpdateCoordinator(
-    publishUpdate,
-    async () => {
-      shellInstallerOwnsQuit = true
-      const active = host
-      host = undefined
-      await active?.stop()
-    },
-  )
+  const updates = new DesktopUpdateCoordinator(publishUpdate, async () => {
+    shellInstallerOwnsQuit = true
+    const active = host
+    host = undefined
+    await active?.stop()
+  })
 
   protocol.handle(SCHEME, (request) => {
     const url = new URL(request.url)
     if (url.hostname === 'shell') return serveShellAsset(request)
     if (url.hostname !== 'app') return Promise.resolve(new Response(null, { status: 404 }))
     const active = host
-    if (active === undefined) return Promise.resolve(new Response('backend unavailable', { status: 503 }))
+    if (active === undefined)
+      return Promise.resolve(new Response('backend unavailable', { status: 503 }))
     return active.fetch(request)
   })
 
-  const mutate = async (event: IpcMainInvokeEvent, mutation: Parameters<DesktopProjectManager['mutate']>[0]): Promise<void> => {
+  const mutate = async (
+    event: IpcMainInvokeEvent,
+    mutation: Parameters<DesktopProjectManager['mutate']>[0],
+  ): Promise<void> => {
     assertDesktopSender(event, ['shell'])
     if (development !== undefined) {
       throw new Error('dsh desktop: plugin package changes require a packaged application')
@@ -320,31 +345,54 @@ async function main(): Promise<void> {
     pluginWindow = createWindow(managementPreload)
     pluginWindow.setSize(900, 620)
     pluginWindow.setTitle(messages.pluginWindowTitle)
-    pluginWindow.once('ready-to-show', () => { pluginWindow?.show() })
-    pluginWindow.once('closed', () => { pluginWindow = undefined })
+    pluginWindow.once('ready-to-show', () => {
+      pluginWindow?.show()
+    })
+    pluginWindow.once('closed', () => {
+      pluginWindow = undefined
+    })
     void pluginWindow.loadURL(`${SCHEME}://shell/plugin-manager.html`)
   }
 
-  Menu.setApplicationMenu(Menu.buildFromTemplate([{
-    label: process.platform === 'darwin' ? app.name : messages.application,
-    submenu: [
+  // The standard Edit submenu (role: 'editMenu') is what routes Cmd/Ctrl+C, V, X
+  // and A: without it macOS never delivers those accelerators to the webContents,
+  // leaving programmatic writes (copy buttons) working while keyboard and context
+  // paste are dead. Electron localizes its label from the OS locale.
+  Menu.setApplicationMenu(
+    Menu.buildFromTemplate([
       {
-        label: development === undefined ? messages.pluginsMenu : messages.pluginsMenuPackagedOnly,
-        accelerator: 'CmdOrCtrl+,',
-        enabled: development === undefined,
-        click: openPluginWindow,
+        label: process.platform === 'darwin' ? app.name : messages.application,
+        submenu: [
+          {
+            label:
+              development === undefined ? messages.pluginsMenu : messages.pluginsMenuPackagedOnly,
+            accelerator: 'CmdOrCtrl+,',
+            enabled: development === undefined,
+            click: openPluginWindow,
+          },
+          {
+            label: messages.checkUpdatesMenu,
+            click: () => {
+              void checkAndPrompt(true)
+            },
+          },
+          { type: 'separator' },
+          { role: 'quit' },
+        ],
       },
-      { label: messages.checkUpdatesMenu, click: () => { void checkAndPrompt(true) } },
-      { type: 'separator' },
-      { role: 'quit' },
-    ],
-  }]))
+      { role: 'editMenu' },
+    ]),
+  )
 
   const createMainWindow = (): BrowserWindow => {
     const window = createWindow(appPreload)
     mainWindow = window
-    window.once('ready-to-show', () => { if (!window.isDestroyed()) window.show() })
-    window.on('closed', () => { if (mainWindow === window) mainWindow = undefined })
+    window.once('ready-to-show', () => {
+      if (!window.isDestroyed()) window.show()
+    })
+    window.on('closed', () => {
+      if (mainWindow === window) mainWindow = undefined
+    })
     return window
   }
   focusPrimaryWindow = () => {
@@ -365,7 +413,9 @@ async function main(): Promise<void> {
     mainWindow.webContents.openDevTools({ mode: 'detach' })
   }
   publishUpdate(updateState)
-  setTimeout(() => { void checkAndPrompt(false) }, 10_000)
+  setTimeout(() => {
+    void checkAndPrompt(false)
+  }, 10_000)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) focusPrimaryWindow()
@@ -379,19 +429,30 @@ async function main(): Promise<void> {
     event.preventDefault()
     const active = host
     host = undefined
-    void active.stop().finally(() => { app.quit() })
+    void active.stop().finally(() => {
+      app.quit()
+    })
   })
 }
 
-const ownsDesktopInstance = claimDesktopSingleInstance(app, () => { focusPrimaryWindow() })
-
-if (ownsDesktopInstance) void app.whenReady().then(main).catch(async (error: unknown) => {
-  const message = error instanceof Error ? error.message : String(error)
-  console.error(error)
-  const diagnosticFile = process.env.DSH_DESKTOP_DIAGNOSTIC_FILE
-  if (diagnosticFile !== undefined) {
-    await writeFile(diagnosticFile, `${error instanceof Error ? error.stack ?? message : message}\n`).catch(() => undefined)
-  }
-  dialog.showErrorBox(resolveDesktopLocale(app.getLocale()).messages.startupFailed, message)
-  app.exit(1)
+const ownsDesktopInstance = claimDesktopSingleInstance(app, () => {
+  focusPrimaryWindow()
 })
+
+if (ownsDesktopInstance)
+  void app
+    .whenReady()
+    .then(main)
+    .catch(async (error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error)
+      console.error(error)
+      const diagnosticFile = process.env.DSH_DESKTOP_DIAGNOSTIC_FILE
+      if (diagnosticFile !== undefined) {
+        await writeFile(
+          diagnosticFile,
+          `${error instanceof Error ? (error.stack ?? message) : message}\n`,
+        ).catch(() => undefined)
+      }
+      dialog.showErrorBox(resolveDesktopLocale(app.getLocale()).messages.startupFailed, message)
+      app.exit(1)
+    })

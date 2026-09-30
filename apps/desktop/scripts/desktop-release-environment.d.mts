@@ -58,4 +58,6 @@ export function resolveMacOSSigningEnvironment(env: NodeJS.ProcessEnv): MacOSSig
  * @param env - Packaging environment.
  * @returns Notary credentials without the submitted artifact path.
  */
-export function resolveMacOSNotarizationEnvironment(env: NodeJS.ProcessEnv): MacOSNotarizationEnvironment
+export function resolveMacOSNotarizationEnvironment(
+  env: NodeJS.ProcessEnv,
+): MacOSNotarizationEnvironment

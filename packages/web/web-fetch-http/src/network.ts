@@ -31,7 +31,10 @@ export interface PinnedResponse {
 }
 
 /** Resolver signature used to test public-address policy without process DNS changes. */
-export type AddressResolver = (hostname: string, options: { all: true; order: 'verbatim' }) => Promise<LookupAddress[]>
+export type AddressResolver = (
+  hostname: string,
+  options: { all: true; order: 'verbatim' },
+) => Promise<LookupAddress[]>
 
 /** RFC 6052 prefix lengths that may carry an IPv4 destination through NAT64. */
 const RFC6052_PREFIX_LENGTHS = [32, 40, 48, 56, 64, 96] as const
@@ -40,7 +43,7 @@ const IPV4ONLY_SENTINELS = new Set(['192.0.0.170', '192.0.0.171'])
 
 interface Nat64Prefix {
   readonly bytes: readonly number[]
-  readonly length: typeof RFC6052_PREFIX_LENGTHS[number]
+  readonly length: (typeof RFC6052_PREFIX_LENGTHS)[number]
 }
 
 /**
@@ -79,30 +82,38 @@ export async function resolvePublicAddresses(
 ): Promise<PublicAddress[]> {
   const unbracketed = stripIpv6Brackets(hostname)
   const literalFamily = isIP(unbracketed)
-  const resolved = literalFamily === 0
-    ? await raceWithSignal(resolver(unbracketed, { all: true, order: 'verbatim' }), signal)
-    : [{ address: unbracketed, family: literalFamily }]
+  const resolved =
+    literalFamily === 0
+      ? await raceWithSignal(resolver(unbracketed, { all: true, order: 'verbatim' }), signal)
+      : [{ address: unbracketed, family: literalFamily }]
 
   if (resolved.length === 0) {
     throw new WebError(`hostname "${hostname}" resolved to no addresses`, 'WEB_PROVIDER_ERROR')
   }
 
   const hasIpv6 = resolved.some(entry => entry.family === 6 && isIP(entry.address) === 6)
-  const nat64Prefixes = hasIpv6
-    ? await discoverNat64Prefixes(signal, resolver)
-    : []
+  const nat64Prefixes = hasIpv6 ? await discoverNat64Prefixes(signal, resolver) : []
 
   const addresses: PublicAddress[] = []
   for (const entry of resolved) {
     if ((entry.family !== 4 && entry.family !== 6) || isIP(entry.address) !== entry.family) {
-      throw new WebError(`hostname "${hostname}" resolved to an invalid IP address`, 'WEB_PROVIDER_ERROR')
+      throw new WebError(
+        `hostname "${hostname}" resolved to an invalid IP address`,
+        'WEB_PROVIDER_ERROR',
+      )
     }
     if (!isPublicIpAddress(entry.address)) {
-      throw new WebError(`URL hostname "${hostname}" resolves to a non-public IP address`, 'WEB_BLOCKED_URL')
+      throw new WebError(
+        `URL hostname "${hostname}" resolves to a non-public IP address`,
+        'WEB_BLOCKED_URL',
+      )
     }
     const translatedIpv4 = translatedIpv4Address(entry.address, nat64Prefixes)
     if (translatedIpv4 !== undefined && !isPublicIpAddress(translatedIpv4)) {
-      throw new WebError(`URL hostname "${hostname}" resolves through NAT64 to a non-public IPv4 address`, 'WEB_BLOCKED_URL')
+      throw new WebError(
+        `URL hostname "${hostname}" resolves through NAT64 to a non-public IPv4 address`,
+        'WEB_BLOCKED_URL',
+      )
     }
     addresses.push({ address: entry.address, family: entry.family })
   }
@@ -110,7 +121,10 @@ export async function resolvePublicAddresses(
 }
 
 /** Discover the active DNS64 prefix set using RFC 7050's reserved hostname. */
-async function discoverNat64Prefixes(signal: AbortSignal, resolver: AddressResolver): Promise<Nat64Prefix[]> {
+async function discoverNat64Prefixes(
+  signal: AbortSignal,
+  resolver: AddressResolver,
+): Promise<Nat64Prefix[]> {
   const discovered = await raceWithSignal(
     resolver(IPV4ONLY_DISCOVERY_HOST, { all: true, order: 'verbatim' }),
     signal,
@@ -134,7 +148,10 @@ async function discoverNat64Prefixes(signal: AbortSignal, resolver: AddressResol
 }
 
 /** Return the RFC 6052-embedded IPv4 address when an IPv6 address matches a discovered prefix. */
-function translatedIpv4Address(input: string, prefixes: readonly Nat64Prefix[]): string | undefined {
+function translatedIpv4Address(
+  input: string,
+  prefixes: readonly Nat64Prefix[],
+): string | undefined {
   if (isIP(input) !== 6) return undefined
   const bytes = ipaddr.parse(input).toByteArray()
   for (const prefix of prefixes) {
@@ -146,7 +163,10 @@ function translatedIpv4Address(input: string, prefixes: readonly Nat64Prefix[]):
 }
 
 /** Extract one IPv4 address from an RFC 6052 IPv6 layout. */
-function embeddedIpv4Address(bytes: readonly number[], prefixLength: Nat64Prefix['length']): string | undefined {
+function embeddedIpv4Address(
+  bytes: readonly number[],
+  prefixLength: Nat64Prefix['length'],
+): string | undefined {
   if (prefixLength === 96) return bytes.slice(12, 16).join('.')
   if (bytes[8] !== 0) return undefined
   const prefixBytes = prefixLength / 8
@@ -200,11 +220,25 @@ export async function requestPinned(
   // Reached only where `proxyRouteFor` reported no proxy for this URL, and the pinned lookup this
   // agent carries is per-request state the process-wide dispatcher cannot hold.
   // proxy-exempt: pinning one request's validated addresses, on a URL the policy routes directly.
-  const dispatcher = new Agent({ autoSelectFamily: true, connect: { lookup: createPinnedLookup(addresses) } })
+  const dispatcher = new Agent({
+    autoSelectFamily: true,
+    connect: { lookup: createPinnedLookup(addresses) },
+  })
   try {
-    // proxy-exempt: the agent above, whose lifetime is this one request.
-    const response = await fetch(url, { method: 'GET', redirect: 'manual', headers, signal, dispatcher })
-    return { response, close: async () => { await dispatcher.close() } }
+    const response = await fetch(url, {
+      method: 'GET',
+      redirect: 'manual',
+      headers,
+      signal,
+      // proxy-exempt: the agent above, whose lifetime is this one request.
+      dispatcher,
+    })
+    return {
+      response,
+      close: async () => {
+        await dispatcher.close()
+      },
+    }
   } catch (error: unknown) {
     await dispatcher.close()
     throw error
@@ -233,8 +267,13 @@ export async function requestVia(
   signal: AbortSignal,
 ): Promise<PinnedResponse> {
   const { fetch } = await import('undici')
-  // proxy-exempt: the dispatcher is the installed policy's own, handed over by `proxyRouteFor`.
-  const response = await fetch(url, { method: 'GET', redirect: 'manual', headers, signal, dispatcher })
+  const response = await fetch(url, {
+    method: 'GET',
+    redirect: 'manual',
+    headers,
+    signal,
+    dispatcher, // proxy-exempt: the policy's own dispatcher, handed over by `proxyRouteFor`.
+  })
   return { response, close: () => Promise.resolve() }
 }
 
@@ -257,27 +296,37 @@ type LookupCallback = (
  * @param addresses - public addresses retained from the preceding resolution.
  * @returns a Node-compatible lookup callback that performs no network resolution.
  */
-export function createPinnedLookup(addresses: readonly PublicAddress[]): (
-  hostname: string,
-  options: LookupOptions,
-  callback: LookupCallback,
-) => void {
+export function createPinnedLookup(
+  addresses: readonly PublicAddress[],
+): (hostname: string, options: LookupOptions, callback: LookupCallback) => void {
   return (hostname: string, options: LookupOptions, callback: LookupCallback): void => {
-    const family = typeof options.family === 'number'
-      ? options.family
-      : options.family === 'IPv4' ? 4 : options.family === 'IPv6' ? 6 : 0
-    const eligible = family === 0 ? addresses : addresses.filter(address => address.family === family)
+    const family =
+      typeof options.family === 'number'
+        ? options.family
+        : options.family === 'IPv4'
+          ? 4
+          : options.family === 'IPv6'
+            ? 6
+            : 0
+    const eligible =
+      family === 0 ? addresses : addresses.filter(address => address.family === family)
     const selected = eligible[0]
     if (selected === undefined) {
-      const error = Object.assign(new Error(`no validated address for ${hostname} in family ${family}`), {
-        code: 'ENOTFOUND',
-        hostname,
-      })
+      const error = Object.assign(
+        new Error(`no validated address for ${hostname} in family ${family}`),
+        {
+          code: 'ENOTFOUND',
+          hostname,
+        },
+      )
       callback(error, options.all === true ? [] : '', family)
       return
     }
     if (options.all === true) {
-      callback(null, eligible.map(address => ({ ...address })))
+      callback(
+        null,
+        eligible.map(address => ({ ...address })),
+      )
       return
     }
     callback(null, selected.address, selected.family)
@@ -286,12 +335,17 @@ export function createPinnedLookup(addresses: readonly PublicAddress[]): (
 
 /** Race a non-cancellable OS lookup without letting it delay tool cancellation. */
 function raceWithSignal<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
-  const abortError = () => new Error('web fetch aborted during hostname resolution', { cause: signal.reason })
+  const abortError = () =>
+    new Error('web fetch aborted during hostname resolution', { cause: signal.reason })
   if (signal.aborted) return Promise.reject(abortError())
   return new Promise<T>((resolve, reject) => {
-    const abort = () => { reject(abortError()) }
+    const abort = () => {
+      reject(abortError())
+    }
     signal.addEventListener('abort', abort, { once: true })
-    promise.then(resolve, reject).finally(() => { signal.removeEventListener('abort', abort) })
+    promise.then(resolve, reject).finally(() => {
+      signal.removeEventListener('abort', abort)
+    })
   })
 }
 

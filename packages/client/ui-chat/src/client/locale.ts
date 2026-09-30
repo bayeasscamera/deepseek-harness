@@ -78,7 +78,8 @@ export const zh = {
   'message.failure.auth': 'API 密钥无效',
   'message.turnError': '本轮运行失败',
   'message.maxTokens': '已达到输出 token 上限',
-  'message.maxTokens.hint': '回答被截断，已有输出保留在对话中。发送“继续”可让模型接着输出。',
+  'message.maxTokens.hint':
+    '回答在输出上限处停止，已有输出保留在对话中。发送“继续”可让模型接着输出。',
   'message.ranFor': '用时 {duration}',
   'message.tokensPerSecond': '{tps} tok/s',
   'message.turnUsage.title': '本轮用量',
@@ -186,7 +187,8 @@ export const en = {
   'message.failure.auth': 'API key is invalid',
   'message.turnError': 'This turn failed',
   'message.maxTokens': 'Output token limit reached',
-  'message.maxTokens.hint': 'The reply was cut off; earlier output is preserved in the conversation. Send "continue" to let the model resume.',
+  'message.maxTokens.hint':
+    'The reply stopped at the model output limit; earlier output is preserved in the conversation. Send "continue" to let the model resume.',
   'message.ranFor': 'Ran for {duration}',
   'message.tokensPerSecond': '{tps} tok/s',
   'message.turnUsage.title': 'Turn usage',

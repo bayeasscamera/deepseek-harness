@@ -26,9 +26,20 @@ import {
 import { deepFreeze } from '@deepseek-ai/dsh-util-values'
 import type { Scope } from '@deepseek-ai/dsh-scope'
 import { createScope } from '@deepseek-ai/dsh-scope'
-import type { EpochHeader, RequestContext, Session, SessionId, TurnEndReason, UserMessage } from '@deepseek-ai/dsh-session'
+import type {
+  EpochHeader,
+  RequestContext,
+  Session,
+  SessionId,
+  TurnEndReason,
+  UserMessage,
+} from '@deepseek-ai/dsh-session'
 import { canonicalHeader, headerEquals } from '@deepseek-ai/dsh-session'
-import { joinContextSections, renderContextSections, renderPrompt } from '@deepseek-ai/dsh-system-prompt'
+import {
+  joinContextSections,
+  renderContextSections,
+  renderPrompt,
+} from '@deepseek-ai/dsh-system-prompt'
 import type { PromptAssembly } from '@deepseek-ai/dsh-system-prompt'
 import type {} from '@deepseek-ai/dsh-session-projection'
 import type { Context } from '@deepseek-ai/cordis'
@@ -233,9 +244,13 @@ export class ReactLoopAgent implements Agent {
     }
   }
 
-  private async preStep(target: InboxTarget, position: { turn: number; step: number }): Promise<PreparedStep> {
+  private async preStep(
+    target: InboxTarget,
+    position: { turn: number; step: number },
+  ): Promise<PreparedStep> {
     /* v8 ignore next -- private callers establish the running phase before proposing a step */
-    if (this.phase.kind !== 'running') throw new Error(`agent "${this.id}": pre-step outside running phase`)
+    if (this.phase.kind !== 'running')
+      throw new Error(`agent "${this.id}": pre-step outside running phase`)
     const signal = this.phase.abort.signal
     const claimed = this.inbox.claim(target, position.turn)
     const assembly = await this.loopCtx.systemPrompt.assemble(assembleContextFor(this, signal))
@@ -243,11 +258,13 @@ export class ReactLoopAgent implements Agent {
     const sections = renderContextSections(assembly)
     const context = this.runtimeContext.project(joinContextSections(sections), sections)
     const decision = await this.dispatch.waterfall(
-      'agent/pre-step', { messages: claimed, ...position, signal },
-      (): Promise<PreStepDecision> => Promise.resolve<PreStepDecision>({
-        kind: 'enter',
-        messages: context === undefined ? claimed : [...claimed, context],
-      }),
+      'agent/pre-step',
+      { messages: claimed, ...position, signal },
+      (): Promise<PreStepDecision> =>
+        Promise.resolve<PreStepDecision>({
+          kind: 'enter',
+          messages: context === undefined ? claimed : [...claimed, context],
+        }),
     )
     signal.throwIfAborted()
     return decision.kind === 'reject' ? decision : { ...decision, assembly }
@@ -269,6 +286,8 @@ export class ReactLoopAgent implements Agent {
     }
     phase.turn = turn
     let turnEnds: TurnEndReason | null = null
+    /** Latest step's ending when it closed the model's response obligation; null while tool results await a response. */
+    let responseClosedAt: StepEndReason | null = null
     let target: InboxTarget = 'next-turn'
     try {
       while (true) {
@@ -279,7 +298,7 @@ export class ReactLoopAgent implements Agent {
           turnEnds = { kind: 'blocked' }
           return false
         }
-        if (turnEnds && decision.messages.length === 0) break
+        if (responseClosedAt && decision.messages.length === 0) break
         // A removed waking message or an enter decision rewritten to empty
         // still owns the initial turn boundary, but it spends no model call.
         if (phase.step === 0 && decision.messages.length === 0) {
@@ -293,21 +312,27 @@ export class ReactLoopAgent implements Agent {
           for (const message of decision.messages) {
             this.session.append('user/message', message, { surfaceOp: 'append' })
           }
-          // max-tokens is sticky: once any step hits the ceiling, later steps
-          // that complete normally must not downgrade the turn outcome.
           const stepEnd = await this.step(decision.assembly, decision.startsRequestSeries === true)
-          // max-tokens stays sticky: a later completed step must not
-          // downgrade the turn outcome.
+          responseClosedAt = stepEnd
+          // max-tokens is sticky in the durable record: once any step hits the
+          // ceiling, later endings must not downgrade the recorded outcome.
           if (turnEnds === null || turnEnds.kind !== 'max-tokens') turnEnds = stepEnd
         } finally {
           this.session.append('step/end', { turn, step })
         }
         signal.throwIfAborted()
-        if (turnEnds && this.inbox.nextStep.length === 0) {
-          await this.dispatch.serial('agent/turn-stopping', { turn, signal })
+        if (responseClosedAt && this.inbox.nextStep.length === 0) {
+          // The reason travels on the dispatch so a listener can continue a
+          // max-tokens truncation without re-deriving it from the log, which
+          // cannot hold this turn's `turn/end` yet. `responseClosedAt` and
+          // `turnEnds` are written together, so neither can be set alone.
+          const reason = turnEnds
+          if (reason !== null) {
+            await this.dispatch.serial('agent/turn-stopping', { turn, reason, signal })
+          }
           signal.throwIfAborted()
         }
-        if (turnEnds && this.inbox.nextStep.length === 0) break
+        if (responseClosedAt && this.inbox.nextStep.length === 0) break
         target = 'next-step'
       }
     } catch (error: unknown) {
@@ -319,9 +344,10 @@ export class ReactLoopAgent implements Agent {
       // else flattens to `errorChain` text under the `UNKNOWN` code.
       turnEnds = {
         kind: 'error',
-        error: error instanceof LlmError
-          ? error.failure
-          : { message: errorChain(error), code: 'UNKNOWN' },
+        error:
+          error instanceof LlmError
+            ? error.failure
+            : { message: errorChain(error), code: 'UNKNOWN' },
       }
       this.throwError(error)
     } finally {
@@ -340,10 +366,18 @@ export class ReactLoopAgent implements Agent {
     return true
   }
 
-  private async step(assembly: PromptAssembly, startsRequestSeries: boolean): Promise<StepEndReason | null> {
+  private async step(
+    assembly: PromptAssembly,
+    startsRequestSeries: boolean,
+  ): Promise<StepEndReason | null> {
     /* v8 ignore next -- private callers establish the running phase before executing a step */
-    if (this.phase.kind !== 'running') throw new Error(`agent "${this.id}": step outside running phase`)
-    const { turn, step, abort: { signal } } = this.phase
+    if (this.phase.kind !== 'running')
+      throw new Error(`agent "${this.id}": step outside running phase`)
+    const {
+      turn,
+      step,
+      abort: { signal },
+    } = this.phase
     signal.throwIfAborted()
     const system = renderPrompt(assembly)
 
@@ -366,7 +400,9 @@ export class ReactLoopAgent implements Agent {
         () => ++this.assistantStreamRevision,
         turn,
         step,
-        (frame) => { this.dispatch.emit('agent/assistant-stream', { frame }) },
+        (frame) => {
+          this.dispatch.emit('agent/assistant-stream', { frame })
+        },
       )
       let started = false
       try {
@@ -385,31 +421,43 @@ export class ReactLoopAgent implements Agent {
           if (signal.aborted) {
             const content = live.interruptedBlocks()
             if (content.length > 0) {
-              live.settle('assistant/message', () => this.session.append('assistant/message', {
-                turn,
-                step,
-                message: createAssistantMessage({
-                  content,
-                  source: {
-                    provider: request.provider,
-                    model: request.model,
-                    ...live.replayState === undefined ? {} : { replayState: live.replayState },
-                  },
-                }),
-                interrupted: true,
-                ...live.usage === undefined ? {} : { usage: live.usage },
-                stream: live.stream,
-              }, { surfaceOp: 'append' }).seq)
+              live.settle(
+                'assistant/message',
+                () =>
+                  this.session.append(
+                    'assistant/message',
+                    {
+                      turn,
+                      step,
+                      message: createAssistantMessage({
+                        content,
+                        source: {
+                          provider: request.provider,
+                          model: request.model,
+                          ...(live.replayState === undefined
+                            ? {}
+                            : { replayState: live.replayState }),
+                        },
+                      }),
+                      interrupted: true,
+                      ...(live.usage === undefined ? {} : { usage: live.usage }),
+                      stream: live.stream,
+                    },
+                    { surfaceOp: 'append' },
+                  ).seq,
+              )
             } else {
               live.settle(
                 'assistant/attempt',
-                () => this.session.append('assistant/attempt', { turn, step, stream: live.stream }).seq,
+                () =>
+                  this.session.append('assistant/attempt', { turn, step, stream: live.stream }).seq,
               )
             }
           } else {
             live.settle(
               'assistant/attempt',
-              () => this.session.append('assistant/attempt', { turn, step, stream: live.stream }).seq,
+              () =>
+                this.session.append('assistant/attempt', { turn, step, stream: live.stream }).seq,
             )
           }
         } catch (settlementError: unknown) {
@@ -429,7 +477,8 @@ export class ReactLoopAgent implements Agent {
             () => this.session.append('assistant/attempt', { turn, step, stream: live.stream }).seq,
           )
           const action = await this.dispatch.waterfall(
-            'agent/request-error', {
+            'agent/request-error',
+            {
               turn,
               step,
               provider: request.provider,
@@ -451,25 +500,34 @@ export class ReactLoopAgent implements Agent {
           source: {
             provider: request.provider,
             model: request.model,
-            ...live.replayState !== undefined ? { replayState: live.replayState } : {},
+            ...(live.replayState !== undefined ? { replayState: live.replayState } : {}),
           },
         })
         live.settle(
           'assistant/message',
-          () => this.session.append('assistant/message', {
-            turn,
-            step,
-            message,
-            ...live.usage === undefined ? {} : { usage: live.usage },
-            stream: live.stream,
-          }, { surfaceOp: 'append' }).seq,
+          () =>
+            this.session.append(
+              'assistant/message',
+              {
+                turn,
+                step,
+                message,
+                ...(live.usage === undefined ? {} : { usage: live.usage }),
+                stream: live.stream,
+              },
+              { surfaceOp: 'append' },
+            ).seq,
         )
         if (finish.kind === 'max-tokens') return { kind: 'max-tokens' }
 
         const toolCalls = message.content.filter(block => block.type === 'tool-call')
         if (toolCalls.length === 0) return { kind: 'completed' }
         const { concluded } = await executeToolCalls(
-          this.loopCtx, turn, step, toolCalls, signal,
+          this.loopCtx,
+          turn,
+          step,
+          toolCalls,
+          signal,
           context => this.inbox.splice('next-step', this.inbox.nextStep.length, 0, [context]),
         )
         return concluded ? { kind: 'completed' } : null
@@ -502,30 +560,36 @@ export class ReactLoopAgent implements Agent {
     const persistedHeader = session.requestHeader()
     const persistedConfig = persistedHeader?.config
     const route = { provider: this.options.provider ?? '', model: this.options.model ?? '' }
-    const persistedReasoningEffort = persistedConfig?.provider === route.provider
-      && persistedConfig.model === route.model
-      && persistedHeader?.adapterDefaults?.reasoningEffort !== true
-      ? persistedConfig.reasoningEffort
-      : undefined
+    const persistedReasoningEffort =
+      persistedConfig?.provider === route.provider &&
+      persistedConfig.model === route.model &&
+      persistedHeader?.adapterDefaults?.reasoningEffort !== true
+        ? persistedConfig.reasoningEffort
+        : undefined
     const reasoningEffort = this.options.reasoningEffort ?? persistedReasoningEffort
     const maxTokens = this.options.maxTokens
-    const seedConfig = deepFreeze(structuredClone(
-      this.requestHeaderLogged
-        // oxlint-disable-next-line typescript/no-non-null-assertion -- the instance logged the header it now folds
-        ? requestProposal(persistedHeader!)
-        : {
-          ...route,
-          ...reasoningEffort === undefined ? {} : { reasoningEffort },
-          ...maxTokens === undefined ? {} : { maxTokens },
-        },
-    ))
+    const seedConfig = deepFreeze(
+      structuredClone(
+        this.requestHeaderLogged
+          ? // oxlint-disable-next-line typescript/no-non-null-assertion -- the instance logged the header it now folds
+          requestProposal(persistedHeader!)
+          : {
+            ...route,
+            ...(reasoningEffort === undefined ? {} : { reasoningEffort }),
+            ...(maxTokens === undefined ? {} : { maxTokens }),
+          },
+      ),
+    )
     const proposedConfig = await this.dispatch.waterfall(
-      'agent/request', { turn, step, signal },
+      'agent/request',
+      { turn, step, signal },
       () => Promise.resolve(seedConfig),
     )
     signal.throwIfAborted()
     if (!proposedConfig.provider || !proposedConfig.model) {
-      throw new Error(`agent "${this.id}" has no provider/model: set AgentOptions.provider and AgentOptions.model or supply both via the agent/request waterfall`)
+      throw new Error(
+        `agent "${this.id}" has no provider/model: set AgentOptions.provider and AgentOptions.model or supply both via the agent/request waterfall`,
+      )
     }
     let config: LlmCallConfig
     let preparedCall: PreparedLlmCall | undefined
@@ -541,21 +605,23 @@ export class ReactLoopAgent implements Agent {
 
     const header = canonicalHeader({
       config,
-      ...preparedCall === undefined ? {} : { adapterDefaults: preparedCall.adapterDefaults },
-      ...system ? { system } : {},
-      ...tools.length > 0 ? { tools } : {},
+      ...(preparedCall === undefined ? {} : { adapterDefaults: preparedCall.adapterDefaults }),
+      ...(system ? { system } : {}),
+      ...(tools.length > 0 ? { tools } : {}),
     })
     const baseline = this.session.requestHeader()
-    const startsSeries = startsRequestSeries
-      || this.requestSurfaceGeneration !== surfaceGeneration
+    const startsSeries = startsRequestSeries || this.requestSurfaceGeneration !== surfaceGeneration
     if (!this.requestHeaderLogged) {
-      this.session.append('request/header', { header, reason: baseline === undefined ? 'initial' : 'resume' })
+      this.session.append('request/header', {
+        header,
+        reason: baseline === undefined ? 'initial' : 'resume',
+      })
       this.requestHeaderLogged = true
     } else if (baseline === undefined || !headerEquals(baseline, header)) {
       this.session.append('request/header', {
         header,
         reason: 'change',
-        ...startsSeries ? { startsSeries: true } : {},
+        ...(startsSeries ? { startsSeries: true } : {}),
       })
     } else if (startsSeries) {
       this.session.append('request/header', { header, reason: 'series' })
@@ -566,12 +632,14 @@ export class ReactLoopAgent implements Agent {
     const requestContext: RequestContext = {
       provider: config.provider,
       model: config.model,
-      ...contextWindow === undefined ? {} : { contextWindow },
+      ...(contextWindow === undefined ? {} : { contextWindow }),
     }
     const previousContext = session.requestContext()
-    if (previousContext?.provider !== requestContext.provider
-      || previousContext.model !== requestContext.model
-      || previousContext.contextWindow !== requestContext.contextWindow) {
+    if (
+      previousContext?.provider !== requestContext.provider ||
+      previousContext.model !== requestContext.model ||
+      previousContext.contextWindow !== requestContext.contextWindow
+    ) {
       session.append('request/context', requestContext)
     }
     signal.throwIfAborted()
@@ -584,14 +652,16 @@ export class ReactLoopAgent implements Agent {
       this.frozenMessages.add(message)
     }
     Object.freeze(boundaryMessages)
-    const request = markAgentLoopRequest(Object.freeze({
-      ...header.config,
-      messages: boundaryMessages,
-      ...header.system !== undefined ? { system: header.system } : {},
-      ...header.tools !== undefined ? { tools: header.tools } : {},
-      sessionId: this.session.id,
-      signal,
-    }))
-    return { request, ...preparedCall === undefined ? {} : { preparedCall } }
+    const request = markAgentLoopRequest(
+      Object.freeze({
+        ...header.config,
+        messages: boundaryMessages,
+        ...(header.system !== undefined ? { system: header.system } : {}),
+        ...(header.tools !== undefined ? { tools: header.tools } : {}),
+        sessionId: this.session.id,
+        signal,
+      }),
+    )
+    return { request, ...(preparedCall === undefined ? {} : { preparedCall }) }
   }
 }

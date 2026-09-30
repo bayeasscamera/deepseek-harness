@@ -502,10 +502,45 @@
   padding: 8px 4px 2px;
 }
 
+/* The input-type field sits below the row, outside the capacities disclosure
+   and outside that disclosure's auto-fit grid: it is one wide field. */
+.modelInputTypes {
+  padding: 6px 4px 2px;
+}
+
 .modelField {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.modelFieldWide {
+  grid-column: 1 / -1;
+}
+
+.inputTypeGroup {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  min-height: 28px;
+  padding: 2px 0;
+}
+
+.inputTypeOption {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--dsw-alias-label-primary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.inputTypeOption input[type='checkbox'] {
+  margin: 0;
+  cursor: pointer;
 }
 
 .modelFieldLabel {

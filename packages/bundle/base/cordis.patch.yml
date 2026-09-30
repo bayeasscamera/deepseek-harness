@@ -422,6 +422,16 @@
         thresholds: [3, 5, 8]
         argumentsPreviewChars: 500
 
+    # Continues a turn whose output the model ceiling cut off: steers a
+    # continuation prompt at the stopping boundary, so a long answer or code
+    # edit resumes in the same turn instead of waiting for a manual
+    # "continue". The consecutive cap keeps a model that never finishes its
+    # output from burning requests forever.
+    - id: auto-continue
+      name: '@deepseek-ai/dsh-auto-continue'
+      config:
+        maxConsecutive: 8
+
     # The shared base enables the stable model-facing web_search and web_fetch
     # tools. The Web app disables this host row and composes both tools per agent
     # preset; products with a stricter network policy override tool-web. DeepSeek
@@ -443,6 +453,25 @@
       name: '@deepseek-ai/dsh-web-search-deepseek'
       config:
         apiKeyEnv: DEEPSEEK_API_KEY
+
+    # Optional Brave backend: stays unavailable until a key is supplied, so the
+    # pinned `deepseek-official` search provider above keeps serving by default.
+    # To use it, set `searchProvider: brave` on the `web` row (or export
+    # `DSH_WEB_SEARCH_PROVIDER=brave`) and fill `apiKey` below or export
+    # `$BRAVE_API_KEY`. Works in native and PTC mode alike: `web_search` is a
+    # tools-registry tool and the PTC transport is owned there, not here.
+    - id: web-search-brave
+      name: '@deepseek-ai/dsh-web-search-brave'
+      config:
+        apiKey: !!js process.env.BRAVE_API_KEY ?? ''
+
+    # Optional Tavily backend: same opt-in contract as Brave. Set
+    # `searchProvider: tavily` (or `DSH_WEB_SEARCH_PROVIDER=tavily`) and fill
+    # `apiKey` below or export `$TAVILY_API_KEY`. Native and PTC mode alike.
+    - id: web-search-tavily
+      name: '@deepseek-ai/dsh-web-search-tavily'
+      config:
+        apiKey: !!js process.env.TAVILY_API_KEY ?? ''
 
     - id: web-fetch-http
       name: '@deepseek-ai/dsh-web-fetch-http'

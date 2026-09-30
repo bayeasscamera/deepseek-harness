@@ -18,9 +18,15 @@ import { useState } from 'react'
 import type { ReactNode } from 'react'
 import type { LlmDiscoveredModel } from '@deepseek-ai/dsh-api-remotes/client'
 import { Button, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
-import { formatCapacity, parseCapacity } from './DeepSeekModelsEditor.tsx'
+import {
+  ALL_INPUT_TYPES,
+  formatCapacity,
+  inputTypesOf,
+  ModelInputTypesField,
+  parseCapacity,
+} from './DeepSeekModelsEditor.tsx'
 import type { ModelsOperations } from './operations.ts'
-import type { DeepSeekModelDraft } from './DeepSeekModelsEditor.tsx'
+import type { DeepSeekModelDraft, ModelInputType } from './DeepSeekModelsEditor.tsx'
 import type { en } from './locales.ts'
 import styles from './ModelsSection.module.css'
 
@@ -91,10 +97,20 @@ export interface ModelListEditorProps {
 function IconChevron({ open }: { open: boolean }): ReactNode {
   return (
     <svg
-      width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden
       style={{ transform: open ? 'rotate(90deg)' : undefined, transition: 'transform 120ms ease' }}
     >
-      <path d="M6 3.5L10.5 8L6 12.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M6 3.5L10.5 8L6 12.5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   )
 }
@@ -105,7 +121,10 @@ function IconTrash(): ReactNode {
     <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
       <path
         d="M2.5 4h11M6.5 4V2.5h3V4M4 4l.7 9a1 1 0 001 .9h4.6a1 1 0 001-.9L12 4M6.5 6.8v4.4M9.5 6.8v4.4"
-        stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </svg>
   )
@@ -145,9 +164,9 @@ function capacitySpelling(value: number | undefined): string {
 function adopt(candidate: LlmDiscoveredModel): ModelDraft {
   return {
     id: candidate.id,
-    ...candidate.name === undefined ? {} : { name: candidate.name },
-    ...candidate.contextWindow === undefined ? {} : { contextWindow: candidate.contextWindow },
-    ...candidate.maxTokens === undefined ? {} : { maxTokens: candidate.maxTokens },
+    ...(candidate.name === undefined ? {} : { name: candidate.name }),
+    ...(candidate.contextWindow === undefined ? {} : { contextWindow: candidate.contextWindow }),
+    ...(candidate.maxTokens === undefined ? {} : { maxTokens: candidate.maxTokens }),
   }
 }
 
@@ -209,21 +228,35 @@ export function ModelListEditor(props: ModelListEditorProps): ReactNode {
     })
   }
 
-  const patch = (index: number, next: Record<string, string | number | undefined>): void => {
-    onChange(models.map((model, at) => {
-      if (at !== index) return model
-      // Rebuilt rather than spread over: an emptied optional field has to leave
-      // the profile, not be stored as a value its schema would reject.
-      // Spread first so a field this card does not edit survives; an emptied
-      // optional field is then dropped rather than stored as a value its
-      // schema would reject.
-      const cleared = new Set(
-        Object.entries(next).filter(([, value]) => value === undefined || value === '').map(([key]) => key),
-      )
-      return Object.fromEntries(
-        Object.entries({ ...model, ...next }).filter(([key]) => !cleared.has(key)),
-      )
-    }))
+  const patch = (index: number, next: Record<string, unknown>): void => {
+    onChange(
+      models.map((model, at) => {
+        if (at !== index) return model
+        // Rebuilt rather than spread over: an emptied optional field has to leave
+        // the profile, not be stored as a value its schema would reject.
+        // Spread first so a field this card does not edit survives; an emptied
+        // optional field is then dropped rather than stored as a value its
+        // schema would reject.
+        const cleared = new Set(
+          Object.entries(next)
+            .filter(([, value]) => value === undefined || value === '')
+            .map(([key]) => key),
+        )
+        return Object.fromEntries(
+          Object.entries({ ...model, ...next }).filter(([key]) => !cleared.has(key)),
+        )
+      }),
+    )
+  }
+
+  const toggleInputType = (index: number, type: ModelInputType, checked: boolean): void => {
+    const currentModel = models[index]
+    if (!currentModel) return
+    const currentTypes = inputTypesOf(currentModel)
+    const nextTypes = checked
+      ? ALL_INPUT_TYPES.filter(t => t === type || currentTypes.includes(t))
+      : currentTypes.filter(t => t !== type)
+    patch(index, { inputModalities: [...nextTypes] })
   }
 
   const fetchModels = async (): Promise<void> => {
@@ -231,10 +264,12 @@ export function ModelListEditor(props: ModelListEditorProps): ReactNode {
     setFailure(undefined)
     try {
       const answer = await operations.discoverModels(probe.settingsNs, {
-        ...probe.provider === undefined ? {} : { provider: probe.provider },
-        ...probe.baseURL === undefined || probe.baseURL.length === 0 ? {} : { baseURL: probe.baseURL },
-        ...probe.api === undefined ? {} : { api: probe.api },
-        ...probe.apiKey === undefined ? {} : { apiKey: probe.apiKey },
+        ...(probe.provider === undefined ? {} : { provider: probe.provider }),
+        ...(probe.baseURL === undefined || probe.baseURL.length === 0
+          ? {}
+          : { baseURL: probe.baseURL }),
+        ...(probe.api === undefined ? {} : { api: probe.api }),
+        ...(probe.apiKey === undefined ? {} : { apiKey: probe.apiKey }),
       })
       if (answer.kind === 'refused') {
         setFailure(answer.message)
@@ -288,12 +323,16 @@ export function ModelListEditor(props: ModelListEditorProps): ReactNode {
 
   const activeCandidates = candidates ?? []
   const normalizedCandidateQuery = candidateQuery.trim().toLowerCase()
-  const visibleCandidates = normalizedCandidateQuery.length === 0
-    ? activeCandidates
-    : activeCandidates.filter(candidate => candidate.id.toLowerCase().includes(normalizedCandidateQuery)
-      || candidate.name?.toLowerCase().includes(normalizedCandidateQuery) === true)
-  const allVisibleCandidatesPicked = visibleCandidates.length > 0
-    && visibleCandidates.every(candidate => picked.has(candidate.id))
+  const visibleCandidates =
+    normalizedCandidateQuery.length === 0
+      ? activeCandidates
+      : activeCandidates.filter(
+        candidate =>
+          candidate.id.toLowerCase().includes(normalizedCandidateQuery) ||
+            candidate.name?.toLowerCase().includes(normalizedCandidateQuery) === true,
+      )
+  const allVisibleCandidatesPicked =
+    visibleCandidates.length > 0 && visibleCandidates.every(candidate => picked.has(candidate.id))
 
   const toggleVisibleCandidates = (): void => {
     setPicked((current) => {
@@ -308,40 +347,43 @@ export function ModelListEditor(props: ModelListEditorProps): ReactNode {
 
   // A route the adapter already describes answers without an endpoint; only a
   // draft with neither has nothing to ask about.
-  const askable = probe.provider !== undefined || (probe.baseURL !== undefined && probe.baseURL.length > 0)
+  const askable =
+    probe.provider !== undefined || (probe.baseURL !== undefined && probe.baseURL.length > 0)
   return (
     <section className={styles['modelCatalog']} aria-label={t('models')}>
       <div className={styles['modelListHead']}>
         <div className={styles['modelCatalogHeading']}>
           <span className={styles['modelCatalogTitle']}>{t('models')}</span>
-          {props.overridden === undefined
-            ? null
-            : (
-              <span className={styles['modelCatalogMeta']}>
-                {props.overridden ? t('modelsCustomized') : t('modelsInherited')}
-              </span>
-            )}
+          {props.overridden === undefined ? null : (
+            <span className={styles['modelCatalogMeta']}>
+              {props.overridden ? t('modelsCustomized') : t('modelsInherited')}
+            </span>
+          )}
         </div>
-        {props.overridden === true && props.onReset !== undefined
-          ? (
-            <button
-              type="button"
-              className={styles['linkButton']}
-              disabled={disabled}
-              onClick={props.onReset}
-            >
-              {t('resetModels')}
-            </button>
-          )
-          : null}
+        {props.overridden === true && props.onReset !== undefined ? (
+          <button
+            type="button"
+            className={styles['linkButton']}
+            disabled={disabled}
+            onClick={props.onReset}
+          >
+            {t('resetModels')}
+          </button>
+        ) : null}
         <button
           type="button"
           className={styles['linkButton']}
           disabled={disabled || busy || !askable || props.probeBlocked !== undefined}
-          title={props.probeBlocked !== undefined
-            ? t(props.probeBlocked)
-            : askable ? undefined : t('fetchNeedsBaseUrl')}
-          onClick={() => { void fetchModels() }}
+          title={
+            props.probeBlocked !== undefined
+              ? t(props.probeBlocked)
+              : askable
+                ? undefined
+                : t('fetchNeedsBaseUrl')
+          }
+          onClick={() => {
+            void fetchModels()
+          }}
         >
           {busy ? t('fetching') : t('fetchModels')}
         </button>
@@ -357,7 +399,9 @@ export function ModelListEditor(props: ModelListEditorProps): ReactNode {
               placeholder={t('modelId')}
               aria-label={`${t('modelId')} ${index + 1}`}
               disabled={disabled}
-              onChange={(event) => { patch(index, { id: event.target.value }) }}
+              onChange={(event) => {
+                patch(index, { id: event.target.value })
+              }}
             />
             <input
               className={styles['input']}
@@ -366,7 +410,9 @@ export function ModelListEditor(props: ModelListEditorProps): ReactNode {
               placeholder={t('modelName')}
               aria-label={`${t('modelName')} ${index + 1}`}
               disabled={disabled}
-              onChange={(event) => { patch(index, { name: event.target.value === '' ? undefined : event.target.value }) }}
+              onChange={(event) => {
+                patch(index, { name: event.target.value === '' ? undefined : event.target.value })
+              }}
             />
             <button
               type="button"
@@ -374,7 +420,9 @@ export function ModelListEditor(props: ModelListEditorProps): ReactNode {
               aria-label={`${t('modelAdvanced')} ${index + 1}`}
               aria-expanded={expanded.has(index)}
               title={t('modelAdvanced')}
-              onClick={() => { toggleExpanded(index) }}
+              onClick={() => {
+                toggleExpanded(index)
+              }}
             >
               <IconChevron open={expanded.has(index)} />
             </button>
@@ -404,45 +452,56 @@ export function ModelListEditor(props: ModelListEditorProps): ReactNode {
               <IconTrash />
             </button>
           </div>
-          {expanded.has(index)
-            ? (
-              <div className={styles['modelAdvanced']}>
-                <label className={styles['modelField']}>
-                  <span className={styles['modelFieldLabel']}>{t('modelContextWindow')}</span>
-                  <input
-                    className={styles['input']}
-                    type="text"
-                    inputMode="numeric"
-                    value={capacityText(model, index, 'contextWindow')}
-                    placeholder={CAPACITY_HINT.contextWindow}
-                    aria-label={`${t('modelContextWindow')} ${index + 1}`}
-                    disabled={disabled}
-                    onChange={(event) => { editCapacity(index, 'contextWindow', event.target.value) }}
-                  />
-                </label>
-                <label className={styles['modelField']}>
-                  <span className={styles['modelFieldLabel']}>{t('modelMaxTokens')}</span>
-                  <input
-                    className={styles['input']}
-                    type="text"
-                    inputMode="numeric"
-                    value={capacityText(model, index, 'maxTokens')}
-                    placeholder={CAPACITY_HINT.maxTokens}
-                    aria-label={`${t('modelMaxTokens')} ${index + 1}`}
-                    disabled={disabled}
-                    onChange={(event) => { editCapacity(index, 'maxTokens', event.target.value) }}
-                  />
-                </label>
-              </div>
-            )
-            : null}
+          {expanded.has(index) ? (
+            <div className={styles['modelAdvanced']}>
+              <label className={styles['modelField']}>
+                <span className={styles['modelFieldLabel']}>{t('modelContextWindow')}</span>
+                <input
+                  className={styles['input']}
+                  type="text"
+                  inputMode="numeric"
+                  value={capacityText(model, index, 'contextWindow')}
+                  placeholder={CAPACITY_HINT.contextWindow}
+                  aria-label={`${t('modelContextWindow')} ${index + 1}`}
+                  disabled={disabled}
+                  onChange={(event) => {
+                    editCapacity(index, 'contextWindow', event.target.value)
+                  }}
+                />
+              </label>
+              <label className={styles['modelField']}>
+                <span className={styles['modelFieldLabel']}>{t('modelMaxTokens')}</span>
+                <input
+                  className={styles['input']}
+                  type="text"
+                  inputMode="numeric"
+                  value={capacityText(model, index, 'maxTokens')}
+                  placeholder={CAPACITY_HINT.maxTokens}
+                  aria-label={`${t('modelMaxTokens')} ${index + 1}`}
+                  disabled={disabled}
+                  onChange={(event) => {
+                    editCapacity(index, 'maxTokens', event.target.value)
+                  }}
+                />
+              </label>
+            </div>
+          ) : null}
+          <ModelInputTypesField
+            model={model}
+            index={index}
+            t={t}
+            disabled={disabled}
+            onToggle={toggleInputType}
+          />
         </div>
       ))}
       <button
         type="button"
         className={styles['addModelButton']}
         disabled={disabled}
-        onClick={() => { onChange([...models, { id: '' }]) }}
+        onClick={() => {
+          onChange([...models, { id: '' }])
+        }}
       >
         {t('addModel')}
       </button>
@@ -454,12 +513,16 @@ export function ModelListEditor(props: ModelListEditorProps): ReactNode {
         closeLabel={t('close')}
         description={t('fetchDescription')}
         className={styles['fetchDialog'] as string}
-        footer={(
+        footer={
           <>
-            <Button variant="outline" onClick={closePicker}>{t('cancel')}</Button>
-            <Button variant="outline" onClick={adoptPicked}>{t('fetchAdopt')}</Button>
+            <Button variant="outline" onClick={closePicker}>
+              {t('cancel')}
+            </Button>
+            <Button variant="outline" onClick={adoptPicked}>
+              {t('fetchAdopt')}
+            </Button>
           </>
-        )}
+        }
       >
         <div className={styles['candidateToolbar']}>
           <input
@@ -468,7 +531,9 @@ export function ModelListEditor(props: ModelListEditorProps): ReactNode {
             value={candidateQuery}
             placeholder={t('fetchSearch')}
             aria-label={t('fetchSearch')}
-            onChange={(event) => { setCandidateQuery(event.target.value) }}
+            onChange={(event) => {
+              setCandidateQuery(event.target.value)
+            }}
           />
           <Button
             variant="ghost"
@@ -479,27 +544,31 @@ export function ModelListEditor(props: ModelListEditorProps): ReactNode {
             {t(allVisibleCandidatesPicked ? 'fetchDeselectAll' : 'fetchSelectAll')}
           </Button>
         </div>
-        {visibleCandidates.length === 0
-          ? <p className={styles['candidateEmpty']} role="status">{t('fetchNoMatches')}</p>
-          : (
-            <ul className={styles['candidateList']}>
-              {visibleCandidates.map(candidate => (
-                <li key={candidate.id} className={styles['candidate']}>
-                  <label className={styles['candidateLabel']}>
-                    <input
-                      type="checkbox"
-                      checked={picked.has(candidate.id)}
-                      onChange={() => { toggle(candidate.id) }}
-                    />
-                    {/* The id alone: it is the string adoption writes, and the
+        {visibleCandidates.length === 0 ? (
+          <p className={styles['candidateEmpty']} role="status">
+            {t('fetchNoMatches')}
+          </p>
+        ) : (
+          <ul className={styles['candidateList']}>
+            {visibleCandidates.map(candidate => (
+              <li key={candidate.id} className={styles['candidate']}>
+                <label className={styles['candidateLabel']}>
+                  <input
+                    type="checkbox"
+                    checked={picked.has(candidate.id)}
+                    onChange={() => {
+                      toggle(candidate.id)
+                    }}
+                  />
+                  {/* The id alone: it is the string adoption writes, and the
                         capacities the endpoint reported are adopted with it and
                         editable in the row that appears. */}
-                    <span className={styles['candidateId']}>{candidate.id}</span>
-                  </label>
-                </li>
-              ))}
-            </ul>
-          )}
+                  <span className={styles['candidateId']}>{candidate.id}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        )}
       </Modal>
     </section>
   )

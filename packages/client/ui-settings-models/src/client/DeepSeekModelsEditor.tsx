@@ -8,7 +8,10 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import {
-  IconChevronDownOutline14, IconChevronRightOutline14, IconPlusOutline16, IconTrashOutline16,
+  IconChevronDownOutline14,
+  IconChevronRightOutline14,
+  IconPlusOutline16,
+  IconTrashOutline16,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { en } from './locales.ts'
 import styles from './ModelsSection.module.css'
@@ -16,8 +19,108 @@ import styles from './ModelsSection.module.css'
 /** One catalog entry kept structurally open so hidden or future fields survive an edit. */
 export type DeepSeekModelDraft = Record<string, unknown>
 
+/** Supported model input types; the seam's `ModelModalityMap` is the authority. */
+export type ModelInputType = 'text' | 'image'
+
+/** Canonical ordering of all supported model input types. */
+export const ALL_INPUT_TYPES: readonly ModelInputType[] = ['text', 'image']
+
+/**
+ * Read a model's configured input types from the single accepted field.
+ * @param model - model draft.
+ * @returns list of enabled input types, defaulting to text-only.
+ */
+export function inputTypesOf(model: DeepSeekModelDraft): readonly ModelInputType[] {
+  const modalities = model['inputModalities']
+  if (!Array.isArray(modalities)) return ['text']
+  const matched: ModelInputType[] = []
+  if (modalities.includes('text')) matched.push('text')
+  if (modalities.includes('image')) matched.push('image')
+  return matched.length > 0 ? matched : ['text']
+}
+
+/**
+ * Check if a model draft has a specific input type enabled.
+ * @param model - model draft.
+ * @param type - input type to check.
+ * @returns true if enabled.
+ */
+export function hasInputType(model: DeepSeekModelDraft, type: ModelInputType): boolean {
+  return inputTypesOf(model).includes(type)
+}
+
+/**
+ * Read a model's configured or derived primary input type.
+ * @param model - model draft.
+ * @returns the primary input type ('text' or 'image').
+ */
+export function inputTypeOf(model: DeepSeekModelDraft): ModelInputType {
+  return inputTypesOf(model)[0] ?? 'text'
+}
+
+/** Copy key naming each input type. */
+const INPUT_TYPE_LABEL = {
+  text: 'inputTypeText',
+  image: 'inputTypeImage',
+} as const satisfies Record<ModelInputType, keyof typeof en>
+
+/** Props of {@link ModelInputTypesField}. */
+export interface ModelInputTypesFieldProps {
+  /** The model draft whose input types are shown. */
+  model: DeepSeekModelDraft
+  /** Zero-based row position, used to disambiguate repeated labels. */
+  index: number
+  /** Section copy. */
+  t: (key: keyof typeof en) => string
+  /** Disable every checkbox. */
+  disabled: boolean
+  /** Apply one checkbox change. */
+  onToggle: (index: number, type: ModelInputType, checked: boolean) => void
+}
+
+/**
+ * The text/image/video checkbox group shared by both catalog editors.
+ *
+ * It renders outside a row's capacities disclosure in both callers: the
+ * accepted modalities decide whether a request carrying an image or a video
+ * can reach the model, so the choice has to be visible while configuring a
+ * model instead of being discovered behind a per-row expander.
+ * @param props - the row, its copy, and the toggle sink.
+ * @returns the input-type field.
+ */
+export function ModelInputTypesField(props: ModelInputTypesFieldProps): ReactNode {
+  const { model, index, t, disabled, onToggle } = props
+  return (
+    <div
+      className={`${styles['modelField']} ${styles['modelFieldWide']} ${styles['modelInputTypes']}`}
+    >
+      <span className={styles['modelFieldLabel']}>{t('modelInputType')}</span>
+      <div
+        className={styles['inputTypeGroup']}
+        role="group"
+        aria-label={`${t('modelInputType')} ${String(index + 1)}`}
+      >
+        {ALL_INPUT_TYPES.map(type => (
+          <label className={styles['inputTypeOption']} key={type}>
+            <input
+              type="checkbox"
+              checked={hasInputType(model, type)}
+              aria-label={`${t(INPUT_TYPE_LABEL[type])} ${String(index + 1)}`}
+              disabled={disabled}
+              onChange={(event) => {
+                onToggle(index, type, event.target.checked)
+              }}
+            />
+            <span>{t(INPUT_TYPE_LABEL[type])}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 /** The catalog fields this editor writes. */
-type CatalogField = 'id' | 'name' | 'contextWindow' | 'maxTokens'
+type CatalogField = 'id' | 'name' | 'contextWindow' | 'maxTokens' | 'inputType'
 
 /** The two token counts edited as K/M-suffixed text behind a row's disclosure. */
 type CapacityField = 'contextWindow' | 'maxTokens'
@@ -73,8 +176,12 @@ export interface DeepSeekModelsValidationFailure {
   /** Zero-based model position. */
   index: number
   /** Message key owned by the Models settings section. */
-  key: 'modelIdRequired' | 'modelIdDuplicate' | 'modelNameInvalid' | 'modelContextInvalid'
-  | 'modelMaxTokensInvalid'
+  key:
+    | 'modelIdRequired'
+    | 'modelIdDuplicate'
+    | 'modelNameInvalid'
+    | 'modelContextInvalid'
+    | 'modelMaxTokensInvalid'
 }
 
 /** Convert a schema-validated catalog value into records without dropping hidden fields. */
@@ -82,8 +189,9 @@ export function modelDrafts(value: unknown): DeepSeekModelDraft[] {
   if (!Array.isArray(value)) return []
   return value.map(entry =>
     typeof entry === 'object' && entry !== null && !Array.isArray(entry)
-      ? entry as DeepSeekModelDraft
-      : {})
+      ? (entry as DeepSeekModelDraft)
+      : {},
+  )
 }
 
 /**
@@ -91,7 +199,9 @@ export function modelDrafts(value: unknown): DeepSeekModelDraft[] {
  * @param value - user-owned `models` value, or undefined while inherited.
  * @returns the first invalid row, or undefined when the adapter will accept it.
  */
-export function validateDeepSeekModels(value: unknown): DeepSeekModelsValidationFailure | undefined {
+export function validateDeepSeekModels(
+  value: unknown,
+): DeepSeekModelsValidationFailure | undefined {
   if (value === undefined) return undefined
   const models = modelDrafts(value)
   const seen = new Set<string>()
@@ -109,13 +219,17 @@ export function validateDeepSeekModels(value: unknown): DeepSeekModelsValidation
       return { index, key: 'modelNameInvalid' }
     }
     const contextWindow = model['contextWindow']
-    if (contextWindow !== undefined
-      && (typeof contextWindow !== 'number' || !Number.isInteger(contextWindow) || contextWindow <= 0)) {
+    if (
+      contextWindow !== undefined &&
+      (typeof contextWindow !== 'number' || !Number.isInteger(contextWindow) || contextWindow <= 0)
+    ) {
       return { index, key: 'modelContextInvalid' }
     }
     const maxTokens = model['maxTokens']
-    if (maxTokens !== undefined
-      && (typeof maxTokens !== 'number' || !Number.isInteger(maxTokens) || maxTokens <= 0)) {
+    if (
+      maxTokens !== undefined &&
+      (typeof maxTokens !== 'number' || !Number.isInteger(maxTokens) || maxTokens <= 0)
+    ) {
       return { index, key: 'modelMaxTokensInvalid' }
     }
   }
@@ -170,6 +284,22 @@ export function DeepSeekModelsEditor(props: DeepSeekModelsEditorProps): ReactNod
       if (value === undefined) Reflect.deleteProperty(copy, key)
       else copy[key] = value
       return copy
+    })
+    props.onChange(next)
+  }
+
+  const toggleInputType = (index: number, type: ModelInputType, checked: boolean): void => {
+    const currentModel = props.models[index]
+    if (!currentModel) return
+    const currentTypes = inputTypesOf(currentModel)
+    const nextTypes = checked
+      ? ALL_INPUT_TYPES.filter(t => t === type || currentTypes.includes(t))
+      : currentTypes.filter(t => t !== type)
+    // `inputModalities` is the only field the DeepSeek provider schema accepts;
+    // writing aliases left invisible, unvalidated keys in the draft.
+    const next = props.models.map((model, at) => {
+      if (at !== index) return { ...model }
+      return { ...model, inputModalities: [...nextTypes] }
     })
     props.onChange(next)
   }
@@ -241,15 +371,21 @@ export function DeepSeekModelsEditor(props: DeepSeekModelsEditorProps): ReactNod
     fallback: number | undefined,
   ): ReactNode => (
     <label className={styles['modelField']}>
-      <span className={styles['modelFieldLabel']}>{props.t(field === 'contextWindow' ? 'contextWindow' : 'maxTokens')}</span>
+      <span className={styles['modelFieldLabel']}>
+        {props.t(field === 'contextWindow' ? 'contextWindow' : 'maxTokens')}
+      </span>
       <input
         className={styles['input']}
         type="text"
         inputMode="numeric"
         value={capacityText(model, index, field)}
-        placeholder={fallback === undefined
-          ? props.t(field === 'contextWindow' ? 'contextWindowPlaceholder' : 'maxTokensPlaceholder')
-          : formatCapacity(fallback)}
+        placeholder={
+          fallback === undefined
+            ? props.t(
+              field === 'contextWindow' ? 'contextWindowPlaceholder' : 'maxTokensPlaceholder',
+            )
+            : formatCapacity(fallback)
+        }
         aria-label={`${props.t(field === 'contextWindow' ? 'contextWindow' : 'maxTokens')} ${String(index + 1)}`}
         disabled={props.disabled}
         onChange={(event) => {
@@ -257,7 +393,9 @@ export function DeepSeekModelsEditor(props: DeepSeekModelsEditorProps): ReactNod
           setEditing(current => new Map(current).set(`${String(index)}:${field}`, text))
           update(index, field, parseCapacity(text))
         }}
-        onBlur={() => { settleCapacity(index, field) }}
+        onBlur={() => {
+          settleCapacity(index, field)
+        }}
       />
     </label>
   )
@@ -271,90 +409,109 @@ export function DeepSeekModelsEditor(props: DeepSeekModelsEditorProps): ReactNod
             {props.overridden ? props.t('modelsCustomized') : props.t('modelsInherited')}
           </span>
         </div>
-        {props.overridden
-          ? (
-            <button
-              type="button"
-              className={styles['linkButton']}
-              disabled={props.disabled}
-              onClick={reset}
-            >
-              {props.t('resetModels')}
-            </button>
-          )
-          : null}
+        {props.overridden ? (
+          <button
+            type="button"
+            className={styles['linkButton']}
+            disabled={props.disabled}
+            onClick={reset}
+          >
+            {props.t('resetModels')}
+          </button>
+        ) : null}
       </div>
-      {props.models.length === 0
-        ? <p className={styles['modelEmpty']}>{props.t('modelsEmpty')}</p>
-        : (
-          <div className={styles['modelList']}>
-            {props.models.map((model, index) => (
-              <div className={styles['modelEntry']} key={index}>
-                <div className={styles['modelRow']}>
-                  <input
-                    className={styles['input']}
-                    type="text"
-                    value={typeof model['id'] === 'string' ? model['id'] : ''}
-                    placeholder={props.t('modelId')}
-                    aria-label={`${props.t('modelId')} ${String(index + 1)}`}
-                    disabled={props.disabled}
-                    onChange={(event) => { update(index, 'id', event.target.value) }}
-                    onBlur={(event) => {
-                      // Settle a pasted id rather than trimming per keystroke,
-                      // which would stop the user typing an interior space.
-                      const trimmed = event.target.value.trim()
-                      if (trimmed !== event.target.value) update(index, 'id', trimmed)
-                    }}
-                  />
-                  <input
-                    className={styles['input']}
-                    type="text"
-                    value={typeof model['name'] === 'string' ? model['name'] : ''}
-                    placeholder={props.t('modelName')}
-                    aria-label={`${props.t('modelName')} ${String(index + 1)}`}
-                    disabled={props.disabled}
-                    onChange={(event) => {
-                      update(index, 'name', event.target.value === '' ? undefined : event.target.value)
-                    }}
-                  />
-                  <button
-                    type="button"
-                    className={styles['iconButton']}
-                    aria-label={`${props.t('modelAdvanced')} ${String(index + 1)}`}
-                    aria-expanded={expanded.has(index)}
-                    title={props.t('modelAdvanced')}
-                    onClick={() => { toggle(index) }}
-                  >
-                    {expanded.has(index) ? <IconChevronDownOutline14 /> : <IconChevronRightOutline14 />}
-                  </button>
-                  <button
-                    type="button"
-                    className={`${styles['iconButton']} ${styles['iconButtonDanger']}`}
-                    aria-label={`${props.t('removeModel')} ${String(index + 1)}`}
-                    title={props.t('removeModel')}
-                    disabled={props.disabled}
-                    onClick={() => { remove(index) }}
-                  >
-                    <IconTrashOutline16 size={14} />
-                  </button>
-                </div>
-                {expanded.has(index)
-                  ? (
-                    <div className={styles['modelAdvanced']}>
-                      {capacityField(model, index, 'contextWindow', props.defaultContextWindow)}
-                      {capacityField(model, index, 'maxTokens', props.defaultMaxTokens)}
-                    </div>
-                  )
-                  : null}
+      {props.models.length === 0 ? (
+        <p className={styles['modelEmpty']}>{props.t('modelsEmpty')}</p>
+      ) : (
+        <div className={styles['modelList']}>
+          {props.models.map((model, index) => (
+            <div className={styles['modelEntry']} key={index}>
+              <div className={styles['modelRow']}>
+                <input
+                  className={styles['input']}
+                  type="text"
+                  value={typeof model['id'] === 'string' ? model['id'] : ''}
+                  placeholder={props.t('modelId')}
+                  aria-label={`${props.t('modelId')} ${String(index + 1)}`}
+                  disabled={props.disabled}
+                  onChange={(event) => {
+                    update(index, 'id', event.target.value)
+                  }}
+                  onBlur={(event) => {
+                    // Settle a pasted id rather than trimming per keystroke,
+                    // which would stop the user typing an interior space.
+                    const trimmed = event.target.value.trim()
+                    if (trimmed !== event.target.value) update(index, 'id', trimmed)
+                  }}
+                />
+                <input
+                  className={styles['input']}
+                  type="text"
+                  value={typeof model['name'] === 'string' ? model['name'] : ''}
+                  placeholder={props.t('modelName')}
+                  aria-label={`${props.t('modelName')} ${String(index + 1)}`}
+                  disabled={props.disabled}
+                  onChange={(event) => {
+                    update(
+                      index,
+                      'name',
+                      event.target.value === '' ? undefined : event.target.value,
+                    )
+                  }}
+                />
+                <button
+                  type="button"
+                  className={styles['iconButton']}
+                  aria-label={`${props.t('modelAdvanced')} ${String(index + 1)}`}
+                  aria-expanded={expanded.has(index)}
+                  title={props.t('modelAdvanced')}
+                  onClick={() => {
+                    toggle(index)
+                  }}
+                >
+                  {expanded.has(index) ? (
+                    <IconChevronDownOutline14 />
+                  ) : (
+                    <IconChevronRightOutline14 />
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className={`${styles['iconButton']} ${styles['iconButtonDanger']}`}
+                  aria-label={`${props.t('removeModel')} ${String(index + 1)}`}
+                  title={props.t('removeModel')}
+                  disabled={props.disabled}
+                  onClick={() => {
+                    remove(index)
+                  }}
+                >
+                  <IconTrashOutline16 size={14} />
+                </button>
               </div>
-            ))}
-          </div>
-        )}
+              {expanded.has(index) ? (
+                <div className={styles['modelAdvanced']}>
+                  {capacityField(model, index, 'contextWindow', props.defaultContextWindow)}
+                  {capacityField(model, index, 'maxTokens', props.defaultMaxTokens)}
+                </div>
+              ) : null}
+              <ModelInputTypesField
+                model={model}
+                index={index}
+                t={props.t}
+                disabled={props.disabled}
+                onToggle={toggleInputType}
+              />
+            </div>
+          ))}
+        </div>
+      )}
       <button
         type="button"
         className={styles['addModelButton']}
         disabled={props.disabled}
-        onClick={() => { props.onChange([...props.models.map(model => ({ ...model })), { id: '' }]) }}
+        onClick={() => {
+          props.onChange([...props.models.map(model => ({ ...model })), { id: '' }])
+        }}
       >
         <IconPlusOutline16 size={14} />
         {props.t('addModel')}

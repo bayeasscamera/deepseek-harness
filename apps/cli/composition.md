@@ -158,10 +158,16 @@ flowchart LR
   cfg --> plugin_dsh_base_tool_ralph
   plugin_dsh_base_repeat_tool_reminder["repeat-tool-reminder<br/>@deepseek-ai/dsh-repeat-tool-reminder"]
   cfg --> plugin_dsh_base_repeat_tool_reminder
+  plugin_dsh_base_auto_continue["auto-continue<br/>@deepseek-ai/dsh-auto-continue"]
+  cfg --> plugin_dsh_base_auto_continue
   plugin_dsh_base_web["web<br/>@deepseek-ai/dsh-web"]
   cfg --> plugin_dsh_base_web
   plugin_dsh_base_web_search_deepseek["web-search-deepseek<br/>@deepseek-ai/dsh-web-search-deepseek"]
   cfg --> plugin_dsh_base_web_search_deepseek
+  plugin_dsh_base_web_search_brave["web-search-brave<br/>@deepseek-ai/dsh-web-search-brave"]
+  cfg --> plugin_dsh_base_web_search_brave
+  plugin_dsh_base_web_search_tavily["web-search-tavily<br/>@deepseek-ai/dsh-web-search-tavily"]
+  cfg --> plugin_dsh_base_web_search_tavily
   plugin_dsh_base_web_fetch_http["web-fetch-http<br/>@deepseek-ai/dsh-web-fetch-http"]
   cfg --> plugin_dsh_base_web_fetch_http
   plugin_dsh_base_tool_web["tool-web<br/>@deepseek-ai/dsh-tool-web"]
@@ -255,8 +261,11 @@ flowchart LR
 | `tool-goal` | `@deepseek-ai/dsh-tool-goal` |
 | `tool-ralph` | `@deepseek-ai/dsh-tool-ralph` |
 | `repeat-tool-reminder` | `@deepseek-ai/dsh-repeat-tool-reminder` |
+| `auto-continue` | `@deepseek-ai/dsh-auto-continue` |
 | `web` | `@deepseek-ai/dsh-web` |
 | `web-search-deepseek` | `@deepseek-ai/dsh-web-search-deepseek` |
+| `web-search-brave` | `@deepseek-ai/dsh-web-search-brave` |
+| `web-search-tavily` | `@deepseek-ai/dsh-web-search-tavily` |
 | `web-fetch-http` | `@deepseek-ai/dsh-web-fetch-http` |
 | `tool-web` | `@deepseek-ai/dsh-tool-web` |
 | `tools` | `@deepseek-ai/dsh-tools` |

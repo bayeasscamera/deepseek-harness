@@ -268,7 +268,7 @@ Goal mutation accepted by one live agent. The matching `goal/change` session eve
  * @param payload.change - fresh current projection or clear tombstone.
  * @mode emit
  */
-'goal/changed'(this: import('@deepseek-ai/dsh-scope').Scoped<Agent>, payload: { agent: Agent; change: GoalChanged }): void
+'goal/changed'(this: import('@deepseek-ai/dsh-scope').Scoped<Agent>, payload: { agent: Agent; change: GoalChanged; }): void
 ```
 
 Types: [Agent](core.md) · [Scoped](scope.md)

@@ -43,3 +43,6 @@ apps/web/dist/
 worktrees/
 .agents/worktrees/
 .typert-*/
+apps/electron/dist/
+apps/electron/release/
+apps/desktop/build/

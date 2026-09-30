@@ -5,22 +5,43 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { useEffect } from 'react'
 import type {
-  AssistantMessageNode, ChatNode, ChatNodeOwnerProps, ChatNodeViewProps, ChatSnapshot,
-  ChatViewSlotProps, CommandNode, CompactionSummaryNode, ContextMessageNode, ConversationNode,
-  LegacyConversationSlice, ModelRetryNode, RunningToolCall, SteeringMessageNode,
-  ToolCallBlock, ToolResultNode, TurnErrorNode, TurnMaxTokensNode, UseChatNodeTurnData,
-  TranscriptViewMode, UserMessageNode,
+  AssistantMessageNode,
+  ChatNode,
+  ChatNodeOwnerProps,
+  ChatNodeViewProps,
+  ChatSnapshot,
+  ChatViewSlotProps,
+  CommandNode,
+  CompactionSummaryNode,
+  ContextMessageNode,
+  ConversationNode,
+  LegacyConversationSlice,
+  ModelRetryNode,
+  RunningToolCall,
+  SteeringMessageNode,
+  ToolCallBlock,
+  ToolResultNode,
+  TurnErrorNode,
+  TurnMaxTokensNode,
+  UseChatNodeTurnData,
+  TranscriptViewMode,
+  UserMessageNode,
 } from '@deepseek-ai/dsh-client-ui-chat/client'
 import type {
-  SessionListState, SessionSnapshot,
+  SessionListState,
+  SessionSnapshot,
 } from '@deepseek-ai/dsh-api-session-controller/client'
 import type {
-  ConversationLocationDataStore, ConversationTurnDataMap,
+  ConversationLocationDataStore,
+  ConversationTurnDataMap,
 } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { WorkspaceSnapshot } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { SessionPendingInteractionSnapshot } from '@deepseek-ai/dsh-client-ui-session/client'
-import type { KeyedSnapshotSelectorHook, SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots'
+import type {
+  KeyedSnapshotSelectorHook,
+  SnapshotSelectorHook,
+} from '@deepseek-ai/dsh-client-ui-slots'
 import { bindSnapshotSelector, makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import { createSnapshotStore, type ObservableSnapshot } from '@deepseek-ai/dsh-client-store'
 import { EMPTY_CONVERSATION_SNAPSHOT } from '@deepseek-ai/dsh-client-ui-conversation/client'
@@ -33,8 +54,13 @@ import { zh } from '../src/client/locale.ts'
 import { AssistantNodeView } from '../src/client/chat/AssistantNodeView.tsx'
 import { CommandNodeView, ManualCompactionNodeView } from '../src/client/chat/CommandNodeView.tsx'
 import {
-  CompactionNodeView, ContextMessageNodeView, RetryNodeView, TurnErrorNodeView,
-  TurnMaxTokensNodeView, UnknownNodeView, UserMessageNodeView,
+  CompactionNodeView,
+  ContextMessageNodeView,
+  RetryNodeView,
+  TurnErrorNodeView,
+  TurnMaxTokensNodeView,
+  UnknownNodeView,
+  UserMessageNodeView,
 } from '../src/client/chat/MessageItem.tsx'
 import { TurnTailNodeView } from '../src/client/chat/TurnTailNodeView.tsx'
 import { TurnProcessNodeView } from '../src/client/chat/TurnProcessNodeView.tsx'
@@ -45,7 +71,12 @@ import type { TurnProcessSpec } from '../src/client/contract/turn-process.ts'
 import { chatSnapshotFixture } from './chat-snapshot-fixture.client.ts'
 
 // Every session-scope fixture carries the resource hook the resources plugin merges into GlobalStandardProps.
-const useResource = (() => ({ status: 'none' as const, value: undefined, failure: undefined, reload: () => {} })) as GlobalStandardProps['useResource']
+const useResource = (() => ({
+  status: 'none' as const,
+  value: undefined,
+  failure: undefined,
+  reload: () => {},
+})) as GlobalStandardProps['useResource']
 
 afterEach(() => {
   cleanup()
@@ -135,59 +166,127 @@ const user = (seq: number, text: string): UserMessageNode => ({
   content: [{ type: 'text', text }] as never,
   source: null,
 })
-const userInTurn = (seq: number, text: string, turn: number): ConversationNode => ({
-  ...user(seq, text),
-  // The production Location index owns this association. The legacy fixture
-  // accepts the extra coordinate so component tests can build the same view.
-  turn,
-} as unknown as ConversationNode)
+const userInTurn = (seq: number, text: string, turn: number): ConversationNode =>
+  ({
+    ...user(seq, text),
+    // The production Location index owns this association. The legacy fixture
+    // accepts the extra coordinate so component tests can build the same view.
+    turn,
+  }) as unknown as ConversationNode
 const assistant = (seq: number, text: string, turn = 1, step = 1): AssistantMessageNode => ({
-  kind: 'assistant', seq, time: seq * 1_000, turn, step, blocks: [{ kind: 'text', text }],
+  kind: 'assistant',
+  seq,
+  time: seq * 1_000,
+  turn,
+  step,
+  blocks: [{ kind: 'text', text }],
 })
-const reasoningAssistant = (seq: number, text: string, turn = 1, step = 1): AssistantMessageNode => ({
-  kind: 'assistant', seq, time: seq * 1_000, turn, step, blocks: [{ kind: 'reasoning', text }],
+const reasoningAssistant = (
+  seq: number,
+  text: string,
+  turn = 1,
+  step = 1,
+): AssistantMessageNode => ({
+  kind: 'assistant',
+  seq,
+  time: seq * 1_000,
+  turn,
+  step,
+  blocks: [{ kind: 'reasoning', text }],
 })
-const context = (seq: number, text: string, turn?: number): ContextMessageNode & { turn?: number } => ({
-  kind: 'context', seq, time: seq * 1_000, content: [{ type: 'text', text }], source: null,
-  provenance: { role: 'inject', label: null }, form: null,
+const context = (
+  seq: number,
+  text: string,
+  turn?: number,
+): ContextMessageNode & { turn?: number } => ({
+  kind: 'context',
+  seq,
+  time: seq * 1_000,
+  content: [{ type: 'text', text }],
+  source: null,
+  provenance: { role: 'inject', label: null },
+  form: null,
   ...(turn === undefined ? {} : { turn }),
 })
-const steering = (seq: number, text: string, turn: number): SteeringMessageNode & { turn: number } => ({
-  kind: 'steering', messageId: `steering-${String(seq)}` as SteeringMessageNode['messageId'],
-  seq, time: seq * 1_000, turn, content: [{ type: 'text', text }], source: null,
+const steering = (
+  seq: number,
+  text: string,
+  turn: number,
+): SteeringMessageNode & { turn: number } => ({
+  kind: 'steering',
+  messageId: `steering-${String(seq)}` as SteeringMessageNode['messageId'],
+  seq,
+  time: seq * 1_000,
+  turn,
+  content: [{ type: 'text', text }],
+  source: null,
 })
 const retry = (seq: number): ModelRetryNode => ({
-  kind: 'model-retry', retryId: 'chat-view-retry' as ModelRetryNode['retryId'],
-  seq, time: seq * 1_000, turn: 1, step: 0,
+  kind: 'model-retry',
+  retryId: 'chat-view-retry' as ModelRetryNode['retryId'],
+  seq,
+  time: seq * 1_000,
+  turn: 1,
+  step: 0,
   retryState: 'scheduled',
-  provider: 'mock', mode: 'normal', policyKey: 'mock-normal',
-  retry: 1, maxRetries: 2, delayMs: 450,
+  provider: 'mock',
+  mode: 'normal',
+  policyKey: 'mock-normal',
+  retry: 1,
+  maxRetries: 2,
+  delayMs: 450,
   failure: { code: 'TRANSPORT', message: '连接被重置' },
 })
 const turnError = (seq: number, code?: string): TurnErrorNode => ({
-  kind: 'turn-error', seq, time: seq * 1_000, turn: 1, step: 0,
+  kind: 'turn-error',
+  seq,
+  time: seq * 1_000,
+  turn: 1,
+  step: 0,
   message: seq === 2 ? 'API key is invalid' : 'plugin exploded',
   ...(code === undefined ? {} : { code }),
 })
 const turnMaxTokens = (seq: number): TurnMaxTokensNode => ({
-  kind: 'turn-max-tokens', seq, time: seq * 1_000, turn: 1, step: 0,
+  kind: 'turn-max-tokens',
+  seq,
+  time: seq * 1_000,
+  turn: 1,
+  step: 0,
 })
 const toolResult = (seq: number, callId: string, name = 'bash'): ToolResultNode => ({
-  kind: 'tool-result', seq, time: seq * 1_000, callId,
+  kind: 'tool-result',
+  seq,
+  time: seq * 1_000,
+  callId,
   call: { name, argsRaw: `{"command":"cmd-${callId}","description":"run ${callId}"}` },
   callTime: seq * 1_000 - 500,
-  content: [], isError: false, subCalls: [],
+  content: [],
+  isError: false,
+  subCalls: [],
 })
 const runningCall = (callId: string, name = 'bash'): RunningToolCall => ({
-  callId, name, argsRaw: `{"command":"cmd-${callId}"}`, turn: 2, step: 1, time: 1_000, subCalls: [],
+  callId,
+  name,
+  argsRaw: `{"command":"cmd-${callId}"}`,
+  turn: 2,
+  step: 1,
+  time: 1_000,
+  subCalls: [],
 })
 const command = (over: Partial<CommandNode> = {}): CommandNode => ({
-  kind: 'command', seq: 5, time: 5_000, commandId: 'cmd-1' as CommandNode['commandId'],
-  name: 'plan', args: '', outcome: { kind: 'success', text: '已进入 plan mode' },
+  kind: 'command',
+  seq: 5,
+  time: 5_000,
+  commandId: 'cmd-1' as CommandNode['commandId'],
+  name: 'plan',
+  args: '',
+  outcome: { kind: 'success', text: '已进入 plan mode' },
   ...over,
 })
 const compaction = (over: Partial<CompactionSummaryNode> = {}): CompactionSummaryNode => ({
-  kind: 'compaction', seq: 8, time: 8_000,
+  kind: 'compaction',
+  seq: 8,
+  time: 8_000,
   summary: '## 压缩摘要\n\n保留的事实。',
   summaryEventSeq: 7,
   shadowedItemCount: 16,
@@ -197,14 +296,25 @@ const compaction = (over: Partial<CompactionSummaryNode> = {}): CompactionSummar
 
 /** Empty sessions-list hook for the global standard-kit seat. */
 function emptySessions() {
-  const store = createSnapshotStore<SessionListState>(
-    { ids: [], byId: {}, current: undefined, phase: 'ready', subagentsByParent: {}, jobsBySession: {}, currentAddress: undefined })
+  const store = createSnapshotStore<SessionListState>({
+    ids: [],
+    byId: {},
+    current: undefined,
+    phase: 'ready',
+    subagentsByParent: {},
+    jobsBySession: {},
+    currentAddress: undefined,
+  })
   return bindSnapshotSelector(store)
 }
 
 function emptyWorkspaces() {
   const store = createSnapshotStore<WorkspaceSnapshot>({
-    items: [], archivedSessionIds: [], state: 'idle', phase: 'ready', error: null,
+    items: [],
+    archivedSessionIds: [],
+    state: 'idle',
+    phase: 'ready',
+    error: null,
   })
   return bindSnapshotSelector(store)
 }
@@ -213,7 +323,11 @@ function bindKeyedSnapshotSelector<Value>(
   resolve: (key: string) => ObservableSnapshot<Value>,
 ): KeyedSnapshotSelectorHook<Value> {
   const hooks = new WeakMap<object, SnapshotSelectorHook<Value>>()
-  return ((key: string, selector?: (value: Value) => unknown, equal?: (left: unknown, right: unknown) => boolean) => {
+  return ((
+    key: string,
+    selector?: (value: Value) => unknown,
+    equal?: (left: unknown, right: unknown) => boolean,
+  ) => {
     const source = resolve(key)
     let useValue = hooks.get(source)
     if (useValue === undefined) {
@@ -230,7 +344,13 @@ function makeHarness(
   chatSnapshot?: ChatSnapshot,
 ) {
   const {
-    chat: initialChat, nodes, partial, runningCalls, turnTimings, turnEnds, turnUsages,
+    chat: initialChat,
+    nodes,
+    partial,
+    runningCalls,
+    turnTimings,
+    turnEnds,
+    turnUsages,
     ...sessionInit
   } = init
   const chatSlice: ChatSlice = {
@@ -243,11 +363,11 @@ function makeHarness(
   }
   const session = makeSessionSource({ ...sessionInit, ...sessionOverrides })
   const chatSource = makeChatSource(chatSlice, initialChat ?? chatSnapshot)
-  const useChatNode = bindKeyedSnapshotSelector(
-    key => chatSource.source.getSnapshot().nodes.source(key),
+  const useChatNode = bindKeyedSnapshotSelector(key =>
+    chatSource.source.getSnapshot().nodes.source(key),
   )
-  const useChatNodeProcess = bindKeyedSnapshotSelector(
-    key => chatSource.source.getSnapshot().nodes.processSource(key),
+  const useChatNodeProcess = bindKeyedSnapshotSelector(key =>
+    chatSource.source.getSnapshot().nodes.processSource(key),
   )
   const openFile = vi.fn<(path: string) => Promise<void>>().mockResolvedValue(undefined)
   const loadOlder = vi.fn()
@@ -258,7 +378,9 @@ function makeHarness(
   // In-memory scroll memory matching the apply.ts per-session map contract.
   let savedScroll: ReturnType<ChatViewSlotProps['chatScroll']['read']> = null
   const chatScroll: ChatViewSlotProps['chatScroll'] = {
-    save: (position) => { savedScroll = position },
+    save: (position) => {
+      savedScroll = position
+    },
     read: () => savedScroll,
   }
   const forkAt = vi.fn()
@@ -273,26 +395,37 @@ function makeHarness(
     openFile: ChatNodeOwnerProps['openFile']
     inspectCall: ChatNodeOwnerProps['inspectCall']
   }> = []
-  const renderCommandSlot = ((_key: string, _owner: object, opts?: { fallback?: React.ReactNode }) =>
-    opts?.fallback ?? null) as unknown as React.ComponentProps<typeof CommandNodeView>['renderSlot']
-  const renderTurnTail = ((_key: string, _owner: object) => null) as unknown as
-    React.ComponentProps<typeof TurnTailNodeView>['renderSlotChain']
-  const renderTurnTailSlot = (() => null) as unknown as
-    React.ComponentProps<typeof TurnTailNodeView>['renderSlot']
+  const renderCommandSlot = ((
+    _key: string,
+    _owner: object,
+    opts?: { fallback?: React.ReactNode },
+  ) => opts?.fallback ?? null) as unknown as React.ComponentProps<
+    typeof CommandNodeView
+  >['renderSlot']
+  const renderTurnTail = ((_key: string, _owner: object) =>
+    null) as unknown as React.ComponentProps<typeof TurnTailNodeView>['renderSlotChain']
+  const renderTurnTailSlot = (() => null) as unknown as React.ComponentProps<
+    typeof TurnTailNodeView
+  >['renderSlot']
   let nodeSlotOverride: React.ComponentProps<typeof ChatNodeSeat>['renderSlot'] | undefined
-  const renderNodeSlot = ((key: string, owner: object, opts?: {
-    fallback?: React.ReactNode
-    hookContext?: unknown
-  }) => {
-    if (nodeSlotOverride !== undefined) return nodeSlotOverride(key as never, owner as never, opts as never)
+  const renderNodeSlot = ((
+    key: string,
+    owner: object,
+    opts?: {
+      fallback?: React.ReactNode
+      hookContext?: unknown
+    },
+  ) => {
+    if (nodeSlotOverride !== undefined)
+      return nodeSlotOverride(key as never, owner as never, opts as never)
     if (key !== 'conversation.chat.node') return opts?.fallback ?? null
     const nodeOwner = owner as RoutedChatNodeOwner
     const turnData = opts?.hookContext as
-      ConversationLocationDataStore<ConversationTurnDataMap> | undefined
+      | ConversationLocationDataStore<ConversationTurnDataMap>
+      | undefined
     const useTurnData: UseChatNodeTurnData = dataKey => useTurnDataValue(turnData, dataKey)
-    const nodeProps = <Kind extends ChatNode['kind']>(): ChatNodeViewProps<Kind> => (
-      { ...props, ...nodeOwner, useTurnData } as unknown as ChatNodeViewProps<Kind>
-    )
+    const nodeProps = <Kind extends ChatNode['kind']>(): ChatNodeViewProps<Kind> =>
+      ({ ...props, ...nodeOwner, useTurnData }) as unknown as ChatNodeViewProps<Kind>
     switch (nodeOwner.node.kind) {
       case 'user':
       case 'steering':
@@ -336,7 +469,7 @@ function makeHarness(
         return <UnknownNodeView {...nodeProps<'unknown'>()} />
       case 'tool-call': {
         const block = nodeOwner.node.data.root
-        const toolName = 'kind' in block ? block.call?.name ?? '' : block.name
+        const toolName = 'kind' in block ? (block.call?.name ?? '') : block.name
         const tool = {
           callId: block.callId,
           toolName,
@@ -362,7 +495,9 @@ function makeHarness(
   const renderSlot = renderNodeSlot
   // SessionProvider seat arrives with the session-scope child declaration;
   // ChatView never invokes it (pass-through stub).
-  const SessionProviderStub: ChatViewSlotProps['SessionProvider'] = ({ children }) => <>{children}</>
+  const SessionProviderStub: ChatViewSlotProps['SessionProvider'] = ({ children }) => (
+    <>{children}</>
+  )
   const props: ChatViewSlotProps = {
     sessionId: SID,
     useSession: bindSnapshotSelector(session.source),
@@ -370,7 +505,9 @@ function makeHarness(
     useChatNode,
     useChatNodeProcess,
     useConversation: bindSnapshotSelector(createSnapshotStore(EMPTY_CONVERSATION_SNAPSHOT)),
-    useTrajectory: (() => { throw new Error('unused') }),
+    useTrajectory: () => {
+      throw new Error('unused')
+    },
     useSessions: emptySessions(),
     useResource,
     useSessionPendingInteraction: bindSnapshotSelector(
@@ -378,7 +515,9 @@ function makeHarness(
     ),
     useWorkspaces: emptyWorkspaces(),
     useProjection: () => outlineValue,
-    useInput: (() => { throw new Error('unused') }),
+    useInput: () => {
+      throw new Error('unused')
+    },
     inputActions: {
       setDraft: () => {},
       addAttachments: () => true,
@@ -406,12 +545,22 @@ function makeHarness(
   }
   const set = (next: HarnessUpdate): void => {
     const {
-      chat: explicitChat, nodes, partial, runningCalls, turnTimings, turnEnds,
+      chat: explicitChat,
+      nodes,
+      partial,
+      runningCalls,
+      turnTimings,
+      turnEnds,
       ...sessionUpdate
     } = next
     if (explicitChat !== undefined) chatSource.replace(explicitChat)
-    else if (nodes !== undefined || partial !== undefined || runningCalls !== undefined
-      || turnTimings !== undefined || turnEnds !== undefined) {
+    else if (
+      nodes !== undefined ||
+      partial !== undefined ||
+      runningCalls !== undefined ||
+      turnTimings !== undefined ||
+      turnEnds !== undefined
+    ) {
       chatSource.set({
         ...(nodes === undefined ? {} : { nodes }),
         ...(partial === undefined ? {} : { partial }),
@@ -423,11 +572,24 @@ function makeHarness(
     session.set(sessionUpdate)
   }
   return {
-    set, setSession: session.set, setChat: chatSource.set, ChatView, props,
-    openFile, loadOlder, loadThrough, openView,
-    setOutline: (value: unknown) => { outlineValue = value },
-    chatScroll, forkAt, toolOwners,
-    setTranscriptView: (mode: TranscriptViewMode) => { transcriptView.set(mode) },
+    set,
+    setSession: session.set,
+    setChat: chatSource.set,
+    ChatView,
+    props,
+    openFile,
+    loadOlder,
+    loadThrough,
+    openView,
+    setOutline: (value: unknown) => {
+      outlineValue = value
+    },
+    chatScroll,
+    forkAt,
+    toolOwners,
+    setTranscriptView: (mode: TranscriptViewMode) => {
+      transcriptView.set(mode)
+    },
     setNodeRenderer: (renderer: React.ComponentProps<typeof ChatNodeSeat>['renderSlot']) => {
       nodeSlotOverride = renderer
     },
@@ -470,8 +632,29 @@ function withSystemPrompt(
 }
 
 function renderedFlowKinds(container: HTMLElement): Array<string | undefined> {
-  return [...container.querySelectorAll<HTMLElement>('[data-chat-flow-kind]')]
-    .map(row => row.dataset.chatFlowKind)
+  return [...container.querySelectorAll<HTMLElement>('[data-chat-flow-kind]')].map(
+    row => row.dataset.chatFlowKind,
+  )
+}
+
+/** Stub a ResizeObserver whose single callback stays reachable so a test can drive it. */
+function stubResizeObserver(observe = vi.fn()): {
+  trigger: () => void
+  constructed: () => boolean
+} {
+  let notify: (() => void) | undefined
+  class ResizeObserverStub {
+    constructor(callback: ResizeObserverCallback) {
+      notify = () => {
+        callback([], this as unknown as ResizeObserver)
+      }
+    }
+
+    observe = observe
+    disconnect = vi.fn()
+  }
+  vi.stubGlobal('ResizeObserver', ResizeObserverStub)
+  return { trigger: () => { notify?.() }, constructed: () => notify !== undefined }
 }
 
 function installScrollMetrics(element: HTMLElement, initialHeight: number, clientHeight: number) {
@@ -482,10 +665,14 @@ function installScrollMetrics(element: HTMLElement, initialHeight: number, clien
   Object.defineProperty(element, 'scrollTop', {
     configurable: true,
     get: () => scrollTop,
-    set: (value: number) => { scrollTop = Math.max(0, Math.min(value, scrollHeight - clientHeight)) },
+    set: (value: number) => {
+      scrollTop = Math.max(0, Math.min(value, scrollHeight - clientHeight))
+    },
   })
   return {
-    setHeight: (value: number) => { scrollHeight = value },
+    setHeight: (value: number) => {
+      scrollHeight = value
+    },
     setLayout: (height: number, top: number) => {
       scrollHeight = height
       scrollTop = Math.max(0, Math.min(top, scrollHeight - clientHeight))
@@ -494,7 +681,6 @@ function installScrollMetrics(element: HTMLElement, initialHeight: number, clien
 }
 
 describe('Chat node rendering', () => {
-
   it('threads the injected file-mention vocabulary into the closing prose only', () => {
     const wrote = (seq: number, callId: string): ToolResultNode => ({
       ...toolResult(seq, callId, 'write'),
@@ -512,7 +698,9 @@ describe('Chat node rendering', () => {
       resolve: (value) => {
         if (value !== 'report.html') return undefined
         return {
-          open: () => { void h.openFile(`for-seq-${String(owner.seq)}/site/report.html`) },
+          open: () => {
+            void h.openFile(`for-seq-${String(owner.seq)}/site/report.html`)
+          },
           label: '打开 site/report.html',
           title: 'site/report.html',
         }
@@ -537,7 +725,6 @@ describe('Chat node rendering', () => {
     expect(formatRunDuration(15_999, t)).toBe('15秒')
     expect(formatRunDuration(125_000, t)).toBe('2分05秒')
   })
-
 })
 
 describe('ChatView', () => {
@@ -549,7 +736,10 @@ describe('ChatView', () => {
         userInTurn(4, 'second prompt', 2),
         assistant(5, 'second response', 2),
       ],
-      turnEnds: new Map([[1, 3], [2, 6]]),
+      turnEnds: new Map([
+        [1, 3],
+        [2, 6],
+      ]),
     })
     const h = makeHarness({}, {}, snapshot)
     // The rail asks for its own accessible name once per render, so counting
@@ -564,7 +754,9 @@ describe('ChatView', () => {
     const afterMount = railRenders
     expect(afterMount).toBeGreaterThan(0)
 
-    act(() => { h.setTranscriptView('compact') })
+    act(() => {
+      h.setTranscriptView('compact')
+    })
 
     expect(railRenders).toBe(afterMount)
   })
@@ -577,11 +769,19 @@ describe('ChatView', () => {
         userInTurn(4, 'second prompt', 2),
         assistant(5, 'second response', 2),
       ],
-      turnEnds: new Map([[1, 3], [2, 6]]),
+      turnEnds: new Map([
+        [1, 3],
+        [2, 6],
+      ]),
     })
     expect(snapshot.navigation.items()).toEqual([
       { turn: 1, anchorKey: 'fixture:user:1', prompt: 'first prompt', response: 'first response' },
-      { turn: 2, anchorKey: 'fixture:user:4', prompt: 'second prompt', response: 'second response' },
+      {
+        turn: 2,
+        anchorKey: 'fixture:user:4',
+        prompt: 'second prompt',
+        response: 'second response',
+      },
     ])
     const h = makeHarness({}, {}, snapshot)
     const view = render(<h.ChatView {...h.props} />)
@@ -600,8 +800,10 @@ describe('ChatView', () => {
 
   it('jumps to a turn anchor and reflows stable marks after an older page arrives', () => {
     const later = [
-      userInTurn(4, 'second prompt', 2), assistant(5, 'second response', 2),
-      userInTurn(7, 'third prompt', 3), assistant(8, 'third response', 3),
+      userInTurn(4, 'second prompt', 2),
+      assistant(5, 'second response', 2),
+      userInTurn(7, 'third prompt', 3),
+      assistant(8, 'third response', 3),
     ]
     const h = makeHarness({ nodes: later }, { hasMore: true })
     const view = render(<h.ChatView {...h.props} />)
@@ -613,8 +815,13 @@ describe('ChatView', () => {
     const metrics = installScrollMetrics(scroller, 1_000, 300)
     metrics.setLayout(1_000, 700)
     vi.spyOn(scroller, 'getBoundingClientRect').mockReturnValue({ top: 0, bottom: 300 } as DOMRect)
-    const secondRow = view.container.querySelector('[data-chat-flow-key="fixture:user:4"]') as HTMLElement
-    vi.spyOn(secondRow, 'getBoundingClientRect').mockReturnValue({ top: -500, bottom: -440 } as DOMRect)
+    const secondRow = view.container.querySelector(
+      '[data-chat-flow-key="fixture:user:4"]',
+    ) as HTMLElement
+    vi.spyOn(secondRow, 'getBoundingClientRect').mockReturnValue({
+      top: -500,
+      bottom: -440,
+    } as DOMRect)
     fireEvent.click(second)
     expect(scroller.scrollTop).toBe(176)
     expect(second.getAttribute('aria-current')).toBe('true')
@@ -622,7 +829,11 @@ describe('ChatView', () => {
     act(() => {
       h.setChat({
         nodes: [userInTurn(1, 'first prompt', 1), assistant(2, 'first response', 1), ...later],
-        turnTimings: new Map([[1, { startTime: 1_000 }], [2, { startTime: 4_000 }], [3, { startTime: 7_000 }]]),
+        turnTimings: new Map([
+          [1, { startTime: 1_000 }],
+          [2, { startTime: 4_000 }],
+          [3, { startTime: 7_000 }],
+        ]),
       })
     })
     const movedSecond = view.getByRole('button', { name: '跳转到第 2 轮' })
@@ -635,7 +846,12 @@ describe('ChatView', () => {
     const later = [userInTurn(8, 'third prompt', 3), assistant(9, 'third response', 3)]
     const h = makeHarness({ nodes: later }, { hasMore: true })
     h.setOutline([
-      { turn: 1, seq: 0, prompt: 'first prompt from outline', response: 'first answer from outline' },
+      {
+        turn: 1,
+        seq: 0,
+        prompt: 'first prompt from outline',
+        response: 'first answer from outline',
+      },
       { turn: 2, seq: 4, prompt: 'second prompt from outline', response: '' },
       { turn: 3, seq: 8, prompt: 'third prompt', response: 'third response' },
     ])
@@ -658,7 +874,9 @@ describe('ChatView', () => {
     await act(async () => {})
     expect(h.loadThrough.mock.calls).toEqual([[0], [0]])
     expect(first.getAttribute('aria-busy')).toBeNull()
-    expect(view.getByRole('button', { name: '跳转到第 3 轮' }).getAttribute('aria-current')).toBe('true')
+    expect(view.getByRole('button', { name: '跳转到第 3 轮' }).getAttribute('aria-current')).toBe(
+      'true',
+    )
   })
 
   it('a jump from the pinned tail releases bottom ownership so the follow snap cannot cancel it', async () => {
@@ -669,7 +887,12 @@ describe('ChatView', () => {
       { turn: 3, seq: 8, prompt: 'third prompt', response: '' },
     ])
     let releaseJump: (() => void) | undefined
-    h.loadThrough.mockImplementation(() => new Promise<void>((resolve) => { releaseJump = resolve }))
+    h.loadThrough.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          releaseJump = resolve
+        }),
+    )
     const view = render(<h.ChatView {...h.props} />)
     // Pinned to the tail on open: the back-to-bottom control is absent.
     expect(view.queryByRole('button', { name: '回到底部' })).toBeNull()
@@ -683,7 +906,9 @@ describe('ChatView', () => {
     const scroller = view.container.querySelector('[class*="scroll"]') as HTMLElement
     fireEvent.scroll(scroller)
     expect(first.getAttribute('aria-busy')).toBe('true')
-    await act(async () => { releaseJump?.() })
+    await act(async () => {
+      releaseJump?.()
+    })
   })
 
   it('holds a jump issued while a plain pull owns the pager and resumes it when the pull settles', async () => {
@@ -703,7 +928,9 @@ describe('ChatView', () => {
     expect(first.getAttribute('aria-busy')).toBe('true')
 
     // The plain pull settles: the flip re-settles the jump, which repages.
-    act(() => { h.setSession({ loadingOlder: false }) })
+    act(() => {
+      h.setSession({ loadingOlder: false })
+    })
     await act(async () => {})
     expect(h.loadThrough.mock.calls).toEqual([[0], [0]])
     expect(first.getAttribute('aria-busy')).toBeNull()
@@ -714,12 +941,14 @@ describe('ChatView', () => {
       { nodes: [userInTurn(8, 'latest prompt', 60), assistant(9, 'latest response', 60)] },
       { hasMore: true },
     )
-    h.setOutline(Array.from({ length: 60 }, (_, index) => ({
-      turn: index + 1,
-      seq: index * 4,
-      prompt: `p${String(index + 1)}`,
-      response: '',
-    })))
+    h.setOutline(
+      Array.from({ length: 60 }, (_, index) => ({
+        turn: index + 1,
+        seq: index * 4,
+        prompt: `p${String(index + 1)}`,
+        response: '',
+      })),
+    )
     const view = render(<h.ChatView {...h.props} />)
     const nav = view.getByRole('navigation', { name: '轮次导航' })
     // 60 marks at the fixed 10px pitch: the ladder keeps its natural height.
@@ -753,7 +982,12 @@ describe('ChatView', () => {
       { turn: 3, seq: 8, prompt: 'third prompt', response: '' },
     ])
     let releaseJump: (() => void) | undefined
-    h.loadThrough.mockImplementation(() => new Promise<void>((resolve) => { releaseJump = resolve }))
+    h.loadThrough.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          releaseJump = resolve
+        }),
+    )
     const view = render(<h.ChatView {...h.props} />)
 
     fireEvent.click(view.getByRole('button', { name: '加载并跳转到第 1 轮' }))
@@ -763,7 +997,10 @@ describe('ChatView', () => {
     act(() => {
       h.setChat({
         nodes: [userInTurn(0, 'first prompt', 1), assistant(1, 'first response', 1), ...later],
-        turnTimings: new Map([[1, { startTime: 1_000 }], [3, { startTime: 8_000 }]]),
+        turnTimings: new Map([
+          [1, { startTime: 1_000 }],
+          [3, { startTime: 8_000 }],
+        ]),
       })
     })
     const first = view.getByRole('button', { name: '跳转到第 1 轮' })
@@ -771,7 +1008,9 @@ describe('ChatView', () => {
     // The mark stays busy until the jump settles: the loader's completion
     // runs the final landing correction after the load-earlier button leaves.
     expect(first.getAttribute('aria-busy')).toBe('true')
-    await act(async () => { releaseJump?.() })
+    await act(async () => {
+      releaseJump?.()
+    })
     // Only the busy lifecycle is asserted after settlement: jsdom's zero
     // geometry makes the rAF active-turn resync read "at bottom" and hand the
     // mark to the last turn, so aria-current here is timing-dependent under
@@ -788,25 +1027,29 @@ describe('ChatView', () => {
     expect(h.toolOwners[0]).toMatchObject({ callId: 'w1', toolName: '' })
   })
 
-  it('prepend keeps the reader\'s latest pending-request scroll position anchored', () => {
+  it("prepend keeps the reader's latest pending-request scroll position anchored", () => {
     const h = makeHarness(
       { nodes: [user(9, 'first visible'), user(10, 'next visible')] },
       { hasMore: true },
     )
     const view = render(<h.ChatView {...h.props} />)
     const scroller = view.container.querySelector('[class*="scroll"]') as HTMLDivElement
-    const first = view.container.querySelector('[data-chat-flow-key="fixture:user:9"]') as HTMLDivElement
-    const next = view.container.querySelector('[data-chat-flow-key="fixture:user:10"]') as HTMLDivElement
+    const first = view.container.querySelector(
+      '[data-chat-flow-key="fixture:user:9"]',
+    ) as HTMLDivElement
+    const next = view.container.querySelector(
+      '[data-chat-flow-key="fixture:user:10"]',
+    ) as HTMLDivElement
     let firstTop = 100
     let nextTop = 300
     vi.spyOn(scroller, 'getBoundingClientRect').mockImplementation(
-      () => ({ top: 0, bottom: 200 } as DOMRect),
+      () => ({ top: 0, bottom: 200 }) as DOMRect,
     )
     vi.spyOn(first, 'getBoundingClientRect').mockImplementation(
-      () => ({ top: firstTop, bottom: firstTop + 40 } as DOMRect),
+      () => ({ top: firstTop, bottom: firstTop + 40 }) as DOMRect,
     )
     vi.spyOn(next, 'getBoundingClientRect').mockImplementation(
-      () => ({ top: nextTop, bottom: nextTop + 40 } as DOMRect),
+      () => ({ top: nextTop, bottom: nextTop + 40 }) as DOMRect,
     )
     Object.defineProperty(scroller, 'scrollHeight', { value: 800, writable: true })
     Object.defineProperty(scroller, 'clientHeight', { value: 200, writable: true })
@@ -820,7 +1063,9 @@ describe('ChatView', () => {
     Object.defineProperty(scroller, 'scrollHeight', { value: 1300, writable: true })
     nextTop = 560
     act(() => {
-      h.setChat({ nodes: [assistant(2, 'older'), user(9, 'first visible'), user(10, 'next visible')] })
+      h.setChat({
+        nodes: [assistant(2, 'older'), user(9, 'first visible'), user(10, 'next visible')],
+      })
     })
     expect(scroller.scrollTop).toBe(590) // latest 90 + the anchored row's 500px prepend shift
   })
@@ -836,13 +1081,21 @@ describe('ChatView', () => {
       const h = makeHarness({ nodes: [user(1, 'visible row')] })
       const view = render(<h.ChatView {...h.props} />)
       const scroller = view.container.querySelector('[class*="scroll"]') as HTMLDivElement
-      const anchor = view.container.querySelector('[data-chat-anchor-key="fixture:user:1"]') as HTMLElement
+      const anchor = view.container.querySelector(
+        '[data-chat-anchor-key="fixture:user:1"]',
+      ) as HTMLElement
       installScrollMetrics(scroller, 4_000, 2_000)
       vi.spyOn(scroller, 'getBoundingClientRect').mockReturnValue({
-        top: 0, bottom: 2_000, left: 0, right: 1_000,
+        top: 0,
+        bottom: 2_000,
+        left: 0,
+        right: 1_000,
       } as DOMRect)
       vi.spyOn(anchor, 'getBoundingClientRect').mockReturnValue({
-        top: 100, bottom: 140, left: 0, right: 1_000,
+        top: 100,
+        bottom: 140,
+        left: 0,
+        right: 1_000,
       } as DOMRect)
 
       readerScroll(scroller, 100)
@@ -861,17 +1114,14 @@ describe('ChatView', () => {
   it('falls back to the first visible row when the viewport top hit-test misses', () => {
     const originalHitTest = Object.getOwnPropertyDescriptor(document, 'elementsFromPoint')
     const nodes = Array.from({ length: 16 }, (_, index) => user(20 + index, `row ${String(index)}`))
-    const h = makeHarness(
-      { nodes },
-      { hasMore: true },
-    )
+    const h = makeHarness({ nodes }, { hasMore: true })
     const view = render(<h.ChatView {...h.props} />)
     const scroller = view.container.querySelector('[class*="scroll"]') as HTMLDivElement
     const rows = [...view.container.querySelectorAll<HTMLElement>('[data-chat-flow-key]')]
     let prepended = false
     let rowRectCalls = 0
     vi.spyOn(scroller, 'getBoundingClientRect').mockImplementation(
-      () => ({ top: 0, bottom: 200 } as DOMRect),
+      () => ({ top: 0, bottom: 200 }) as DOMRect,
     )
     rows.forEach((row, index) => {
       vi.spyOn(row, 'getBoundingClientRect').mockImplementation(() => {
@@ -914,30 +1164,48 @@ describe('ChatView', () => {
 
   it('renders the fixture main line as independently keyed business nodes', () => {
     const h = makeHarness({
-      nodes: [user(1, 'do the thing'), assistant(2, 'running tools'), toolResult(3, 'a'), toolResult(4, 'b')],
+      nodes: [
+        user(1, 'do the thing'),
+        assistant(2, 'running tools'),
+        toolResult(3, 'a'),
+        toolResult(4, 'b'),
+      ],
     })
     const view = render(<h.ChatView {...h.props} />)
     expect(view.getByText('do the thing')).toBeTruthy()
     expect(view.getByText('running tools')).toBeTruthy()
     expect(view.getByTestId('tool-seat-a').textContent).toBe('bash:a')
     expect(view.getByTestId('tool-seat-b').textContent).toBe('bash:b')
-    expect([...view.container.querySelectorAll('[data-chat-flow-key]')].map(row => ({
-      key: row.getAttribute('data-chat-flow-key'),
-      kind: row.getAttribute('data-chat-flow-kind'),
-    }))).toEqual([
+    expect(
+      [...view.container.querySelectorAll('[data-chat-flow-key]')].map(row => ({
+        key: row.getAttribute('data-chat-flow-key'),
+        kind: row.getAttribute('data-chat-flow-kind'),
+      })),
+    ).toEqual([
       { key: 'fixture:user:1', kind: 'user' },
       { key: 'fixture:turn-process:1', kind: 'turn-process' },
       { key: 'fixture:assistant:2', kind: 'assistant-step' },
       { key: 'fixture:tool:a', kind: 'tool-call' },
       { key: 'fixture:tool:b', kind: 'tool-call' },
     ])
-    expect([...view.container.querySelectorAll('[data-chat-call-id]')].map(row => row.getAttribute('data-chat-call-id')))
-      .toEqual(['a', 'b'])
-    expect([...view.container.querySelectorAll('[data-chat-anchor-key]')].map(row => row.getAttribute('data-chat-anchor-key')))
-      .toEqual([
-        'fixture:user:1', 'fixture:turn-process:1', 'fixture:assistant:2',
-        'fixture:tool:a', 'call:a', 'fixture:tool:b', 'call:b',
-      ])
+    expect(
+      [...view.container.querySelectorAll('[data-chat-call-id]')].map(row =>
+        row.getAttribute('data-chat-call-id'),
+      ),
+    ).toEqual(['a', 'b'])
+    expect(
+      [...view.container.querySelectorAll('[data-chat-anchor-key]')].map(row =>
+        row.getAttribute('data-chat-anchor-key'),
+      ),
+    ).toEqual([
+      'fixture:user:1',
+      'fixture:turn-process:1',
+      'fixture:assistant:2',
+      'fixture:tool:a',
+      'call:a',
+      'fixture:tool:b',
+      'call:b',
+    ])
   })
 
   it('renders Host-pending steering at the flow tail and hands off to the durable node', () => {
@@ -974,9 +1242,13 @@ describe('ChatView', () => {
     expect(pendingBubble).not.toBeNull()
     fireEvent.click(within(pendingBubble as HTMLElement).getByRole('button', { name: '复制' }))
     expect(writeText).toHaveBeenCalledWith('interrupt now')
-    expect(within(pendingBubble as HTMLElement).queryByRole('button', { name: '在新对话中分支' })).toBeNull()
-    expect(view.getByRole('status').compareDocumentPosition(view.getByText('interrupt now'))
-      & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0)
+    expect(
+      within(pendingBubble as HTMLElement).queryByRole('button', { name: '在新对话中分支' }),
+    ).toBeNull()
+    expect(
+      view.getByRole('status').compareDocumentPosition(view.getByText('interrupt now')) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).not.toBe(0)
 
     act(() => {
       h.setSession({ queue: [queued] })
@@ -984,9 +1256,12 @@ describe('ChatView', () => {
         nodes: [
           assistant(1, 'working'),
           {
-            kind: 'steering', messageId: pending.messageId,
-            seq: 2, time: 2_000,
-            content: [{ type: 'text', text: 'interrupt now' }], source: null,
+            kind: 'steering',
+            messageId: pending.messageId,
+            seq: 2,
+            time: 2_000,
+            content: [{ type: 'text', text: 'interrupt now' }],
+            source: null,
           },
         ],
       })
@@ -997,7 +1272,9 @@ describe('ChatView', () => {
     // assistant narration owns no footer yet, and a steering bubble never
     // carries a branch action.
     expect(view.getAllByRole('button', { name: '复制' })).toHaveLength(1)
-    const durableBubble = view.getByText('interrupt now').closest('[class*="userRow"]') as HTMLElement
+    const durableBubble = view
+      .getByText('interrupt now')
+      .closest('[class*="userRow"]') as HTMLElement
     expect(within(durableBubble).queryByRole('button', { name: '在新对话中分支' })).toBeNull()
 
     act(() => {
@@ -1022,12 +1299,20 @@ describe('ChatView', () => {
       preview: 'same steering',
       text: 'same steering',
     }
-    const h = makeHarness({
-      nodes: [{
-        kind: 'user', seq: 2, time: 2_000,
-        content: pending.content, source: null,
-      }],
-    }, { queue: [pending], running: true })
+    const h = makeHarness(
+      {
+        nodes: [
+          {
+            kind: 'user',
+            seq: 2,
+            time: 2_000,
+            content: pending.content,
+            source: null,
+          },
+        ],
+      },
+      { queue: [pending], running: true },
+    )
     const view = render(<h.ChatView {...h.props} />)
 
     expect(view.getAllByText('same steering')).toHaveLength(2)
@@ -1040,8 +1325,11 @@ describe('ChatView', () => {
       {
         pendingSubmissions: [
           {
-            requestId: 'req-1' as never, placement: 'transcript',
-            time: 5_000, text: '即发即显', attachments: [],
+            requestId: 'req-1' as never,
+            placement: 'transcript',
+            time: 5_000,
+            text: '即发即显',
+            attachments: [],
           },
         ],
       },
@@ -1056,7 +1344,9 @@ describe('ChatView', () => {
         nodes: [
           assistant(1, 'working'),
           {
-            kind: 'user', seq: 2, time: 2_000,
+            kind: 'user',
+            seq: 2,
+            time: 2_000,
             content: [{ type: 'text', text: '即发即显' }] as never,
             source: { kind: 'user', rpcId: 'req-1' },
           },
@@ -1067,7 +1357,9 @@ describe('ChatView', () => {
     expect(view.container.querySelector('[data-submission-echo]')).toBeNull()
 
     // The delayed snapshot retirement changes nothing visible.
-    act(() => { h.setSession({ pendingSubmissions: [] }) })
+    act(() => {
+      h.setSession({ pendingSubmissions: [] })
+    })
     expect(view.getAllByText('即发即显')).toHaveLength(1)
   })
 
@@ -1076,15 +1368,20 @@ describe('ChatView', () => {
       { nodes: [assistant(1, 'working')] },
       {
         running: true,
-        pendingSubmissions: [{
-          requestId: 'req-steer' as never,
-          placement: 'steering',
-          time: 5_500,
-          text: '带图纠偏',
-          attachments: [{
-            type: 'image', value: { previewUrl: 'blob:steer-preview', name: 'steer.png' },
-          }],
-        }],
+        pendingSubmissions: [
+          {
+            requestId: 'req-steer' as never,
+            placement: 'steering',
+            time: 5_500,
+            text: '带图纠偏',
+            attachments: [
+              {
+                type: 'image',
+                value: { previewUrl: 'blob:steer-preview', name: 'steer.png' },
+              },
+            ],
+          },
+        ],
       },
     )
     const view = render(<h.ChatView {...h.props} />)
@@ -1093,15 +1390,17 @@ describe('ChatView', () => {
 
     act(() => {
       h.setSession({
-        queue: [{
-          id: 'steer-occurrence' as never,
-          messageId: 'steer-message' as never,
-          placement: 'steering',
-          rpcId: 'req-steer' as never,
-          content: [{ type: 'text', text: '带图纠偏' }],
-          preview: '带图纠偏',
-          text: '带图纠偏',
-        }],
+        queue: [
+          {
+            id: 'steer-occurrence' as never,
+            messageId: 'steer-message' as never,
+            placement: 'steering',
+            rpcId: 'req-steer' as never,
+            content: [{ type: 'text', text: '带图纠偏' }],
+            preview: '带图纠偏',
+            text: '带图纠偏',
+          },
+        ],
       })
     })
     expect(view.getAllByText('带图纠偏')).toHaveLength(1)
@@ -1116,8 +1415,11 @@ describe('ChatView', () => {
         running: true,
         pendingSubmissions: [
           {
-            requestId: 'req-q' as never, placement: 'queued',
-            time: 6_000, text: '排队中', attachments: [],
+            requestId: 'req-q' as never,
+            placement: 'queued',
+            time: 6_000,
+            text: '排队中',
+            attachments: [],
           },
         ],
       },
@@ -1126,15 +1428,17 @@ describe('ChatView', () => {
     expect(view.queryByText('排队中')).toBeNull()
     act(() => {
       h.setSession({
-        queue: [{
-          id: 'q-occurrence' as never,
-          messageId: 'q-message' as never,
-          placement: 'queued' as const,
-          rpcId: 'req-q' as never,
-          content: [{ type: 'text' as const, text: '排队中' }],
-          preview: '排队中',
-          text: '排队中',
-        }],
+        queue: [
+          {
+            id: 'q-occurrence' as never,
+            messageId: 'q-message' as never,
+            placement: 'queued' as const,
+            rpcId: 'req-q' as never,
+            content: [{ type: 'text' as const, text: '排队中' }],
+            preview: '排队中',
+            text: '排队中',
+          },
+        ],
       })
     })
     // The queued occurrence and its local predecessor both belong to the
@@ -1146,23 +1450,27 @@ describe('ChatView', () => {
     const h = makeHarness(
       { nodes: [] },
       {
-        pendingSubmissions: [{
-          requestId: 'req-img' as never,
-          placement: 'transcript',
-          time: 7_000,
-          text: '',
-          attachments: [
-            {
-              type: 'image', value: { previewUrl: 'blob:echo-a', name: 'a.png', width: 4, height: 3 },
-            },
-            { type: 'image', value: { previewUrl: 'blob:echo-b' } },
-          ],
-        }],
+        pendingSubmissions: [
+          {
+            requestId: 'req-img' as never,
+            placement: 'transcript',
+            time: 7_000,
+            text: '',
+            attachments: [
+              {
+                type: 'image',
+                value: { previewUrl: 'blob:echo-a', name: 'a.png', width: 4, height: 3 },
+              },
+              { type: 'image', value: { previewUrl: 'blob:echo-b' } },
+            ],
+          },
+        ],
       },
     )
     const baseRenderSlot = h.props.renderSlot
     const renderSlot = ((key: string, owner: object, opts?: { fallback?: React.ReactNode }) => {
-      if (key !== 'conversation.message.images') return baseRenderSlot(key as never, owner as never, opts as never)
+      if (key !== 'conversation.message.images')
+        return baseRenderSlot(key as never, owner as never, opts as never)
       const { images, compact } = owner as { images: readonly unknown[]; compact?: boolean }
       return (
         <div
@@ -1188,25 +1496,28 @@ describe('ChatView', () => {
     const h = makeHarness(
       { nodes: [] },
       {
-        pendingSubmissions: [{
-          requestId: 'req-mixed' as never,
-          placement: 'transcript',
-          time: 7_500,
-          text: '',
-          attachments: [
-            { type: 'image', value: { previewUrl: 'blob:first', name: 'first.png' } },
-            {
-              type: 'file',
-              value: { attachmentId: 'file-1' as never, name: 'notes.txt', bytes: 23 },
-            },
-            { type: 'image', value: { previewUrl: 'blob:last', name: 'last.png' } },
-          ],
-        }],
+        pendingSubmissions: [
+          {
+            requestId: 'req-mixed' as never,
+            placement: 'transcript',
+            time: 7_500,
+            text: '',
+            attachments: [
+              { type: 'image', value: { previewUrl: 'blob:first', name: 'first.png' } },
+              {
+                type: 'file',
+                value: { attachmentId: 'file-1' as never, name: 'notes.txt', bytes: 23 },
+              },
+              { type: 'image', value: { previewUrl: 'blob:last', name: 'last.png' } },
+            ],
+          },
+        ],
       },
     )
     const baseRenderSlot = h.props.renderSlot
     const renderSlot = ((key: string, owner: object, opts?: { fallback?: React.ReactNode }) => {
-      if (key !== 'conversation.message.images') return baseRenderSlot(key as never, owner as never, opts as never)
+      if (key !== 'conversation.message.images')
+        return baseRenderSlot(key as never, owner as never, opts as never)
       const { images, compact } = owner as {
         images: ReadonlyArray<{ preview?: { name?: string } }>
         compact?: boolean
@@ -1235,7 +1546,11 @@ describe('ChatView', () => {
     const retryNode = retry(2)
     const nextRetry = { ...retry(3), turn: 2, retry: 2 }
     const context = {
-      kind: 'context', seq: 4, time: 4_000, content: [], source: null,
+      kind: 'context',
+      seq: 4,
+      time: 4_000,
+      content: [],
+      source: null,
       provenance: { role: 'inject', label: null },
       form: null,
     } as const satisfies ConversationNode
@@ -1290,7 +1605,7 @@ describe('ChatView', () => {
     const view = render(<h.ChatView {...h.props} />)
     const statuses = view.getAllByRole('status')
     expect(statuses.map(status => status.textContent)).toEqual([
-      '已达到输出 token 上限回答被截断，已有输出保留在对话中。发送“继续”可让模型接着输出。',
+      '已达到输出 token 上限回答在输出上限处停止，已有输出保留在对话中。发送“继续”可让模型接着输出。',
     ])
     expect(view.queryByText('本轮运行失败')).toBeNull()
   })
@@ -1314,7 +1629,10 @@ describe('ChatView', () => {
         user(5, 'next'),
         assistant(6, 'second turn', 2),
       ],
-      turnEnds: new Map([[1, 4], [2, 6]]),
+      turnEnds: new Map([
+        [1, 4],
+        [2, 6],
+      ]),
     })
     const view = render(<h.ChatView {...h.props} />)
     // Branch renders only under assistant answers; user bubbles keep copy alone.
@@ -1352,8 +1670,11 @@ describe('ChatView', () => {
     expect(toggle.getAttribute('data-turn-process-subagents')).toBe('1')
     const members = [...view.container.querySelectorAll<HTMLElement>('[data-turn-process-member]')]
     expect(members).toHaveLength(3)
-    expect(members.map(member => member.getAttribute('hidden')))
-      .toEqual(['until-found', 'until-found', 'until-found'])
+    expect(members.map(member => member.getAttribute('hidden'))).toEqual([
+      'until-found',
+      'until-found',
+      'until-found',
+    ])
     expect(members[0]?.textContent).toContain('inspect the repository')
     expect(members[1]?.textContent).toContain('bash:a')
     expect(members[2]?.textContent).toContain('subagent:b')
@@ -1364,19 +1685,34 @@ describe('ChatView', () => {
     expect(members.map(member => member.getAttribute('hidden'))).toEqual([null, null, null])
 
     fireEvent.click(toggle)
-    expect(members.map(member => member.getAttribute('hidden')))
-      .toEqual(['until-found', 'until-found', 'until-found'])
+    expect(members.map(member => member.getAttribute('hidden'))).toEqual([
+      'until-found',
+      'until-found',
+      'until-found',
+    ])
     fireEvent(members[1]!, new Event('beforematch'))
     expect(toggle.getAttribute('aria-expanded')).toBe('true')
     expect(members.map(member => member.getAttribute('hidden'))).toEqual([null, null, null])
 
-    act(() => { h.set({ nodes: [user(1, 'question'), first] }) })
+    act(() => {
+      h.set({ nodes: [user(1, 'question'), first] })
+    })
     expect(view.getByRole('button', { name: '已思考' }).getAttribute('aria-expanded')).toBe('false')
     expect(members[0]?.getAttribute('hidden')).toBeNull()
-    act(() => { h.set({
-      nodes: [user(1, 'question'), first, toolResult(3, 'a'), toolResult(4, 'b', 'subagent'), second],
-    }) })
-    const renewedToggle = view.getByRole('button', { name: '1 次工具调用 · 1 条消息 · 1 个 subagent' })
+    act(() => {
+      h.set({
+        nodes: [
+          user(1, 'question'),
+          first,
+          toolResult(3, 'a'),
+          toolResult(4, 'b', 'subagent'),
+          second,
+        ],
+      })
+    })
+    const renewedToggle = view.getByRole('button', {
+      name: '1 次工具调用 · 1 条消息 · 1 个 subagent',
+    })
     expect(renewedToggle.getAttribute('aria-expanded')).toBe('true')
     expect(members[0]?.getAttribute('hidden')).toBeNull()
   })
@@ -1397,7 +1733,11 @@ describe('ChatView', () => {
     const members = [...view.container.querySelectorAll<HTMLElement>('[data-turn-process-member]')]
 
     expect(members).toHaveLength(3)
-    expect(members.map(member => member.dataset.chatFlowKind)).toEqual(['context', 'assistant-step', 'tool-call'])
+    expect(members.map(member => member.dataset.chatFlowKind)).toEqual([
+      'context',
+      'assistant-step',
+      'tool-call',
+    ])
     expect(contextRow).not.toBeNull()
     expect(contextRow?.getAttribute('hidden')).toBe('until-found')
     fireEvent(contextRow!, new Event('beforematch'))
@@ -1406,12 +1746,17 @@ describe('ChatView', () => {
 
   it('keeps the first System prompt above User and outside Process through completion and expansion', () => {
     const builder = new ChatSnapshotBuilder()
-    const initial = withSystemPrompt(chatSnapshotFixture({
-      nodes: [userInTurn(2, 'question', 1), context(3, 'runtime policy', 1)],
-    }), builder)
+    const initial = withSystemPrompt(
+      chatSnapshotFixture({
+        nodes: [userInTurn(2, 'question', 1), context(3, 'runtime policy', 1)],
+      }),
+      builder,
+    )
     const h = makeHarness({ chat: initial }, { running: true })
     const view = render(<h.ChatView {...h.props} />)
-    const promptRow = view.container.querySelector<HTMLElement>('[data-chat-flow-kind="system-prompt"]')!
+    const promptRow = view.container.querySelector<HTMLElement>(
+      '[data-chat-flow-kind="system-prompt"]',
+    )!
 
     expect(renderedFlowKinds(view.container)).toEqual(['system-prompt', 'user', 'context'])
     expect(promptRow.getAttribute('hidden')).toBeNull()
@@ -1419,50 +1764,78 @@ describe('ChatView', () => {
 
     act(() => {
       h.set({
-        chat: withSystemPrompt(chatSnapshotFixture({
-          nodes: [
-            userInTurn(2, 'question', 1),
-            context(3, 'runtime policy', 1),
-            reasoningAssistant(4, 'inspect', 1, 1),
-          ],
-        }), builder),
+        chat: withSystemPrompt(
+          chatSnapshotFixture({
+            nodes: [
+              userInTurn(2, 'question', 1),
+              context(3, 'runtime policy', 1),
+              reasoningAssistant(4, 'inspect', 1, 1),
+            ],
+          }),
+          builder,
+        ),
         running: true,
       })
     })
     expect(renderedFlowKinds(view.container)).toEqual([
-      'system-prompt', 'user', 'turn-process', 'context', 'assistant-step',
+      'system-prompt',
+      'user',
+      'turn-process',
+      'context',
+      'assistant-step',
     ])
     expect(view.container.querySelector('[data-chat-flow-kind="system-prompt"]')).toBe(promptRow)
     expect(promptRow.getAttribute('hidden')).toBeNull()
 
     act(() => {
       h.set({
-        chat: withSystemPrompt(chatSnapshotFixture({
-          nodes: [
-            userInTurn(2, 'question', 1),
-            context(3, 'runtime policy', 1),
-            reasoningAssistant(4, 'inspect', 1, 1),
-            assistant(6, 'final answer', 1, 2),
-          ],
-          turnEnds: new Map([[1, 7]]),
-        }), builder),
+        chat: withSystemPrompt(
+          chatSnapshotFixture({
+            nodes: [
+              userInTurn(2, 'question', 1),
+              context(3, 'runtime policy', 1),
+              reasoningAssistant(4, 'inspect', 1, 1),
+              assistant(6, 'final answer', 1, 2),
+            ],
+            turnEnds: new Map([[1, 7]]),
+          }),
+          builder,
+        ),
         running: false,
       })
     })
     const toggle = turnProcessControl(view.container)!
     const members = [...view.container.querySelectorAll<HTMLElement>('[data-turn-process-member]')]
     expect(renderedFlowKinds(view.container)).toEqual([
-      'system-prompt', 'user', 'turn-process', 'context', 'assistant-step', 'assistant-step', 'turn-tail',
+      'system-prompt',
+      'user',
+      'turn-process',
+      'context',
+      'assistant-step',
+      'assistant-step',
+      'turn-tail',
     ])
     expect(toggle.getAttribute('aria-expanded')).toBe('false')
     expect(promptRow.getAttribute('hidden')).toBeNull()
     expect(promptRow.hasAttribute('data-turn-process-member')).toBe(false)
-    expect(members.map(member => member.dataset.chatFlowKind)).toEqual(['context', 'assistant-step'])
-    expect(members.map(member => member.getAttribute('hidden'))).toEqual(['until-found', 'until-found'])
+    expect(members.map(member => member.dataset.chatFlowKind)).toEqual([
+      'context',
+      'assistant-step',
+    ])
+    expect(members.map(member => member.getAttribute('hidden'))).toEqual([
+      'until-found',
+      'until-found',
+    ])
 
     fireEvent.click(toggle)
     expect(renderedFlowKinds(view.container)).toEqual([
-      'system-prompt', 'user', 'turn-process', 'context', 'assistant-step', 'assistant-step', 'turn-tail',
+      'system-prompt',
+      'user',
+      'turn-process',
+      'context',
+      'assistant-step',
+      'assistant-step',
+      'turn-tail',
     ])
     expect(promptRow.getAttribute('hidden')).toBeNull()
     expect(members.map(member => member.getAttribute('hidden'))).toEqual([null, null])
@@ -1470,7 +1843,11 @@ describe('ChatView', () => {
 
   it('folds Context under the fallback title when every summary count is zero', () => {
     const h = makeHarness({
-      nodes: [user(1, 'question'), context(2, 'runtime policy', 1), assistant(3, 'final answer', 1, 1)],
+      nodes: [
+        user(1, 'question'),
+        context(2, 'runtime policy', 1),
+        assistant(3, 'final answer', 1, 1),
+      ],
       turnEnds: new Map([[1, 4]]),
     })
     const view = render(<h.ChatView {...h.props} />)
@@ -1497,7 +1874,9 @@ describe('ChatView', () => {
       turnEnds: new Map([[1, 5]]),
     })
     const view = render(<h.ChatView {...h.props} />)
-    const answer = view.container.querySelector<HTMLElement>('[data-chat-flow-kind="assistant-step"]:not([hidden])')
+    const answer = view.container.querySelector<HTMLElement>(
+      '[data-chat-flow-kind="assistant-step"]:not([hidden])',
+    )
 
     expect(view.getByText('also mention safety')).toBeTruthy()
     expect(answer?.hasAttribute('data-turn-process-answer')).toBe(false)
@@ -1514,7 +1893,9 @@ describe('ChatView', () => {
       turnEnds: new Map([[1, 5]]),
     })
     const view = render(<h.ChatView {...h.props} />)
-    const answer = view.container.querySelector<HTMLElement>('[data-chat-flow-kind="assistant-step"]:not([hidden])')
+    const answer = view.container.querySelector<HTMLElement>(
+      '[data-chat-flow-kind="assistant-step"]:not([hidden])',
+    )
 
     expect(view.getByText('also mention safety')).toBeTruthy()
     expect(answer?.hasAttribute('data-turn-process-answer')).toBe(false)
@@ -1529,7 +1910,9 @@ describe('ChatView', () => {
     })
     const view = render(<h.ChatView {...h.props} />)
     expect(turnProcessControl(view.container)).toBeNull()
-    const processRow = view.getByText('inspect').closest('[data-chat-flow-kind="assistant-step"]') as HTMLElement
+    const processRow = view
+      .getByText('inspect')
+      .closest('[data-chat-flow-kind="assistant-step"]') as HTMLElement
 
     act(() => {
       h.set({
@@ -1551,16 +1934,22 @@ describe('ChatView', () => {
       turnEnds: new Map([[1, 5]]),
     })
     const view = render(<h.ChatView {...h.props} />)
-    const processRow = view.getByText('inspect').closest('[data-chat-flow-kind="assistant-step"]') as HTMLElement
+    const processRow = view
+      .getByText('inspect')
+      .closest('[data-chat-flow-kind="assistant-step"]') as HTMLElement
 
     expect(turnProcessControl(view.container)?.getAttribute('aria-expanded')).toBe('false')
     expect(processRow.getAttribute('hidden')).toBe('until-found')
 
-    act(() => { h.setTranscriptView('normal') })
+    act(() => {
+      h.setTranscriptView('normal')
+    })
     expect(turnProcessControl(view.container)).toBeNull()
     expect(processRow.getAttribute('hidden')).toBeNull()
 
-    act(() => { h.setTranscriptView('compact') })
+    act(() => {
+      h.setTranscriptView('compact')
+    })
     expect(turnProcessControl(view.container)?.getAttribute('aria-expanded')).toBe('false')
     expect(processRow.getAttribute('hidden')).toBe('until-found')
   })
@@ -1591,13 +1980,17 @@ describe('ChatView', () => {
     const scroller = view.container.querySelector('[class*="scroll"]') as HTMLDivElement
     Object.defineProperty(scroller, 'scrollHeight', { value: 1_000, writable: true })
     Object.defineProperty(scroller, 'clientHeight', { value: 300, writable: true })
-    const firstRow = view.getByText('first answer').closest('[data-chat-flow-kind="assistant-step"]') as HTMLElement
+    const firstRow = view
+      .getByText('first answer')
+      .closest('[data-chat-flow-kind="assistant-step"]') as HTMLElement
     readerScroll(scroller, 100)
 
-    act(() => { h.set({
-      nodes: [user(1, 'question'), first, assistant(4, 'new answer', 1, 2)],
-      turnEnds: new Map([[1, 5]]),
-    }) })
+    act(() => {
+      h.set({
+        nodes: [user(1, 'question'), first, assistant(4, 'new answer', 1, 2)],
+        turnEnds: new Map([[1, 5]]),
+      })
+    })
     const toggle = turnProcessControl(view.container)!
     expect(toggle.getAttribute('aria-expanded')).toBe('false')
     expect(firstRow.getAttribute('hidden')).toBe('until-found')
@@ -1616,15 +2009,17 @@ describe('ChatView', () => {
     const contextRow = view.container.querySelector<HTMLElement>('[data-chat-flow-kind="context"]')
     readerScroll(scroller, 100)
 
-    act(() => { h.set({
-      nodes: [
-        user(1, 'question'),
-        context(2, 'runtime policy', 1),
-        assistant(3, 'final answer', 1, 1),
-      ],
-      running: false,
-      turnEnds: new Map([[1, 4]]),
-    }) })
+    act(() => {
+      h.set({
+        nodes: [
+          user(1, 'question'),
+          context(2, 'runtime policy', 1),
+          assistant(3, 'final answer', 1, 1),
+        ],
+        running: false,
+        turnEnds: new Map([[1, 4]]),
+      })
+    })
     const toggle = turnProcessControl(view.container)!
     expect(toggle.getAttribute('aria-expanded')).toBe('false')
     expect(contextRow?.getAttribute('hidden')).toBe('until-found')
@@ -1642,15 +2037,17 @@ describe('ChatView', () => {
     contextToggle.focus()
     expect(document.activeElement).toBe(contextToggle)
 
-    act(() => { h.set({
-      nodes: [
-        user(1, 'question'),
-        context(2, 'runtime policy', 1),
-        assistant(3, 'final answer', 1, 1),
-      ],
-      running: false,
-      turnEnds: new Map([[1, 4]]),
-    }) })
+    act(() => {
+      h.set({
+        nodes: [
+          user(1, 'question'),
+          context(2, 'runtime policy', 1),
+          assistant(3, 'final answer', 1, 1),
+        ],
+        running: false,
+        turnEnds: new Map([[1, 4]]),
+      })
+    })
     const processToggle = turnProcessControl(view.container)!
     expect(processToggle.getAttribute('aria-expanded')).toBe('true')
     expect(contextRow?.getAttribute('hidden')).toBeNull()
@@ -1680,7 +2077,9 @@ describe('ChatView', () => {
     expect(contextRow?.getAttribute('hidden')).toBeNull()
     expect(contextRow?.hasAttribute('data-turn-process-member')).toBe(false)
 
-    act(() => { h.set({ hasMore: false }) })
+    act(() => {
+      h.set({ hasMore: false })
+    })
     const toggle = turnProcessControl(view.container)!
     expect(toggle.getAttribute('aria-expanded')).toBe('false')
     expect(contextRow?.getAttribute('hidden')).toBe('until-found')
@@ -1728,11 +2127,15 @@ describe('ChatView', () => {
       ],
       turnEnds: new Map([[1, 5]]),
     })
-    const process = source.nodes.values()
+    const process = source.nodes
+      .values()
       .find((candidate): candidate is ChatNode<'turn-process'> => candidate.kind === 'turn-process')
-    if (process === undefined
-      || (process.location.kind !== 'turn' && process.location.kind !== 'step')
-      || process.data.answerAnchorSeq === null) throw new Error('fixture lacks a completed Turn process')
+    if (
+      process === undefined ||
+      (process.location.kind !== 'turn' && process.location.kind !== 'step') ||
+      process.data.answerAnchorSeq === null
+    )
+      throw new Error('fixture lacks a completed Turn process')
     const turnData = process.location.turn.data as typeof process.location.turn.data & {
       set(key: 'turn-process', value: TurnProcessSpec): void
       publish(): void
@@ -1742,7 +2145,7 @@ describe('ChatView', () => {
     const partialProcess = { ...process, data: partialSpec }
     const builder = new ChatSnapshotBuilder()
     const partial = builder.replace({
-      nodes: source.nodes.values().map(node => node.key === process.key ? partialProcess : node),
+      nodes: source.nodes.values().map(node => (node.key === process.key ? partialProcess : node)),
       timeline: source.timeline,
     })
     const h = makeHarness({ chat: partial, hasMore: true })
@@ -1760,7 +2163,12 @@ describe('ChatView', () => {
     expect(complete.nodes).toBe(partial.nodes)
     expect(complete.locations.getTurn(1)).not.toBe(beforeKeys)
     expect(complete.order.map(key => complete.nodes.get(key)?.kind)).toEqual([
-      'user', 'turn-process', 'context', 'assistant-step', 'assistant-step', 'turn-tail',
+      'user',
+      'turn-process',
+      'context',
+      'assistant-step',
+      'assistant-step',
+      'turn-tail',
     ])
 
     act(() => {
@@ -1773,7 +2181,11 @@ describe('ChatView', () => {
   it('keeps a manual expansion when the reader returns from another view', () => {
     const host = document.createElement('div')
     host.setAttribute('data-conversation-scroll', '')
-    Object.defineProperty(host, 'scrollHeight', { value: 2_000, writable: true, configurable: true })
+    Object.defineProperty(host, 'scrollHeight', {
+      value: 2_000,
+      writable: true,
+      configurable: true,
+    })
     Object.defineProperty(host, 'clientHeight', { value: 500, writable: true, configurable: true })
     Object.defineProperty(host, 'scrollTop', { value: 0, writable: true, configurable: true })
     document.body.appendChild(host)
@@ -1796,17 +2208,20 @@ describe('ChatView', () => {
   })
 
   it('withholds assistant IconActions while the turn is still running', () => {
-    const h = makeHarness({
-      runningCalls: [runningCall('a')],
-      nodes: [
-        user(1, 'first'),
-        assistant(2, 'previous answer', 1),
-        user(4, 'second'),
-        assistant(5, 'mid-turn text', 2),
-      ],
-      // Boundary seqs follow the log: a turn/end is strictly after its own nodes.
-      turnEnds: new Map([[1, 3]]),
-    }, { running: true })
+    const h = makeHarness(
+      {
+        runningCalls: [runningCall('a')],
+        nodes: [
+          user(1, 'first'),
+          assistant(2, 'previous answer', 1),
+          user(4, 'second'),
+          assistant(5, 'mid-turn text', 2),
+        ],
+        // Boundary seqs follow the log: a turn/end is strictly after its own nodes.
+        turnEnds: new Map([[1, 3]]),
+      },
+      { running: true },
+    )
     const view = render(<h.ChatView {...h.props} />)
     // 2 user + the settled turn-1 tail, which keeps its seat while a later
     // turn runs; turn 2's narration stays chrome-free while its tool runs, so
@@ -1816,7 +2231,13 @@ describe('ChatView', () => {
     // turn/end lands: the same node becomes the settled answer and takes the seat.
     act(() => {
       h.setSession({ running: false })
-      h.setChat({ runningCalls: [], turnEnds: new Map([[1, 3], [2, 6]]) })
+      h.setChat({
+        runningCalls: [],
+        turnEnds: new Map([
+          [1, 3],
+          [2, 6],
+        ]),
+      })
     })
     expect(view.getAllByRole('button', { name: '复制' })).toHaveLength(4)
   })
@@ -1839,12 +2260,22 @@ describe('ChatView', () => {
 
   it('the settled footer exposes ttft, decode throughput, and usage as the details trigger', () => {
     const first: AssistantMessageNode = {
-      kind: 'assistant', seq: 2, time: 2_000, turn: 1, step: 1, blocks: [{ kind: 'text', text: 'mid' }],
+      kind: 'assistant',
+      seq: 2,
+      time: 2_000,
+      turn: 1,
+      step: 1,
+      blocks: [{ kind: 'text', text: 'mid' }],
       timing: { stepStartTime: 1_000, firstTokenTime: 2_200, completedTime: 5_200 },
       usage: { outputTokens: 40 },
     }
     const second: AssistantMessageNode = {
-      kind: 'assistant', seq: 16, time: 16_000, turn: 1, step: 2, blocks: [{ kind: 'text', text: 'final' }],
+      kind: 'assistant',
+      seq: 16,
+      time: 16_000,
+      turn: 1,
+      step: 2,
+      blocks: [{ kind: 'text', text: 'final' }],
       timing: { stepStartTime: 10_000, firstTokenTime: 10_200, completedTime: 12_200 },
       usage: { outputTokens: 60 },
     }
@@ -1852,12 +2283,17 @@ describe('ChatView', () => {
       nodes: [user(1, 'hi'), first, second],
       turnTimings: new Map([[1, { startTime: 1_000, endTime: 20_000 }]]),
       turnEnds: new Map([[1, 20]]),
-      turnUsages: new Map([[1, {
-        uncachedInputTokens: 5_060,
-        cacheReadTokens: 4_940,
-        outputTokens: 100,
-        totalTokens: 10_100,
-      }]]),
+      turnUsages: new Map([
+        [
+          1,
+          {
+            uncachedInputTokens: 5_060,
+            cacheReadTokens: 4_940,
+            outputTokens: 100,
+            totalTokens: 10_100,
+          },
+        ],
+      ]),
     })
     const view = render(<h.ChatView {...h.props} />)
     // The usage pill carries the compact total; cache hit stays dialog-only.
@@ -1886,7 +2322,12 @@ describe('ChatView', () => {
 
   it('withholds the usage-details trigger when turn usage is outside the window', () => {
     const settled: AssistantMessageNode = {
-      kind: 'assistant', seq: 2, time: 2_000, turn: 1, step: 1, blocks: [{ kind: 'text', text: 'answer' }],
+      kind: 'assistant',
+      seq: 2,
+      time: 2_000,
+      turn: 1,
+      step: 1,
+      blocks: [{ kind: 'text', text: 'answer' }],
       timing: { stepStartTime: 1_000, firstTokenTime: 2_200, completedTime: 5_200 },
       usage: { outputTokens: 40 },
     }
@@ -1904,15 +2345,23 @@ describe('ChatView', () => {
 
   it('withholds ttft and throughput while the turn is still running', () => {
     const settled: AssistantMessageNode = {
-      kind: 'assistant', seq: 2, time: 2_000, turn: 1, step: 1, blocks: [{ kind: 'text', text: 'answer' }],
+      kind: 'assistant',
+      seq: 2,
+      time: 2_000,
+      turn: 1,
+      step: 1,
+      blocks: [{ kind: 'text', text: 'answer' }],
       timing: { stepStartTime: 1_000, firstTokenTime: 1_500, completedTime: 2_000 },
       usage: { outputTokens: 10 },
     }
-    const h = makeHarness({
-      nodes: [user(1, 'hi'), settled],
-      turnTimings: new Map([[1, { startTime: 1_000 }]]),
-      turnEnds: new Map(),
-    }, { running: true })
+    const h = makeHarness(
+      {
+        nodes: [user(1, 'hi'), settled],
+        turnTimings: new Map([[1, { startTime: 1_000 }]]),
+        turnEnds: new Map(),
+      },
+      { running: true },
+    )
     const view = render(<h.ChatView {...h.props} />)
     expect(view.queryByText(/首 token|tok\/s/)).toBeNull()
   })
@@ -1929,13 +2378,26 @@ describe('ChatView', () => {
         [1, { startTime: 1_000, endTime: 2_000 }],
         [2, { startTime: 4_000, endTime: 5_000 }],
       ]),
-      turnEnds: new Map([[1, 3], [2, 6]]),
+      turnEnds: new Map([
+        [1, 3],
+        [2, 6],
+      ]),
     })
     const view = render(<h.ChatView {...h.props} />)
     const tails = view.container.querySelectorAll('[data-turn-tail]')
-    expect(new Map([...tails].map(tail => [
-      tail.getAttribute('data-turn-tail'), tail.getAttribute('data-actions-reveal'),
-    ]))).toEqual(new Map([['1', 'hover'], ['2', 'always']]))
+    expect(
+      new Map(
+        [...tails].map(tail => [
+          tail.getAttribute('data-turn-tail'),
+          tail.getAttribute('data-actions-reveal'),
+        ]),
+      ),
+    ).toEqual(
+      new Map([
+        ['1', 'hover'],
+        ['2', 'always'],
+      ]),
+    )
     expect(view.container.querySelectorAll('[data-chat-flow-kind="user"]')).toHaveLength(2)
   })
 
@@ -1970,9 +2432,10 @@ describe('ChatView', () => {
     const chat = {
       ...base,
       locations: {
-        getTurn: (turn: number) => turn === 1
-          ? [...base.locations.getTurn(turn), 'fixture:steering:later']
-          : base.locations.getTurn(turn),
+        getTurn: (turn: number) =>
+          turn === 1
+            ? [...base.locations.getTurn(turn), 'fixture:steering:later']
+            : base.locations.getTurn(turn),
         getStep: (turn: number, step: number) => base.locations.getStep(turn, step),
       },
     }
@@ -1986,8 +2449,13 @@ describe('ChatView', () => {
 
   it('keeps final content actions but disables branch when Tool and interrupted Think follow it', () => {
     const interruptedThink: AssistantMessageNode = {
-      kind: 'assistant', seq: 4.1, time: 4_100, turn: 1, step: 2,
-      blocks: [{ kind: 'reasoning', text: 'bad path' }], interrupted: true,
+      kind: 'assistant',
+      seq: 4.1,
+      time: 4_100,
+      turn: 1,
+      step: 2,
+      blocks: [{ kind: 'reasoning', text: 'bad path' }],
+      interrupted: true,
     }
     const h = makeHarness({
       nodes: [user(1, 'question'), assistant(2, 'answer'), toolResult(3, 'a'), interruptedThink],
@@ -2007,9 +2475,12 @@ describe('ChatView', () => {
     const h = makeHarness({ nodes: [user(1, markdown), assistant(2, markdown)] })
     const view = render(<h.ChatView {...h.props} />)
     expect(view.container.querySelectorAll('h1')).toHaveLength(1)
-    const literal = view.getByText((_content, element) => (
-      element?.tagName === 'SPAN' && element.childElementCount === 0 && element.textContent === markdown
-    ))
+    const literal = view.getByText(
+      (_content, element) =>
+        element?.tagName === 'SPAN' &&
+        element.childElementCount === 0 &&
+        element.textContent === markdown,
+    )
     expect(literal.querySelector('h1')).toBeNull()
 
     act(() => {
@@ -2051,7 +2522,9 @@ describe('ChatView', () => {
       h.setChat({ partial: { turn: 2, step: 1, blocks: [{ kind: 'text', text: 'streaming…' }] } })
     })
     act(() => {
-      h.setChat({ partial: { turn: 2, step: 1, blocks: [{ kind: 'text', text: 'streaming… more' }] } })
+      h.setChat({
+        partial: { turn: 2, step: 1, blocks: [{ kind: 'text', text: 'streaming… more' }] },
+      })
     })
     expect(view.getByText('streaming… more')).toBeTruthy()
     expect(view.getByTestId('tool-seat-a')).toBe(tool)
@@ -2066,8 +2539,11 @@ describe('ChatView', () => {
     // not re-render, so the row's renderSlot call count freezes during chunks.
     let rowRenders = 0
     h.setNodeRenderer(((key: string, owner: object) => {
-      if (key !== 'conversation.chat.node'
-        || (owner as RoutedChatNodeOwner).node.kind !== 'tool-call') return null
+      if (
+        key !== 'conversation.chat.node' ||
+        (owner as RoutedChatNodeOwner).node.kind !== 'tool-call'
+      )
+        return null
       rowRenders += 1
       return <div data-testid="counting-row" />
     }) as React.ComponentProps<typeof ChatNodeSeat>['renderSlot'])
@@ -2078,7 +2554,9 @@ describe('ChatView', () => {
       h.setChat({ partial: { turn: 2, step: 1, blocks: [{ kind: 'text', text: 'chunk1' }] } })
     })
     act(() => {
-      h.setChat({ partial: { turn: 2, step: 1, blocks: [{ kind: 'text', text: 'chunk1 chunk2' }] } })
+      h.setChat({
+        partial: { turn: 2, step: 1, blocks: [{ kind: 'text', text: 'chunk1 chunk2' }] },
+      })
     })
     expect(rowRenders).toBe(afterMount)
   })
@@ -2097,7 +2575,9 @@ describe('ChatView', () => {
     function StatefulToolNode({ node }: { readonly node: ChatNode<'tool-call'> }) {
       useEffect(() => {
         mounted()
-        return () => { unmounted() }
+        return () => {
+          unmounted()
+        }
       }, [])
       const root = node.data.root
       return (
@@ -2107,15 +2587,20 @@ describe('ChatView', () => {
       )
     }
 
-    const h = makeHarness({
-      nodes: [user(1, 'q'), assistant(4, 'later')],
-      runningCalls: [runningCall('r1')],
-    }, { running: true })
+    const h = makeHarness(
+      {
+        nodes: [user(1, 'q'), assistant(4, 'later')],
+        runningCalls: [runningCall('r1')],
+      },
+      { running: true },
+    )
     h.props.renderSlot = ((key: string, owner: object, opts?: { fallback?: React.ReactNode }) => {
       const routed = owner as RoutedChatNodeOwner
-      return key === 'conversation.chat.node' && routed.node.kind === 'tool-call'
-        ? <StatefulToolNode node={routed.node} />
-        : opts?.fallback ?? null
+      return key === 'conversation.chat.node' && routed.node.kind === 'tool-call' ? (
+        <StatefulToolNode node={routed.node} />
+      ) : (
+        (opts?.fallback ?? null)
+      )
     }) as React.ComponentProps<typeof ChatNodeSeat>['renderSlot']
     const view = render(<h.ChatView {...h.props} />)
     const tool = view.getByTestId('stateful-tool')
@@ -2151,14 +2636,18 @@ describe('ChatView', () => {
     expect(status.textContent).toMatch(/^深度求索中\.\.\.2分0\d秒$/)
     expect(status.querySelector('[aria-hidden="true"]')).not.toBeNull()
     act(() => {
-      h.setSession({ queue: [{
-        id: 'steering-occurrence' as never,
-        messageId: 'steering-message' as never,
-        placement: 'steering',
-        content: [{ type: 'text', text: 'also' }],
-        preview: 'also',
-        text: 'also',
-      }] })
+      h.setSession({
+        queue: [
+          {
+            id: 'steering-occurrence' as never,
+            messageId: 'steering-message' as never,
+            placement: 'steering',
+            content: [{ type: 'text', text: 'also' }],
+            preview: 'also',
+            text: 'also',
+          },
+        ],
+      })
     })
     expect(status.textContent).toMatch(/^深度求索中\.\.\.2分0\d秒$/)
   })
@@ -2167,8 +2656,16 @@ describe('ChatView', () => {
     const block = toolResult(3, 'a')
     const h = makeHarness({ nodes: [block] })
     const calls: { key: string; owner: object; entryKey?: string }[] = []
-    h.setNodeRenderer(((key: string, owner: object, opts?: { entryKey?: string; fallback?: React.ReactNode }) => {
-      calls.push({ key, owner, ...(opts?.entryKey !== undefined ? { entryKey: opts.entryKey } : {}) })
+    h.setNodeRenderer(((
+      key: string,
+      owner: object,
+      opts?: { entryKey?: string; fallback?: React.ReactNode },
+    ) => {
+      calls.push({
+        key,
+        owner,
+        ...(opts?.entryKey !== undefined ? { entryKey: opts.entryKey } : {}),
+      })
       return opts?.fallback ?? null
     }) as React.ComponentProps<typeof ChatNodeSeat>['renderSlot'])
     render(<h.ChatView {...h.props} />)
@@ -2188,18 +2685,25 @@ describe('ChatView', () => {
   })
 
   it('shows a Host open refusal with the reason and retries the same path', async () => {
-    const openFile = vi.fn<(path: string) => Promise<void>>()
+    const openFile = vi
+      .fn<(path: string) => Promise<void>>()
       .mockRejectedValueOnce(new Error('xdg-open is not available'))
       .mockResolvedValueOnce(undefined)
     const h = makeHarness({ nodes: [toolResult(3, 'a')] })
     h.props.openFile = openFile
     render(<h.ChatView {...h.props} />)
-    await act(async () => { h.toolOwners[0]!.openFile('src/a.ts') })
+    await act(async () => {
+      h.toolOwners[0]!.openFile('src/a.ts')
+    })
     await waitFor(() => {
       expect(screen.getByRole('dialog', { name: '无法打开文件' })).toBeTruthy()
     })
-    expect(screen.getByRole('dialog', { name: '无法打开文件' }).textContent).toContain('xdg-open is not available')
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: '重试' })) })
+    expect(screen.getByRole('dialog', { name: '无法打开文件' }).textContent).toContain(
+      'xdg-open is not available',
+    )
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: '重试' }))
+    })
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).toBeNull()
     })
@@ -2209,14 +2713,19 @@ describe('ChatView', () => {
   })
 
   it('keeps a non-Error Host refusal visible and dismisses it on cancel', async () => {
-    const openFile = vi.fn<(path: string) => Promise<void>>()
+    const openFile = vi
+      .fn<(path: string) => Promise<void>>()
       .mockRejectedValueOnce('permission denied')
     const h = makeHarness({ nodes: [toolResult(3, 'a')] })
     h.props.openFile = openFile
     render(<h.ChatView {...h.props} />)
-    await act(async () => { h.toolOwners[0]!.openFile('notes.md') })
+    await act(async () => {
+      h.toolOwners[0]!.openFile('notes.md')
+    })
     await waitFor(() => {
-      expect(screen.getByRole('dialog', { name: '无法打开文件' }).textContent).toContain('permission denied')
+      expect(screen.getByRole('dialog', { name: '无法打开文件' }).textContent).toContain(
+        'permission denied',
+      )
     })
     fireEvent.click(screen.getByRole('button', { name: '取消' }))
     expect(screen.queryByRole('dialog')).toBeNull()
@@ -2224,72 +2733,100 @@ describe('ChatView', () => {
   })
 
   it('substitutes the unknown-open copy when the Host refusal has no text', async () => {
-    const openFile = vi.fn<(path: string) => Promise<void>>()
-      .mockRejectedValueOnce(new Error(''))
+    const openFile = vi.fn<(path: string) => Promise<void>>().mockRejectedValueOnce(new Error(''))
     const h = makeHarness({ nodes: [toolResult(3, 'a')] })
     h.props.openFile = openFile
     render(<h.ChatView {...h.props} />)
-    await act(async () => { h.toolOwners[0]!.openFile('empty.ts') })
+    await act(async () => {
+      h.toolOwners[0]!.openFile('empty.ts')
+    })
     await waitFor(() => {
-      expect(screen.getByRole('dialog', { name: '无法打开文件' }).textContent).toContain('无法打开此文件')
+      expect(screen.getByRole('dialog', { name: '无法打开文件' }).textContent).toContain(
+        '无法打开此文件',
+      )
     })
   })
 
   it('ignores a Host refusal that settles after the dialog is dismissed', async () => {
     let rejectRetry!: (error: unknown) => void
-    const openFile = vi.fn<(path: string) => Promise<void>>()
+    const openFile = vi
+      .fn<(path: string) => Promise<void>>()
       .mockRejectedValueOnce(new Error('first refusal'))
-      .mockImplementationOnce(() => new Promise<void>((_resolve, reject) => {
-        rejectRetry = reject
-      }))
+      .mockImplementationOnce(
+        () =>
+          new Promise<void>((_resolve, reject) => {
+            rejectRetry = reject
+          }),
+      )
     const h = makeHarness({ nodes: [toolResult(3, 'a')] })
     h.props.openFile = openFile
     render(<h.ChatView {...h.props} />)
-    await act(async () => { h.toolOwners[0]!.openFile('src/a.ts') })
-    await waitFor(() => {
-      expect(screen.getByRole('dialog', { name: '无法打开文件' }).textContent).toContain('first refusal')
+    await act(async () => {
+      h.toolOwners[0]!.openFile('src/a.ts')
     })
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: '重试' })) })
+    await waitFor(() => {
+      expect(screen.getByRole('dialog', { name: '无法打开文件' }).textContent).toContain(
+        'first refusal',
+      )
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: '重试' }))
+    })
     fireEvent.click(screen.getByRole('button', { name: '取消' }))
     expect(screen.queryByRole('dialog')).toBeNull()
-    await act(async () => { rejectRetry(new Error('late refusal')) })
+    await act(async () => {
+      rejectRetry(new Error('late refusal'))
+    })
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 
   it('ignores a Host open that succeeds after the dialog is dismissed', async () => {
     let resolveRetry!: () => void
-    const openFile = vi.fn<(path: string) => Promise<void>>()
+    const openFile = vi
+      .fn<(path: string) => Promise<void>>()
       .mockRejectedValueOnce(new Error('first refusal'))
-      .mockImplementationOnce(() => new Promise<void>((resolve) => {
-        resolveRetry = () => { resolve() }
-      }))
+      .mockImplementationOnce(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveRetry = () => {
+              resolve()
+            }
+          }),
+      )
     const h = makeHarness({ nodes: [toolResult(3, 'a')] })
     h.props.openFile = openFile
     render(<h.ChatView {...h.props} />)
-    await act(async () => { h.toolOwners[0]!.openFile('src/a.ts') })
-    await waitFor(() => {
-      expect(screen.getByRole('dialog', { name: '无法打开文件' }).textContent).toContain('first refusal')
+    await act(async () => {
+      h.toolOwners[0]!.openFile('src/a.ts')
     })
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: '重试' })) })
+    await waitFor(() => {
+      expect(screen.getByRole('dialog', { name: '无法打开文件' }).textContent).toContain(
+        'first refusal',
+      )
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: '重试' }))
+    })
     fireEvent.click(screen.getByRole('button', { name: '取消' }))
-    await act(async () => { resolveRetry() })
+    await act(async () => {
+      resolveRetry()
+    })
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 
   it('prepend preserves a semantic row; a trailing user node force-scrolls', () => {
-    const h = makeHarness(
-      { nodes: [user(5, 'later'), assistant(6, 'a')] },
-      { hasMore: true },
-    )
+    const h = makeHarness({ nodes: [user(5, 'later'), assistant(6, 'a')] }, { hasMore: true })
     const view = render(<h.ChatView {...h.props} />)
     const scroller = view.container.querySelector('[class*="scroll"]') as HTMLDivElement
     // jsdom has no layout: fake the metrics the anchor math reads.
     Object.defineProperty(scroller, 'scrollHeight', { value: 1000, writable: true })
     Object.defineProperty(scroller, 'clientHeight', { value: 400, writable: true })
-    const anchored = view.container.querySelector('[data-chat-flow-key="fixture:user:5"]') as HTMLDivElement
+    const anchored = view.container.querySelector(
+      '[data-chat-flow-key="fixture:user:5"]',
+    ) as HTMLDivElement
     let anchoredTop = 100
     vi.spyOn(anchored, 'getBoundingClientRect').mockImplementation(
-      () => ({ top: anchoredTop, bottom: anchoredTop + 40 } as DOMRect),
+      () => ({ top: anchoredTop, bottom: anchoredTop + 40 }) as DOMRect,
     )
     readerScroll(scroller, 80)
     // Arm the paging anchor, then deliver an older page (head seq decreases).
@@ -2303,7 +2840,13 @@ describe('ChatView', () => {
     // A new trailing user bubble (own words) force-scrolls to the bottom.
     act(() => {
       h.setChat({
-        nodes: [user(1, 'old'), assistant(2, 'b'), user(5, 'later'), assistant(6, 'a'), user(9, 'mine')],
+        nodes: [
+          user(1, 'old'),
+          assistant(2, 'b'),
+          user(5, 'later'),
+          assistant(6, 'a'),
+          user(9, 'mine'),
+        ],
       })
     })
     expect(scroller.scrollTop).toBe(1600)
@@ -2319,7 +2862,9 @@ describe('ChatView', () => {
     fireEvent.click(view.getByText('加载更早'))
     fireEvent.click(view.getByLabelText('回到底部'))
     Object.defineProperty(scroller, 'scrollHeight', { value: 1_300, writable: true })
-    act(() => { h.setChat({ nodes: [assistant(2, 'older'), user(9, 'late')] }) })
+    act(() => {
+      h.setChat({ nodes: [assistant(2, 'older'), user(9, 'late')] })
+    })
     expect(scroller.scrollTop).toBe(1_300)
     expect(h.chatScroll.read()).toBeNull()
   })
@@ -2363,7 +2908,9 @@ describe('ChatView', () => {
     expect(h.chatScroll.read()).toBeNull()
 
     metrics.setHeight(1_200)
-    act(() => { h.setSession({ running: true }) })
+    act(() => {
+      h.setSession({ running: true })
+    })
     expect(scroller.scrollTop).toBe(900)
   })
 
@@ -2379,7 +2926,9 @@ describe('ChatView', () => {
     metrics.setLayout(800, 700)
     fireEvent.scroll(scroller)
     metrics.setHeight(962)
-    act(() => { h.setSession({ running: true }) })
+    act(() => {
+      h.setSession({ running: true })
+    })
     fireEvent(scroller, new Event('scrollend'))
 
     expect(scroller.scrollTop).toBe(662)
@@ -2388,21 +2937,12 @@ describe('ChatView', () => {
   })
 
   it('settles pinned deliveries before observer growth without reading row geometry', () => {
-    let notify: (() => void) | undefined
-    class ResizeObserverStub {
-      constructor(callback: ResizeObserverCallback) {
-        notify = () => { callback([], this as unknown as ResizeObserver) }
-      }
-
-      observe = vi.fn()
-      disconnect = vi.fn()
-    }
-    vi.stubGlobal('ResizeObserver', ResizeObserverStub)
+    const observer = stubResizeObserver()
     const h = makeHarness({ nodes: [user(1, 'q'), assistant(2, 'a')] })
     const view = render(<h.ChatView {...h.props} />)
     const scroller = view.container.querySelector('[class*="scroll"]') as HTMLDivElement
     const metrics = installScrollMetrics(scroller, 9_931, 300)
-    expect(notify).toBeDefined()
+    expect(observer.constructed()).toBe(true)
     scroller.scrollTop = 9_631
     fireEvent.scroll(scroller)
     fireEvent(scroller, new Event('scrollend'))
@@ -2412,11 +2952,15 @@ describe('ChatView', () => {
       metrics.setLayout(9_918, 9_631)
       fireEvent.scroll(scroller)
       metrics.setHeight(10_013)
-      act(() => { notify?.() })
+      act(() => {
+        observer.trigger()
+      })
       expect(scroller.scrollTop).toBe(9_713)
       fireEvent.scroll(scroller)
       metrics.setHeight(10_093)
-      act(() => { notify?.() })
+      act(() => {
+        observer.trigger()
+      })
       expect(scroller.scrollTop).toBe(9_793)
       expect(rect).not.toHaveBeenCalled()
       expect(h.chatScroll.read()).toBeNull()
@@ -2426,35 +2970,30 @@ describe('ChatView', () => {
   })
 
   it('lets small reader movements accumulate past the follow threshold during growth', () => {
-    let notify: (() => void) | undefined
-    class ResizeObserverStub {
-      constructor(callback: ResizeObserverCallback) {
-        notify = () => { callback([], this as unknown as ResizeObserver) }
-      }
-
-      observe = vi.fn()
-      disconnect = vi.fn()
-    }
-    vi.stubGlobal('ResizeObserver', ResizeObserverStub)
+    const observer = stubResizeObserver()
     const h = makeHarness({ nodes: [user(1, 'q'), assistant(2, 'a')] })
     const view = render(<h.ChatView {...h.props} />)
     const scroller = view.container.querySelector('[class*="scroll"]') as HTMLDivElement
     const metrics = installScrollMetrics(scroller, 1_000, 300)
-    expect(notify).toBeDefined()
+    expect(observer.constructed()).toBe(true)
     scroller.scrollTop = 700
     fireEvent.scroll(scroller)
     fireEvent(scroller, new Event('scrollend'))
     scroller.scrollTop = 690
     fireEvent.scroll(scroller)
     metrics.setHeight(1_020)
-    act(() => { notify?.() })
+    act(() => {
+      observer.trigger()
+    })
     expect(scroller.scrollTop).toBe(690)
     scroller.scrollTop = 680
     fireEvent.scroll(scroller)
     fireEvent(scroller, new Event('scrollend'))
     expect(view.getByLabelText('回到底部')).toBeTruthy()
     metrics.setHeight(1_040)
-    act(() => { notify?.() })
+    act(() => {
+      observer.trigger()
+    })
     expect(scroller.scrollTop).toBe(680)
   })
 
@@ -2473,7 +3012,9 @@ describe('ChatView', () => {
     fireEvent.click(view.getByLabelText('回到底部'))
     fireEvent.scroll(scroller)
     metrics.setHeight(1_200)
-    act(() => { h.setSession({ running: true }) })
+    act(() => {
+      h.setSession({ running: true })
+    })
     expect(scroller.scrollTop).toBe(900)
     expect(h.chatScroll.read()).toBeNull()
   })
@@ -2493,15 +3034,21 @@ describe('ChatView', () => {
       expect(view.getByLabelText('回到底部')).toBeTruthy()
       const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect')
       try {
-        act(() => { vi.advanceTimersByTime(500) })
+        act(() => {
+          vi.advanceTimersByTime(500)
+        })
         rect.mockClear()
         scroller.scrollTop = 400
         fireEvent.scroll(scroller)
         scroller.scrollTop = 300
         fireEvent.scroll(scroller)
-        act(() => { vi.advanceTimersByTime(499) })
+        act(() => {
+          vi.advanceTimersByTime(499)
+        })
         expect(rect).not.toHaveBeenCalled()
-        act(() => { vi.advanceTimersByTime(1) })
+        act(() => {
+          vi.advanceTimersByTime(1)
+        })
         expect(rect).toHaveBeenCalled()
         rect.mockClear()
         scroller.scrollTop = 200
@@ -2513,7 +3060,9 @@ describe('ChatView', () => {
         fireEvent.scroll(scroller)
         view.unmount()
         rect.mockClear()
-        act(() => { vi.advanceTimersByTime(500) })
+        act(() => {
+          vi.advanceTimersByTime(500)
+        })
         expect(rect).not.toHaveBeenCalled()
       } finally {
         rect.mockRestore()
@@ -2541,17 +3090,8 @@ describe('ChatView', () => {
   })
 
   it('one ResizeObserver owns pinned dynamic-height follow and ignores growth while away', () => {
-    let notify: (() => void) | undefined
     const observe = vi.fn()
-    class ResizeObserverStub {
-      constructor(callback: ResizeObserverCallback) {
-        notify = () => { callback([], this as unknown as ResizeObserver) }
-      }
-
-      observe = observe
-      disconnect = vi.fn()
-    }
-    vi.stubGlobal('ResizeObserver', ResizeObserverStub)
+    const observer = stubResizeObserver(observe)
     const h = makeHarness({ nodes: [user(1, 'q'), assistant(2, 'a')] })
     const view = render(<h.ChatView {...h.props} />)
     const scroller = view.container.querySelector('[class*="scroll"]') as HTMLDivElement
@@ -2561,17 +3101,20 @@ describe('ChatView', () => {
     fireEvent.scroll(scroller)
     fireEvent(scroller, new Event('scrollend'))
     Object.defineProperty(scroller, 'scrollHeight', { value: 1_200, writable: true })
-    act(() => { notify?.() })
+    act(() => {
+      observer.trigger()
+    })
     expect(scroller.scrollTop).toBe(1_200)
     readerScroll(scroller, 200)
     Object.defineProperty(scroller, 'scrollHeight', { value: 1_400, writable: true })
-    act(() => { notify?.() })
+    act(() => {
+      observer.trigger()
+    })
     expect(scroller.scrollTop).toBe(200)
     expect(observe).toHaveBeenCalledTimes(1)
   })
 
   it('pinned dynamic-height updates select the latest Turn without reading row geometry', () => {
-    let notify: (() => void) | undefined
     let nextFrame = 0
     const frames = new Map<number, FrameRequestCallback>()
     vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
@@ -2579,24 +3122,24 @@ describe('ChatView', () => {
       frames.set(nextFrame, callback)
       return nextFrame
     })
-    vi.stubGlobal('cancelAnimationFrame', (id: number) => { frames.delete(id) })
-    class ResizeObserverStub {
-      constructor(callback: ResizeObserverCallback) {
-        notify = () => { callback([], this as unknown as ResizeObserver) }
-      }
-
-      observe = vi.fn()
-      disconnect = vi.fn()
-    }
-    vi.stubGlobal('ResizeObserver', ResizeObserverStub)
-    const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+    vi.stubGlobal('cancelAnimationFrame', (id: number) => {
+      frames.delete(id)
+    })
+    const observer = stubResizeObserver()
+    const rect = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
       .mockReturnValue({ top: 0, bottom: 40 } as DOMRect)
     const h = makeHarness({
       nodes: [
-        userInTurn(1, 'first', 1), assistant(2, 'first answer', 1),
-        userInTurn(4, 'second', 2), assistant(5, 'second answer', 2),
+        userInTurn(1, 'first', 1),
+        assistant(2, 'first answer', 1),
+        userInTurn(4, 'second', 2),
+        assistant(5, 'second answer', 2),
       ],
-      turnEnds: new Map([[1, 3], [2, 6]]),
+      turnEnds: new Map([
+        [1, 3],
+        [2, 6],
+      ]),
     })
     const view = render(<h.ChatView {...h.props} />)
     const scroller = view.container.querySelector('[class*="scroll"]') as HTMLDivElement
@@ -2610,7 +3153,9 @@ describe('ChatView', () => {
     rect.mockClear()
 
     metrics.setHeight(1_200)
-    act(() => { notify?.() })
+    act(() => {
+      observer.trigger()
+    })
     act(() => {
       const pending = [...frames.values()]
       frames.clear()
@@ -2618,7 +3163,9 @@ describe('ChatView', () => {
     })
 
     expect(scroller.scrollTop).toBe(900)
-    expect(view.getByRole('button', { name: '跳转到第 2 轮' }).getAttribute('aria-current')).toBe('true')
+    expect(view.getByRole('button', { name: '跳转到第 2 轮' }).getAttribute('aria-current')).toBe(
+      'true',
+    )
     expect(rect).not.toHaveBeenCalled()
   })
 
@@ -2665,14 +3212,16 @@ describe('ChatView', () => {
     document.body.appendChild(host)
     let anchorTop = 80
     vi.spyOn(host, 'getBoundingClientRect').mockImplementation(
-      () => ({ top: 0, bottom: 500 } as DOMRect),
+      () => ({ top: 0, bottom: 500 }) as DOMRect,
     )
-    const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
-      if (this.dataset.chatAnchorKey === 'fixture:user:1') {
-        return { top: anchorTop, bottom: anchorTop + 40 } as DOMRect
-      }
-      return { top: 0, bottom: 40 } as DOMRect
-    })
+    const rect = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(function (this: HTMLElement) {
+        if (this.dataset.chatAnchorKey === 'fixture:user:1') {
+          return { top: anchorTop, bottom: anchorTop + 40 } as DOMRect
+        }
+        return { top: 0, bottom: 40 } as DOMRect
+      })
     try {
       const h = makeHarness({ nodes: [user(1, 'q'), assistant(2, 'a')] })
       // Fresh open (nothing saved): the bottom jump stands.
@@ -2697,19 +3246,28 @@ describe('ChatView', () => {
   it('normalizes a semantic restore clamped to the bottom before an immediate remount', () => {
     const host = document.createElement('div')
     host.setAttribute('data-conversation-scroll', '')
-    Object.defineProperty(host, 'scrollHeight', { value: 2_000, writable: true, configurable: true })
+    Object.defineProperty(host, 'scrollHeight', {
+      value: 2_000,
+      writable: true,
+      configurable: true,
+    })
     Object.defineProperty(host, 'clientHeight', { value: 500, writable: true, configurable: true })
     let scrollTop = 0
     Object.defineProperty(host, 'scrollTop', {
       configurable: true,
       get: () => scrollTop,
-      set: (value: number) => { scrollTop = Math.min(value, 1_500) },
+      set: (value: number) => {
+        scrollTop = Math.min(value, 1_500)
+      },
     })
     document.body.appendChild(host)
-    const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
-      if (this.dataset.chatAnchorKey === 'fixture:user:1') return { top: 300, bottom: 340 } as DOMRect
-      return { top: 0, bottom: 500 } as DOMRect
-    })
+    const rect = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(function (this: HTMLElement) {
+        if (this.dataset.chatAnchorKey === 'fixture:user:1')
+          return { top: 300, bottom: 340 } as DOMRect
+        return { top: 0, bottom: 500 } as DOMRect
+      })
     try {
       const h = makeHarness({ nodes: [user(1, 'q'), assistant(2, 'a')] })
       h.chatScroll.save({ anchorKey: 'fixture:user:1', anchorTop: 80, scrollTop: 1_400 })
@@ -2753,15 +3311,20 @@ describe('ChatView', () => {
     const view = render(<h.ChatView {...h.props} />)
     fireEvent.click(view.getByText('加载更早'))
     expect(h.loadOlder).toHaveBeenCalledTimes(1)
-    act(() => { h.setSession({ loadingOlder: true }) })
+    act(() => {
+      h.setSession({ loadingOlder: true })
+    })
     expect(view.getByText('加载中…')).toBeTruthy()
   })
 
   it('shows open error and loading states', () => {
-    const h = makeHarness({}, {
-      openState: 'error',
-      openError: { code: 'gateway/internal', message: 'boom' } as never,
-    })
+    const h = makeHarness(
+      {},
+      {
+        openState: 'error',
+        openError: { code: 'gateway/internal', message: 'boom' } as never,
+      },
+    )
     const view = render(<h.ChatView {...h.props} />)
     expect(view.getByText(/历史加载失败：boom/)).toBeTruthy()
     const loading = makeHarness({}, { openState: 'loading' })
@@ -2782,7 +3345,13 @@ describe('ChatView', () => {
 
     // Error outcome flips the row state; a text-less error gets the default copy.
     const failed = makeHarness({
-      nodes: [command({ seq: 6, commandId: 'cmd-2' as CommandNode['commandId'], outcome: { kind: 'error' } })],
+      nodes: [
+        command({
+          seq: 6,
+          commandId: 'cmd-2' as CommandNode['commandId'],
+          outcome: { kind: 'error' },
+        }),
+      ],
     })
     const fv = render(<failed.ChatView {...failed.props} />)
     expect(fv.container.querySelector('[data-state="error"]')).not.toBeNull()
@@ -2800,7 +3369,15 @@ describe('ChatView', () => {
 
     // Cross-window soft-fall (run page truncated): generic title, outcome preserved.
     const orphan = makeHarness({
-      nodes: [command({ seq: 8, commandId: 'cmd-4' as CommandNode['commandId'], name: null, args: null, outcome: { kind: 'success' } })],
+      nodes: [
+        command({
+          seq: 8,
+          commandId: 'cmd-4' as CommandNode['commandId'],
+          name: null,
+          args: null,
+          outcome: { kind: 'success' },
+        }),
+      ],
     })
     const ov = render(<orphan.ChatView {...orphan.props} />)
     expect(ov.getByText('指令')).toBeTruthy()
@@ -2820,14 +3397,17 @@ describe('ChatView', () => {
 
     act(() => {
       h.setChat({
-        nodes: [{
-          ...running,
-          outcome: {
-            kind: 'success',
-            text: 'Compacted 16 history items (~11309 tokens).',
-            sourceEventSeq: 7,
+        nodes: [
+          {
+            ...running,
+            outcome: {
+              kind: 'success',
+              text: 'Compacted 16 history items (~11309 tokens).',
+              sourceEventSeq: 7,
+            },
           },
-        }, compaction()],
+          compaction(),
+        ],
       })
     })
 
@@ -2847,21 +3427,25 @@ describe('ChatView', () => {
 
   it('keeps /compact no-history and error settlements on the generic command row', () => {
     const noHistory = makeHarness({
-      nodes: [command({
-        name: 'compact',
-        outcome: { kind: 'success', text: 'No compactable history yet.' },
-      })],
+      nodes: [
+        command({
+          name: 'compact',
+          outcome: { kind: 'success', text: 'No compactable history yet.' },
+        }),
+      ],
     })
     const noHistoryView = render(<noHistory.ChatView {...noHistory.props} />)
     expect(noHistoryView.getByText('No compactable history yet.')).toBeTruthy()
     expect(noHistoryView.queryByRole('button')).toBeNull()
 
     const failed = makeHarness({
-      nodes: [command({
-        commandId: 'cmd-compact-failed' as CommandNode['commandId'],
-        name: 'compact',
-        outcome: { kind: 'error', text: 'Compaction cancelled.' },
-      })],
+      nodes: [
+        command({
+          commandId: 'cmd-compact-failed' as CommandNode['commandId'],
+          name: 'compact',
+          outcome: { kind: 'error', text: 'Compaction cancelled.' },
+        }),
+      ],
     })
     const failedView = render(<failed.ChatView {...failed.props} />)
     expect(failedView.getByText('Compaction cancelled.')).toBeTruthy()

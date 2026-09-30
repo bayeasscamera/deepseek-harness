@@ -23,27 +23,25 @@ import {
   type AssistantStreamRecord,
 } from '@deepseek-ai/dsh-llm/assistant-stream'
 import type { AttachmentIdType, ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
-import type {
-  SessionEvent,
-  SessionId,
-  SessionSeqCursor,
-} from '@deepseek-ai/dsh-session/types'
+import type { SessionEvent, SessionId, SessionSeqCursor } from '@deepseek-ai/dsh-session/types'
 import { SESSION_FORMAT_VERSION, SessionSeq } from '@deepseek-ai/dsh-session/types'
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import type { TodoItem } from '@deepseek-ai/dsh-tool-todo/client'
 // Type-only: the brand constructor is host-side; the fixture casts at its
 // wire-fabrication boundary (the schema layer's one-cast-point posture).
 import type { CommandId } from '@deepseek-ai/dsh-commands/brand'
-import type { CommandDescriptor, CommandExecution, CommandResult } from '@deepseek-ai/dsh-commands/types'
+import type {
+  CommandDescriptor,
+  CommandExecution,
+  CommandResult,
+} from '@deepseek-ai/dsh-commands/types'
 import type { CredentialInfo } from '@deepseek-ai/dsh-credentials/types'
 import type { DirectoryListing as FixtureDirectoryListing } from '@deepseek-ai/dsh-host-directory-picker/types'
 import type { SettingsDescribeValue, SettingsNamespaceView } from '@deepseek-ai/dsh-settings/types'
 import { deriveEventMessage, foldSurface } from '@deepseek-ai/dsh-session/surface'
 import type { RpcResult } from './api.ts'
 import { randomUuid } from './random-uuid.ts'
-import type {
-  ClientConnectionRpc, ConnectionRpcFailure, ConnectionRpcResult,
-} from '../rpc.ts'
+import type { ClientConnectionRpc, ConnectionRpcFailure, ConnectionRpcResult } from '../rpc.ts'
 
 const FIXTURE_SESSION_SEARCH_RESULT_LIMIT = 20
 
@@ -61,7 +59,11 @@ interface ModelProviderGroup {
     readonly name: string
     readonly description?: string
     readonly reasoning?: {
-      readonly efforts: readonly { readonly id: string; readonly name: string; readonly description?: string }[]
+      readonly efforts: readonly {
+        readonly id: string
+        readonly name: string
+        readonly description?: string
+      }[]
       readonly defaultEffort?: string
     }
   }[]
@@ -190,12 +192,12 @@ export type FixtureAssistantStreamFrame =
     readonly revision: number
     readonly index: number
     readonly outcome:
-      | {
-        readonly kind: 'committed'
-        readonly eventType: 'assistant/message' | 'assistant/attempt'
-        readonly seq: number
-      }
-      | { readonly kind: 'abandoned' }
+        | {
+          readonly kind: 'committed'
+          readonly eventType: 'assistant/message' | 'assistant/attempt'
+          readonly seq: number
+        }
+        | { readonly kind: 'abandoned' }
   }
 
 interface FixtureRemoteEventNotificationFrame {
@@ -296,8 +298,14 @@ interface FixtureSessionApi {
     readonly sessionId?: SessionId
     readonly agentPreset?: string
   }): Promise<ConnectionRpcResult<unknown>>
-  rename(request: { readonly sessionId: SessionId; readonly title: string }): Promise<ConnectionRpcResult<unknown>>
-  fork(request: { readonly sessionId: SessionId; readonly atSeq?: number }): Promise<ConnectionRpcResult<unknown>>
+  rename(request: {
+    readonly sessionId: SessionId
+    readonly title: string
+  }): Promise<ConnectionRpcResult<unknown>>
+  fork(request: {
+    readonly sessionId: SessionId
+    readonly atSeq?: number
+  }): Promise<ConnectionRpcResult<unknown>>
   history(request: {
     readonly sessionId: SessionId
     readonly throughSeq?: number
@@ -340,24 +348,44 @@ interface WorkspaceView {
   readonly updatedAt: string
 }
 
-interface WorkspaceCreateRequest { readonly path: string }
-interface WorkspaceCreateValue { readonly workspace: WorkspaceView; readonly created: boolean }
-interface WorkspaceRenameRequest { readonly workspaceId: WorkspaceId; readonly title: string }
-interface WorkspaceValue { readonly workspace: WorkspaceView }
-interface WorkspaceDeleteRequest { readonly workspaceId: WorkspaceId }
-interface WorkspaceDeleteValue { readonly deleted: true }
+interface WorkspaceCreateRequest {
+  readonly path: string
+}
+interface WorkspaceCreateValue {
+  readonly workspace: WorkspaceView
+  readonly created: boolean
+}
+interface WorkspaceRenameRequest {
+  readonly workspaceId: WorkspaceId
+  readonly title: string
+}
+interface WorkspaceValue {
+  readonly workspace: WorkspaceView
+}
+interface WorkspaceDeleteRequest {
+  readonly workspaceId: WorkspaceId
+}
+interface WorkspaceDeleteValue {
+  readonly deleted: true
+}
 interface WorkspaceInsertBeforeRequest {
   readonly workspaceId: WorkspaceId
   readonly beforeWorkspaceId?: WorkspaceId
 }
-interface WorkspaceOrderValue { readonly workspaceIds: readonly WorkspaceId[] }
+interface WorkspaceOrderValue {
+  readonly workspaceIds: readonly WorkspaceId[]
+}
 interface WorkspaceInsertSessionBeforeRequest {
   readonly workspaceId: WorkspaceId
   readonly sessionId: SessionId
   readonly beforeSessionId?: SessionId
 }
-interface WorkspaceArchiveSessionRequest { readonly sessionId: SessionId }
-interface WorkspaceArchiveValue { readonly archivedSessionIds: readonly SessionId[] }
+interface WorkspaceArchiveSessionRequest {
+  readonly sessionId: SessionId
+}
+interface WorkspaceArchiveValue {
+  readonly archivedSessionIds: readonly SessionId[]
+}
 
 type WorkspaceFollowFrame =
   | {
@@ -376,9 +404,15 @@ interface FixtureWorkspaceApi {
   create(request: WorkspaceCreateRequest): Promise<ConnectionRpcResult<WorkspaceCreateValue>>
   rename(request: WorkspaceRenameRequest): Promise<ConnectionRpcResult<WorkspaceValue>>
   delete(request: WorkspaceDeleteRequest): Promise<ConnectionRpcResult<WorkspaceDeleteValue>>
-  insertBefore(request: WorkspaceInsertBeforeRequest): Promise<ConnectionRpcResult<WorkspaceOrderValue>>
-  insertSessionBefore(request: WorkspaceInsertSessionBeforeRequest): Promise<ConnectionRpcResult<WorkspaceValue>>
-  archiveSession(request: WorkspaceArchiveSessionRequest): Promise<ConnectionRpcResult<WorkspaceArchiveValue>>
+  insertBefore(
+    request: WorkspaceInsertBeforeRequest,
+  ): Promise<ConnectionRpcResult<WorkspaceOrderValue>>
+  insertSessionBefore(
+    request: WorkspaceInsertSessionBeforeRequest,
+  ): Promise<ConnectionRpcResult<WorkspaceValue>>
+  archiveSession(
+    request: WorkspaceArchiveSessionRequest,
+  ): Promise<ConnectionRpcResult<WorkspaceArchiveValue>>
 }
 
 interface FixtureWorkspace {
@@ -394,7 +428,10 @@ function text(t: string): ContentBlock[] {
   return [{ type: 'text', text: t }]
 }
 
-function userMessage(content: ContentBlock[], source: MessageSource = { kind: 'user' }): UserMessage {
+function userMessage(
+  content: ContentBlock[],
+  source: MessageSource = { kind: 'user' },
+): UserMessage {
   return createUserMessage({ content, source })
 }
 
@@ -405,7 +442,11 @@ function assistantMessage(content: ContentBlock[], model = 'fx-1'): AssistantMes
   })
 }
 
-function toolResultMessage(callId: string, content: ContentBlock[], isError: boolean): ToolResultMessage {
+function toolResultMessage(
+  callId: string,
+  content: ContentBlock[],
+  isError: boolean,
+): ToolResultMessage {
   return createToolResultMessage({ callId: brandString<ToolCallId>(callId), content, isError })
 }
 
@@ -482,38 +523,52 @@ const TERMINAL_OUTPUT_FIXTURE = [
  * capped indicator; the file with more than CHAT_SEARCH_MAX_LINES rows
  * exercises its head/tail height cap.
  */
-const SEARCH_MATCHES_FIXTURE: { path: string; matches: { lineNumber: number; line: string }[] }[] = [
-  {
-    path: 'packages/client/ui-primitives/src/SearchBlock.tsx',
-    matches: [
-      { lineNumber: 16, line: 'export const DEFAULT_SEARCH_MAX_LINES = 16' },
-      { lineNumber: 138, line: 'export function SearchBlock(props: SearchBlockProps) {' },
-      { lineNumber: 141, line: '  const [collapsed, setCollapsed] = useState<ReadonlySet<number>>(() => new Set())' },
-    ],
-  },
-  {
-    path: 'packages/client/ui-tool/src/client/tool/models/search-card-model.ts',
-    matches: [
-      { lineNumber: 45, line: 'export const CHAT_SEARCH_MAX_LINES = 8' },
-      { lineNumber: 130, line: 'export function searchCardModel(block: ToolCallBlock): SearchCardModel | null {' },
-    ],
-  },
-  {
-    path: 'packages/client/ui-tool/src/client/tool/toolviews/search-row.tsx',
-    matches: [
-      { lineNumber: 34, line: 'export function SearchRow({ toolName, block, inspect, t }: SearchRowProps) {' },
-      { lineNumber: 36, line: '  const search = searchCardModel(block)' },
-      { lineNumber: 56, line: '      search={search}' },
-      { lineNumber: 78, line: "      yield ctx.slots.register({ name: 'tool.call.toolview', key: 'grep', locale: NS }, SearchRow)" },
-    ],
-  },
-]
+const SEARCH_MATCHES_FIXTURE: { path: string; matches: { lineNumber: number; line: string }[] }[] =
+  [
+    {
+      path: 'packages/client/ui-primitives/src/SearchBlock.tsx',
+      matches: [
+        { lineNumber: 16, line: 'export const DEFAULT_SEARCH_MAX_LINES = 16' },
+        { lineNumber: 138, line: 'export function SearchBlock(props: SearchBlockProps) {' },
+        {
+          lineNumber: 141,
+          line: '  const [collapsed, setCollapsed] = useState<ReadonlySet<number>>(() => new Set())',
+        },
+      ],
+    },
+    {
+      path: 'packages/client/ui-tool/src/client/tool/models/search-card-model.ts',
+      matches: [
+        { lineNumber: 45, line: 'export const CHAT_SEARCH_MAX_LINES = 8' },
+        {
+          lineNumber: 130,
+          line: 'export function searchCardModel(block: ToolCallBlock): SearchCardModel | null {',
+        },
+      ],
+    },
+    {
+      path: 'packages/client/ui-tool/src/client/tool/toolviews/search-row.tsx',
+      matches: [
+        {
+          lineNumber: 34,
+          line: 'export function SearchRow({ toolName, block, inspect, t }: SearchRowProps) {',
+        },
+        { lineNumber: 36, line: '  const search = searchCardModel(block)' },
+        { lineNumber: 56, line: '      search={search}' },
+        {
+          lineNumber: 78,
+          line: "      yield ctx.slots.register({ name: 'tool.call.toolview', key: 'grep', locale: NS }, SearchRow)",
+        },
+      ],
+    },
+  ]
 
 const SEARCH_MATCHES_TEXT = [
   'Found 9 of 42 matches',
   '',
   ...SEARCH_MATCHES_FIXTURE.map(file =>
-    [file.path, ...file.matches.map(m => `Line ${m.lineNumber}: ${m.line}`)].join('\n')),
+    [file.path, ...file.matches.map(m => `Line ${m.lineNumber}: ${m.line}`)].join('\n'),
+  ),
   '',
   '(Full grep result stored at: fixture://spill/grep-66. Read it to see every match.)',
 ].join('\n')
@@ -546,7 +601,10 @@ const READ_SAMPLE_SOURCE = [
   '// A windowed read keeps the file line numbers in the gutter.',
   'const marker = "fixture read sample"',
 ]
-const READ_SAMPLE_LINES = READ_SAMPLE_SOURCE.map((text, index) => ({ number: READ_SAMPLE_FIRST_LINE + index, text }))
+const READ_SAMPLE_LINES = READ_SAMPLE_SOURCE.map((text, index) => ({
+  number: READ_SAMPLE_FIRST_LINE + index,
+  text,
+}))
 const READ_SAMPLE_PATH = 'packages/client/ui-primitives/src/ReadBlock.tsx'
 const READ_SAMPLE_TOTAL = 180
 const READ_SAMPLE_LAST_LINE = READ_SAMPLE_FIRST_LINE + READ_SAMPLE_SOURCE.length - 1
@@ -566,17 +624,20 @@ const READ_SAMPLE_TEXT = [
  * titled source without a snippet; `truncated` exercises the capped indicator.
  */
 const WEB_SEARCH_META = {
-  answer: 'DeepSeek Harness is a plugin-based agent harness on vendored Cordis where **every capability is a plugin**.',
+  answer:
+    'DeepSeek Harness is a plugin-based agent harness on vendored Cordis where **every capability is a plugin**.',
   sources: [
     {
       url: 'https://github.com/deepseek-ai/deepseek-harness',
       title: 'DeepSeek Harness — plugin-based agent harness',
-      snippet: 'Everything is a plugin: session, tools, agent-loop, and LLM adapters all mount on the same Cordis context.',
+      snippet:
+        'Everything is a plugin: session, tools, agent-loop, and LLM adapters all mount on the same Cordis context.',
       publishedAt: '2026-07-01',
     },
     {
       url: 'https://www.deepseek.com/blog/harness-architecture',
-      snippet: 'The capability-seam pattern splits each capability into interface, implementation, and consumer packages.',
+      snippet:
+        'The capability-seam pattern splits each capability into interface, implementation, and consumer packages.',
     },
     {
       url: 'https://docs.deepseek.com/harness/plugins',
@@ -646,7 +707,8 @@ function sid(id: string): SessionId {
   return id as SessionId
 }
 
-const FIXTURE_IMAGE_DATA = 'iVBORw0KGgoAAAANSUhEUgAAAKAAAABaCAYAAAA/xl1SAAAAvklEQVR42u3SMQ0AAAjAMIyhELM4AAe8PD1qYFlk9cCXEAEDYkAwIAYEA2JAMCAGBANiQDAgBgQDYkAwIAYEA2JAMCAGBANiQDAgBgQDYkAwIAYEA2JAMCAGxIBCYEAMCAbEgGBADAgGxIBgQAwIBsSAYEAMCAbEgGBADAgGxIBgQAwIBsSAYEAMCAbEgGBADAgGxIAYEAyIAcGAGBAMiAHBgBgQDIgBwYAYEAyIAcGAGBAMiAHBgBgQDIgB4bYWLb6pnOb1xAAAAABJRU5ErkJggg=='
+const FIXTURE_IMAGE_DATA =
+  'iVBORw0KGgoAAAANSUhEUgAAAKAAAABaCAYAAAA/xl1SAAAAvklEQVR42u3SMQ0AAAjAMIyhELM4AAe8PD1qYFlk9cCXEAEDYkAwIAYEA2JAMCAGBANiQDAgBgQDYkAwIAYEA2JAMCAGBANiQDAgBgQDYkAwIAYEA2JAMCAGxIBCYEAMCAbEgGBADAgGxIBgQAwIBsSAYEAMCAbEgGBADAgGxIBgQAwIBsSAYEAMCAbEgGBADAgGxIAYEAyIAcGAGBAMiAHBgBgQDIgBwYAYEAyIAcGAGBAMiAHBgBgQDIgB4bYWLb6pnOb1xAAAAABJRU5ErkJggg=='
 const FIXTURE_IMAGE_REF: ImageAttachmentRef = {
   attachmentId: 'fixture:image' as AttachmentIdType,
   mediaType: 'image/png',
@@ -659,7 +721,7 @@ const FIXTURE_IMAGE_REF: ImageAttachmentRef = {
 /** Deterministic provider billing attached to fixture assistant messages. */
 function fixtureUsage(turn: number, step: number): TokenUsage {
   return {
-    inputTokens: 20 + turn % 5,
+    inputTokens: 20 + (turn % 5),
     outputTokens: 8 + step,
     cacheReadTokens: turn === 0 ? 0 : 80,
     cacheWriteTokens: turn % 10 === 0 ? 4 : 0,
@@ -695,20 +757,26 @@ function buildAlphaLog(): SessionEvent[] {
     const seq = events.length
     const data = e['data'] as Record<string, unknown> | undefined
     const nextTime = time + 800
-    const authored = e['type'] === 'assistant/message' && data !== undefined
-      ? {
-        ...e,
-        data: {
-          ...data,
-          usage: fixtureUsage(data['turn'] as number, data['step'] as number),
-          stream: fixtureSettledStream(
-            data['message'] as AssistantMessage,
-            fixtureUsage(data['turn'] as number, data['step'] as number),
-            nextTime,
-          ),
-        },
-      }
-      : e
+    const authored =
+      e['type'] === 'assistant/message' && data !== undefined
+        ? {
+          ...e,
+          data: {
+            ...data,
+            usage: fixtureUsage(data['turn'] as number, data['step'] as number),
+            // An authored stream (a truncated attempt, say) owns its own finish
+            // record; otherwise the settled stream ends on an ordinary stop.
+            stream:
+                Array.isArray(data['stream']) && data['stream'].length > 0
+                  ? data['stream']
+                  : fixtureSettledStream(
+                    data['message'] as AssistantMessage,
+                    fixtureUsage(data['turn'] as number, data['step'] as number),
+                    nextTime,
+                  ),
+          },
+        }
+        : e
     events.push({ seq, time: (time = nextTime), ...authored })
     return seq
   }
@@ -720,8 +788,15 @@ function buildAlphaLog(): SessionEvent[] {
   for (let turn = 0; turn < 60; turn++) {
     push({ type: 'turn/start', data: { turn } })
     const userSeq = push({
-      type: 'user/message', surfaceOp: 'append',
-      data: userMessage(text(turn === 59 ? USER_MARKDOWN_LITERAL : `问题 ${turn}：fixture 历史消息，用于翻页与渲染验收。`)),
+      type: 'user/message',
+      surfaceOp: 'append',
+      data: userMessage(
+        text(
+          turn === 59
+            ? USER_MARKDOWN_LITERAL
+            : `问题 ${turn}：fixture 历史消息，用于翻页与渲染验收。`,
+        ),
+      ),
     })
     if (turn === 0) {
       push({
@@ -730,26 +805,72 @@ function buildAlphaLog(): SessionEvent[] {
       })
     }
     if (turn % 9 === 4) {
-      push({ type: 'user/message', surfaceOp: 'append', data: userMessage(text(`[fixture] 上下文注入（turn ${turn}）`), { kind: 'plugin', plugin: 'fixture' }) })
+      push({
+        type: 'user/message',
+        surfaceOp: 'append',
+        data: userMessage(text(`[fixture] 上下文注入（turn ${turn}）`), {
+          kind: 'plugin',
+          plugin: 'fixture',
+        }),
+      })
     }
     push({ type: 'step/start', data: { turn, step: 0 } })
     const withTool = turn % 5 === 2
     const withReasoning = turn % 3 === 1
     const blocks: ContentBlock[] = []
-    if (withReasoning) blocks.push({ type: 'reasoning', text: `思考过程 ${turn}：这是一段可折叠的 reasoning 内容。` })
-    blocks.push({ type: 'text', text: turn === 59 ? MARKDOWN_FIXTURE : `回答 ${turn}：这是 fixture 生成的历史回复正文。` })
+    if (withReasoning)
+      blocks.push({
+        type: 'reasoning',
+        text: `思考过程 ${turn}：这是一段可折叠的 reasoning 内容。`,
+      })
+    blocks.push({
+      type: 'text',
+      text: turn === 59 ? MARKDOWN_FIXTURE : `回答 ${turn}：这是 fixture 生成的历史回复正文。`,
+    })
     if (withTool) {
       const callId = `fx-call-${turn}`
-      blocks.push({ type: 'tool-call', id: callId, name: 'echo', arguments: `{"text":"turn ${turn}"}` } as ContentBlock)
-      push({ type: 'assistant/message', surfaceOp: 'append', data: { turn, step: 0, message: assistantMessage(blocks) } })
-      push({ type: 'tool/call', data: { turn, step: 0, callId, name: 'echo', arguments: `{"text":"turn ${turn}"}` } })
-      push({ type: 'tool/result', surfaceOp: 'append', data: { turn, step: 0, message: toolResultMessage(callId, text(`ECHO: TURN ${turn}`), turn % 25 === 12) } })
+      blocks.push({
+        type: 'tool-call',
+        id: callId,
+        name: 'echo',
+        arguments: `{"text":"turn ${turn}"}`,
+      } as ContentBlock)
+      push({
+        type: 'assistant/message',
+        surfaceOp: 'append',
+        data: { turn, step: 0, message: assistantMessage(blocks) },
+      })
+      push({
+        type: 'tool/call',
+        data: { turn, step: 0, callId, name: 'echo', arguments: `{"text":"turn ${turn}"}` },
+      })
+      push({
+        type: 'tool/result',
+        surfaceOp: 'append',
+        data: {
+          turn,
+          step: 0,
+          message: toolResultMessage(callId, text(`ECHO: TURN ${turn}`), turn % 25 === 12),
+        },
+      })
       push({ type: 'step/end', data: { turn, step: 0 } })
       push({ type: 'step/start', data: { turn, step: 1 } })
-      push({ type: 'assistant/message', surfaceOp: 'append', data: { turn, step: 1, message: assistantMessage(text(`工具结果已消化（turn ${turn}）。`)) } })
+      push({
+        type: 'assistant/message',
+        surfaceOp: 'append',
+        data: {
+          turn,
+          step: 1,
+          message: assistantMessage(text(`工具结果已消化（turn ${turn}）。`)),
+        },
+      })
       push({ type: 'step/end', data: { turn, step: 1 } })
     } else {
-      push({ type: 'assistant/message', surfaceOp: 'append', data: { turn, step: 0, message: assistantMessage(blocks) } })
+      push({
+        type: 'assistant/message',
+        surfaceOp: 'append',
+        data: { turn, step: 0, message: assistantMessage(blocks) },
+      })
       push({ type: 'step/end', data: { turn, step: 0 } })
     }
     push({ type: 'turn/end', data: { turn, reason: { kind: 'completed' } } })
@@ -766,11 +887,22 @@ function buildAlphaLog(): SessionEvent[] {
   ): void => {
     const callId = `fx-call-${turn}`
     push({ type: 'turn/start', data: { turn } })
-    push({ type: 'user/message', surfaceOp: 'append', data: userMessage(text(`问题 ${turn}：${name} 样本。`)) })
+    push({
+      type: 'user/message',
+      surfaceOp: 'append',
+      data: userMessage(text(`问题 ${turn}：${name} 样本。`)),
+    })
     push({ type: 'step/start', data: { turn, step: 0 } })
     push({
-      type: 'assistant/message', surfaceOp: 'append',
-      data: { turn, step: 0, message: assistantMessage([{ type: 'tool-call', id: callId, name, arguments: args } as ContentBlock]) },
+      type: 'assistant/message',
+      surfaceOp: 'append',
+      data: {
+        turn,
+        step: 0,
+        message: assistantMessage([
+          { type: 'tool-call', id: callId, name, arguments: args } as ContentBlock,
+        ]),
+      },
     })
     push({ type: 'tool/call', data: { turn, step: 0, callId, name, arguments: args } })
     push({
@@ -780,7 +912,7 @@ function buildAlphaLog(): SessionEvent[] {
         turn,
         step: 0,
         message: toolResultMessage(callId, text(resultText), false),
-        ...resultMeta === undefined ? {} : { meta: resultMeta },
+        ...(resultMeta === undefined ? {} : { meta: resultMeta }),
       },
     })
     push({ type: 'step/end', data: { turn, step: 0 } })
@@ -840,38 +972,90 @@ function buildAlphaLog(): SessionEvent[] {
   {
     const turn = 65
     const callId = `fx-call-${turn}`
-    const program = 'const listing = await tools.bash({ command: "ls notes", description: "List notes" })\n'
-      + 'const demo = await tools.read({ file_path: "notes/demo.txt" })\n'
-      + 'await tools.read({ file_path: "notes/missing.txt" }).catch(() => "tolerated")\n'
-      + 'return { listing, demo }'
-    const args = JSON.stringify({ code: program, description: 'Read the notes files and summarize' })
+    const program =
+      'const listing = await tools.bash({ command: "ls notes", description: "List notes" })\n' +
+      'const demo = await tools.read({ file_path: "notes/demo.txt" })\n' +
+      'await tools.read({ file_path: "notes/missing.txt" }).catch(() => "tolerated")\n' +
+      'return { listing, demo }'
+    const args = JSON.stringify({
+      code: program,
+      description: 'Read the notes files and summarize',
+    })
     push({ type: 'turn/start', data: { turn } })
-    push({ type: 'user/message', surfaceOp: 'append', data: userMessage(text(`问题 ${turn}：run_code 样本。`)) })
+    push({
+      type: 'user/message',
+      surfaceOp: 'append',
+      data: userMessage(text(`问题 ${turn}：run_code 样本。`)),
+    })
     push({ type: 'step/start', data: { turn, step: 0 } })
     push({
-      type: 'assistant/message', surfaceOp: 'append',
-      data: { turn, step: 0, message: assistantMessage([{ type: 'tool-call', id: callId, name: 'run_code', arguments: args } as ContentBlock]) },
+      type: 'assistant/message',
+      surfaceOp: 'append',
+      data: {
+        turn,
+        step: 0,
+        message: assistantMessage([
+          { type: 'tool-call', id: callId, name: 'run_code', arguments: args } as ContentBlock,
+        ]),
+      },
     })
     push({ type: 'tool/call', data: { turn, step: 0, callId, name: 'run_code', arguments: args } })
-    const dispatchPair = (n: number, name: string, dispatchArgs: Record<string, unknown>, resultText: string, isError = false): void => {
+    const dispatchPair = (
+      n: number,
+      name: string,
+      dispatchArgs: Record<string, unknown>,
+      resultText: string,
+      isError = false,
+    ): void => {
       push({
         type: 'tool/code-dispatch-start',
-        data: { rootCallId: callId, parentCallId: callId, subCallId: `${callId}:code:${n}`, name, arguments: dispatchArgs },
+        data: {
+          rootCallId: callId,
+          parentCallId: callId,
+          subCallId: `${callId}:code:${n}`,
+          name,
+          arguments: dispatchArgs,
+        },
       })
       push({
         type: 'tool/code-dispatch',
         data: {
-          rootCallId: callId, parentCallId: callId, subCallId: `${callId}:code:${n}`, name,
-          arguments: dispatchArgs, isError, content: [{ type: 'text', text: resultText }],
+          rootCallId: callId,
+          parentCallId: callId,
+          subCallId: `${callId}:code:${n}`,
+          name,
+          arguments: dispatchArgs,
+          isError,
+          content: [{ type: 'text', text: resultText }],
         },
       })
     }
-    dispatchPair(1, 'bash', { command: 'ls notes', description: 'List notes' }, 'demo.txt\nnew-demo.txt')
+    dispatchPair(
+      1,
+      'bash',
+      { command: 'ls notes', description: 'List notes' },
+      'demo.txt\nnew-demo.txt',
+    )
     dispatchPair(2, 'read', { file_path: 'notes/demo.txt' }, 'hello fixture\n')
-    dispatchPair(3, 'read', { file_path: 'notes/missing.txt' }, 'Error: ENOENT: notes/missing.txt not found', true)
+    dispatchPair(
+      3,
+      'read',
+      { file_path: 'notes/missing.txt' },
+      'Error: ENOENT: notes/missing.txt not found',
+      true,
+    )
     push({
-      type: 'tool/result', surfaceOp: 'append',
-      data: { turn, step: 0, message: toolResultMessage(callId, text('{"listing":"demo.txt\\nnew-demo.txt","demo":"hello fixture\\n"}'), false) },
+      type: 'tool/result',
+      surfaceOp: 'append',
+      data: {
+        turn,
+        step: 0,
+        message: toolResultMessage(
+          callId,
+          text('{"listing":"demo.txt\\nnew-demo.txt","demo":"hello fixture\\n"}'),
+          false,
+        ),
+      },
     })
     push({ type: 'step/end', data: { turn, step: 0 } })
     push({ type: 'turn/end', data: { turn, reason: { kind: 'completed' } } })
@@ -961,14 +1145,40 @@ function buildAlphaLog(): SessionEvent[] {
   // Turn 72: max-tokens sample — the provider ends the turn at its output cap
   // mid-sentence, so the chat flow must render the turn-max-tokens notice
   // instead of ending silently. Ordered before the todo turn for the same
-  // standing-plan reason the bash turn is.
+  // standing-plan reason the bash turn is. The attempt's own stream carries the
+  // `max-tokens` finish: the notice reads the last attempt, not the sticky
+  // turn-end reason a finished continuation would also record.
   push({ type: 'turn/start', data: { turn: 72 } })
-  push({ type: 'user/message', surfaceOp: 'append', data: userMessage(text('问题 72：请完整列出全部一百条条目。')) })
+  push({
+    type: 'user/message',
+    surfaceOp: 'append',
+    data: userMessage(text('问题 72：请完整列出全部一百条条目。')),
+  })
   push({ type: 'step/start', data: { turn: 72, step: 0 } })
   push({
     type: 'assistant/message',
     surfaceOp: 'append',
-    data: { turn: 72, step: 0, message: assistantMessage(text('条目 1：第一条。条目 2：第二条。条目 3：这一条写到一半被')) },
+    data: {
+      turn: 72,
+      step: 0,
+      message: assistantMessage(text('条目 1：第一条。条目 2：第二条。条目 3：这一条写到一半被')),
+      stream: [
+        { type: 'chunk', time: 0, chunk: { type: 'block-start', index: 0, blockType: 'text' } },
+        {
+          type: 'chunk',
+          time: 0,
+          chunk: {
+            type: 'block-end',
+            index: 0,
+            block: {
+              type: 'text',
+              text: '条目 1：第一条。条目 2：第二条。条目 3：这一条写到一半被',
+            },
+          },
+        },
+        { type: 'chunk', time: 0, chunk: { type: 'finish', reason: { kind: 'max-tokens' } } },
+      ],
+    },
   })
   push({ type: 'step/end', data: { turn: 72, step: 0 } })
   push({ type: 'turn/end', data: { turn: 72, reason: { kind: 'max-tokens' } } })
@@ -1004,8 +1214,14 @@ function buildAlphaLog(): SessionEvent[] {
   // toolTurn events run ... tool/call, tool/result, step/end, turn/end).
   const callIndex = events.length - 4
   const callTime = events[callIndex]?.time as number
-  events.splice(callIndex + 1, 0, { type: 'todo/write', time: callTime + 400, data: { todos: fixtureTodos } })
-  events.forEach((e, i) => { e.seq = i })
+  events.splice(callIndex + 1, 0, {
+    type: 'todo/write',
+    time: callTime + 400,
+    data: { todos: fixtureTodos },
+  })
+  events.forEach((e, i) => {
+    e.seq = i
+  })
   return events as unknown as SessionEvent[]
 }
 
@@ -1015,7 +1231,11 @@ function buildAlphaLog(): SessionEvent[] {
  * `plan/mode` commits one. `wanted` is exposed for the prompt boundary (the
  * fixture's step/start parallel).
  */
-function foldPlan(log: readonly SessionEvent[]): { active: boolean; pending: boolean; wanted: boolean | null } {
+function foldPlan(log: readonly SessionEvent[]): {
+  active: boolean
+  pending: boolean
+  wanted: boolean | null
+} {
   let active = false
   let wanted: boolean | null = null
   let running: { commandId: unknown; wanted: boolean } | null = null
@@ -1025,10 +1245,12 @@ function foldPlan(log: readonly SessionEvent[]): { active: boolean; pending: boo
       const args = item.data['args']
       if (typeof args !== 'string') continue
       running = { commandId: item.data['commandId'], wanted: args.trim() !== 'off' }
-    } else if (item.type === 'command/done'
-      && item.data !== undefined
-      && running !== null
-      && item.data['commandId'] === running.commandId) {
+    } else if (
+      item.type === 'command/done' &&
+      item.data !== undefined &&
+      running !== null &&
+      item.data['commandId'] === running.commandId
+    ) {
       wanted = item.data['kind'] === 'success' && running.wanted !== active ? running.wanted : null
       running = null
     } else if (item.type === 'plan/mode') {
@@ -1048,15 +1270,28 @@ function planViewOf(log: readonly SessionEvent[]): { active: boolean; pending: b
 
 /** Fixture parallel of the host's projection units: whole current values per key over the full log. */
 /** Fixture preset table (the host PermissionPresetService defaults). */
-const PERMISSION_PRESETS: Record<string, { sandbox: string; approval: string; description: string }> = {
-  'workspace-write': { sandbox: 'workspace-write', approval: 'ask', description: 'Write inside the workspace and permitted temporary directories; wider retries require approval.' },
-  'danger-full-access': { sandbox: 'danger-full-access', approval: 'never', description: 'Full file access without approval prompts.' },
+const PERMISSION_PRESETS: Record<
+  string,
+  { sandbox: string; approval: string; description: string }
+> = {
+  'workspace-write': {
+    sandbox: 'workspace-write',
+    approval: 'ask',
+    description:
+      'Write inside the workspace and permitted temporary directories; wider retries require approval.',
+  },
+  'danger-full-access': {
+    sandbox: 'danger-full-access',
+    approval: 'never',
+    description: 'Full file access without approval prompts.',
+  },
 }
 
 /** Host permissions-unit parallel: fold the three knob events, derive the select over the fixture defaults. */
-function permissionSelectOf(
-  log: readonly SessionEvent[],
-): { options: { value: string; name: string; description?: string }[]; currentValue: string } {
+function permissionSelectOf(log: readonly SessionEvent[]): {
+  options: { value: string; name: string; description?: string }[]
+  currentValue: string
+} {
   let preset: string | null = null
   let sandbox = 'workspace-write'
   let approval = 'ask'
@@ -1066,20 +1301,36 @@ function permissionSelectOf(
     else if (item.type === 'sandbox/mode') sandbox = item.data['mode'] as string
     else if (item.type === 'approval/policy') approval = item.data['policy'] as string
   }
-  const matches = (spec: { sandbox: string; approval: string }): boolean => spec.sandbox === sandbox && spec.approval === approval
+  const matches = (spec: { sandbox: string; approval: string }): boolean =>
+    spec.sandbox === sandbox && spec.approval === approval
   let currentValue = 'custom'
   const folded = preset === null ? undefined : PERMISSION_PRESETS[preset]
   if (preset !== null && folded !== undefined && matches(folded)) {
     currentValue = preset
   } else {
     for (const [name, spec] of Object.entries(PERMISSION_PRESETS)) {
-      if (matches(spec)) { currentValue = name; break }
+      if (matches(spec)) {
+        currentValue = name
+        break
+      }
     }
   }
   return {
     options: [
-      ...Object.entries(PERMISSION_PRESETS).map(([value, spec]) => ({ value, name: value, description: spec.description })),
-      ...currentValue === 'custom' ? [{ value: 'custom', name: 'Custom', description: 'Current sandbox and approval settings do not match a preset.' }] : [],
+      ...Object.entries(PERMISSION_PRESETS).map(([value, spec]) => ({
+        value,
+        name: value,
+        description: spec.description,
+      })),
+      ...(currentValue === 'custom'
+        ? [
+          {
+            value: 'custom',
+            name: 'Custom',
+            description: 'Current sandbox and approval settings do not match a preset.',
+          },
+        ]
+        : []),
     ],
     currentValue,
   }
@@ -1105,9 +1356,7 @@ function usageSampleOf(event: SessionEvent): FixtureUsageSample | undefined {
   for (const member of expandAssistantStream(event.data.stream)) {
     if (member.chunk.type === 'usage') usage = member.chunk.usage
   }
-  return usage === undefined
-    ? undefined
-    : { turn: event.data.turn, step: event.data.step, usage }
+  return usage === undefined ? undefined : { turn: event.data.turn, step: event.data.step, usage }
 }
 
 /** Fixture parallel of token-meter's last-sample-replacing usage projection. */
@@ -1132,9 +1381,8 @@ function tokenUsageOf(log: readonly SessionEvent[]): FixtureTokenUsageProjection
       cacheReadTokens: sample.usage.cacheReadTokens ?? 0,
       cacheWriteTokens: sample.usage.cacheWriteTokens ?? 0,
     }
-    const previous = last?.turn === sample.turn && last.step === sample.step
-      ? last.buckets
-      : undefined
+    const previous =
+      last?.turn === sample.turn && last.step === sample.step ? last.buckets : undefined
     totals.uncachedInputTokens += buckets.uncachedInputTokens - (previous?.uncachedInputTokens ?? 0)
     totals.outputTokens += buckets.outputTokens - (previous?.outputTokens ?? 0)
     totals.cacheReadTokens += buckets.cacheReadTokens - (previous?.cacheReadTokens ?? 0)
@@ -1155,33 +1403,68 @@ function sessionStatsOf(log: readonly SessionEvent[]): {
   decodeMs: number
   decodeTokens: number
 } {
-  const value = { turns: 0, steps: 0, llmMs: 0, toolMs: 0, ttftMs: 0, ttftSteps: 0, decodeMs: 0, decodeTokens: 0 }
+  const value = {
+    turns: 0,
+    steps: 0,
+    llmMs: 0,
+    toolMs: 0,
+    ttftMs: 0,
+    ttftSteps: 0,
+    decodeMs: 0,
+    decodeTokens: 0,
+  }
   let lastTurn: number | null = null
-  let openStep: { turn: number; step: number; startTime: number; firstTokenTime: number | null } | null = null
+  let openStep: {
+    turn: number
+    step: number
+    startTime: number
+    firstTokenTime: number | null
+  } | null = null
   const pendingCalls = new Map<string, number>()
   for (const event of log) {
     switch (event.type) {
       case 'step/start':
-        openStep = { turn: event.data.turn, step: event.data.step, startTime: event.time, firstTokenTime: null }
+        openStep = {
+          turn: event.data.turn,
+          step: event.data.step,
+          startTime: event.time,
+          firstTokenTime: null,
+        }
         break
       case 'assistant/attempt': {
-        if (openStep === null || openStep.turn !== event.data.turn || openStep.step !== event.data.step) break
-        const first = expandAssistantStream(event.data.stream)
-          .find(member => isFixtureTokenDelta(member.chunk))?.time
+        if (
+          openStep === null ||
+          openStep.turn !== event.data.turn ||
+          openStep.step !== event.data.step
+        )
+          break
+        const first = expandAssistantStream(event.data.stream).find(member =>
+          isFixtureTokenDelta(member.chunk),
+        )?.time
         if (openStep.firstTokenTime === null && first !== undefined) openStep.firstTokenTime = first
         break
       }
       case 'assistant/message': {
-        if (openStep === null || openStep.turn !== event.data.turn || openStep.step !== event.data.step) break
-        const first = expandAssistantStream(event.data.stream)
-          .find(member => isFixtureTokenDelta(member.chunk))?.time
+        if (
+          openStep === null ||
+          openStep.turn !== event.data.turn ||
+          openStep.step !== event.data.step
+        )
+          break
+        const first = expandAssistantStream(event.data.stream).find(member =>
+          isFixtureTokenDelta(member.chunk),
+        )?.time
         if (openStep.firstTokenTime === null && first !== undefined) openStep.firstTokenTime = first
         value.llmMs += Math.max(0, event.time - openStep.startTime)
         if (openStep.firstTokenTime !== null) {
           value.ttftMs += Math.max(0, openStep.firstTokenTime - openStep.startTime)
           value.ttftSteps += 1
           const outputTokens = event.data.usage?.outputTokens
-          if (typeof outputTokens === 'number' && Number.isFinite(outputTokens) && outputTokens >= 0) {
+          if (
+            typeof outputTokens === 'number' &&
+            Number.isFinite(outputTokens) &&
+            outputTokens >= 0
+          ) {
             value.decodeMs += Math.max(0, event.time - openStep.firstTokenTime)
             value.decodeTokens += outputTokens
           }
@@ -1258,9 +1541,7 @@ function estimateFixtureContent(blocks: readonly ContentBlock[]): number {
 /** Fixture parallel of token-meter's heuristic context-composition projection. */
 function contextBreakdownOf(log: readonly SessionEvent[]): FixtureContextBreakdownProjection {
   const headerEvent = log.findLast(event => event.type === 'request/header')
-  const header = headerEvent === undefined
-    ? undefined
-    : headerEvent.data.header
+  const header = headerEvent === undefined ? undefined : headerEvent.data.header
   let messageTokens = 0
   for (const seq of foldSurface(log).nodes) {
     const event = log[seq]
@@ -1269,20 +1550,20 @@ function contextBreakdownOf(log: readonly SessionEvent[]): FixtureContextBreakdo
     if (message !== null) messageTokens += estimateFixtureContent(message.content) + ROLE_OVERHEAD
   }
   return {
-    systemTokens: header?.system === undefined
-      ? 0
-      : Math.ceil(header.system.length / CHARS_PER_TOKEN) + ROLE_OVERHEAD,
-    toolsTokens: header?.tools === undefined || header.tools.length === 0
-      ? 0
-      : Math.ceil(JSON.stringify(header.tools).length / CHARS_PER_TOKEN) + BLOCK_OVERHEAD,
+    systemTokens:
+      header?.system === undefined
+        ? 0
+        : Math.ceil(header.system.length / CHARS_PER_TOKEN) + ROLE_OVERHEAD,
+    toolsTokens:
+      header?.tools === undefined || header.tools.length === 0
+        ? 0
+        : Math.ceil(JSON.stringify(header.tools).length / CHARS_PER_TOKEN) + BLOCK_OVERHEAD,
     messageTokens,
   }
 }
 
 /** Latest log-only route context, or undefined before any request ran. */
-function lastRequestContext(
-  log: readonly SessionEvent[],
-): FixtureRequestContext | undefined {
+function lastRequestContext(log: readonly SessionEvent[]): FixtureRequestContext | undefined {
   const event = log.findLast(item => (item as { type: string }).type === 'request/context')
   return event === undefined
     ? undefined
@@ -1298,21 +1579,23 @@ function lastRequestContext(
  * the bare sample, so a fixture-driven view simply lags a compaction the way
  * the projection did before that field existed.
  */
-function contextPressureOf(
-  log: readonly SessionEvent[],
-): { pressureTokens?: number; contextWindow?: number } {
+function contextPressureOf(log: readonly SessionEvent[]): {
+  pressureTokens?: number
+  contextWindow?: number
+} {
   let pressureTokens: number | undefined
   for (const event of log) {
     const sample = usageSampleOf(event)
     if (sample === undefined) continue
-    pressureTokens = sample.usage.inputTokens
-      + (sample.usage.cacheReadTokens ?? 0)
-      + (sample.usage.cacheWriteTokens ?? 0)
+    pressureTokens =
+      sample.usage.inputTokens +
+      (sample.usage.cacheReadTokens ?? 0) +
+      (sample.usage.cacheWriteTokens ?? 0)
   }
   const contextWindow = lastRequestContext(log)?.contextWindow
   return {
-    ...pressureTokens === undefined ? {} : { pressureTokens },
-    ...contextWindow === undefined ? {} : { contextWindow },
+    ...(pressureTokens === undefined ? {} : { pressureTokens }),
+    ...(contextWindow === undefined ? {} : { contextWindow }),
   }
 }
 
@@ -1380,10 +1663,14 @@ function modelSelectionProjectionOf(log: readonly SessionEvent[]): {
 }
 
 function sameModelSelection(left: ModelSelection | null, right: ModelSelection | null): boolean {
-  return left === right || (left !== null && right !== null
-    && left.provider === right.provider
-    && left.model === right.model
-    && left.reasoningEffort === right.reasoningEffort)
+  return (
+    left === right ||
+    (left !== null &&
+      right !== null &&
+      left.provider === right.provider &&
+      left.model === right.model &&
+      left.reasoningEffort === right.reasoningEffort)
+  )
 }
 
 /** Host parallel: emit one Session control projection frame per key advanced by the event. */
@@ -1406,8 +1693,20 @@ function projectionFramesOf(
   // One usage sample advances both token-meter units.
   if (usageSampleOf(event) !== undefined) {
     frames.push(
-      { type: 'projection', sessionId: id, key: 'tokenUsage', value: tokenUsageOf(log), seq: event.seq },
-      { type: 'projection', sessionId: id, key: 'contextPressure', value: contextPressureOf(log), seq: event.seq },
+      {
+        type: 'projection',
+        sessionId: id,
+        key: 'tokenUsage',
+        value: tokenUsageOf(log),
+        seq: event.seq,
+      },
+      {
+        type: 'projection',
+        sessionId: id,
+        key: 'contextPressure',
+        value: contextPressureOf(log),
+        seq: event.seq,
+      },
     )
   }
   if (type === 'request/context') {
@@ -1419,10 +1718,12 @@ function projectionFramesOf(
       seq: event.seq,
     })
   }
-  if (type === 'request/header'
-    || type === 'user/message'
-    || type === 'assistant/message'
-    || type === 'tool/result') {
+  if (
+    type === 'request/header' ||
+    type === 'user/message' ||
+    type === 'assistant/message' ||
+    type === 'tool/result'
+  ) {
     frames.push({
       type: 'projection',
       sessionId: id,
@@ -1447,44 +1748,58 @@ function projectionFramesOf(
     const values = projectionValuesOf(log)
     /* v8 ignore next -- the advancing title event is in the log, so the key is present. */
     if (!Object.hasOwn(values, 'title')) return []
-    return [{ type: 'projection', sessionId: id, key: 'title', value: values['title'], seq: event.seq }]
+    return [
+      { type: 'projection', sessionId: id, key: 'title', value: values['title'], seq: event.seq },
+    ]
   }
   // The goal domain's own durable change advances its projection.
   if (type === 'goal/change') {
-    return [{ type: 'projection', sessionId: id, key: 'goal', value: backscanGoal(log), seq: event.seq }]
+    return [
+      { type: 'projection', sessionId: id, key: 'goal', value: backscanGoal(log), seq: event.seq },
+    ]
   }
   // Standing-plan fold: writes replace the list; turn/start clears it (null).
   if (type === 'todo/write' || type === 'turn/start') {
-    return [{
-      type: 'projection',
-      sessionId: id,
-      key: 'todos',
-      value: backscanTodos(log) ?? null,
-      seq: event.seq,
-    }]
+    return [
+      {
+        type: 'projection',
+        sessionId: id,
+        key: 'todos',
+        value: backscanTodos(log) ?? null,
+        seq: event.seq,
+      },
+    ]
   }
   // Knob fold: any of the three whole-value knob events advances the select.
   if (type === 'permission/preset' || type === 'sandbox/mode' || type === 'approval/policy') {
-    return [{
-      type: 'projection',
-      sessionId: id,
-      key: 'permissions',
-      value: permissionSelectOf(log),
-      seq: event.seq,
-    }]
+    return [
+      {
+        type: 'projection',
+        sessionId: id,
+        key: 'permissions',
+        value: permissionSelectOf(log),
+        seq: event.seq,
+      },
+    ]
   }
   // The plan unit advances on its two folded event kinds when the command
   // lifecycle contains the input that represents a plan selection.
   const commandData = event as unknown as { data: { name?: string; args?: unknown } }
-  if (type === 'plan/mode' || (type === 'command/run'
-    && commandData.data.name === 'plan' && typeof commandData.data.args === 'string')) {
-    return [{
-      type: 'projection',
-      sessionId: id,
-      key: 'plan',
-      value: planViewOf(log),
-      seq: event.seq,
-    }]
+  if (
+    type === 'plan/mode' ||
+    (type === 'command/run' &&
+      commandData.data.name === 'plan' &&
+      typeof commandData.data.args === 'string')
+  ) {
+    return [
+      {
+        type: 'projection',
+        sessionId: id,
+        key: 'plan',
+        value: planViewOf(log),
+        seq: event.seq,
+      },
+    ]
   }
   return []
 }
@@ -1511,7 +1826,9 @@ function pageOf(
       break
     }
   }
-  const records = log.slice(start, end).map((event): FixtureHistoryRecord => ({ type: 'event', event }))
+  const records = log
+    .slice(start, end)
+    .map((event): FixtureHistoryRecord => ({ type: 'event', event }))
   return { records, hasMore: start > 0 }
 }
 
@@ -1545,13 +1862,18 @@ function searchBlockText(block: ContentBlock): string[] {
 
 /** One current-surface user/assistant document, if searchable. */
 function searchEventText(event: SessionEvent): string {
-  const content = event.type === 'user/message'
-    ? event.data.content
-    : event.type === 'assistant/message'
-      ? event.data.message.content
-      : undefined
+  const content =
+    event.type === 'user/message'
+      ? event.data.content
+      : event.type === 'assistant/message'
+        ? event.data.message.content
+        : undefined
   if (content === undefined) return ''
-  return content.flatMap(searchBlockText).map(part => part.trim()).filter(Boolean).join('\n')
+  return content
+    .flatMap(searchBlockText)
+    .map(part => part.trim())
+    .filter(Boolean)
+    .join('\n')
 }
 
 interface FixtureSearchToken {
@@ -1575,7 +1897,10 @@ function searchTokenSpans(value: string): { text: string; tokens: FixtureSearchT
   let raw = ''
   const flush = (end: number): void => {
     if (start !== undefined) {
-      const folded = raw.normalize('NFD').replace(/\p{M}+/gu, '').toLowerCase()
+      const folded = raw
+        .normalize('NFD')
+        .replace(/\p{M}+/gu, '')
+        .toLowerCase()
       if (folded !== '') tokens.push({ value: folded, start, end })
     }
     start = undefined
@@ -1606,7 +1931,10 @@ interface FixturePhraseMatch {
 }
 
 /** Count exact contiguous token-phrase occurrences and retain the first display span. */
-function phraseMatch(document: readonly FixtureSearchToken[], phrase: readonly string[]): FixturePhraseMatch {
+function phraseMatch(
+  document: readonly FixtureSearchToken[],
+  phrase: readonly string[],
+): FixturePhraseMatch {
   if (phrase.length === 0 || phrase.length > document.length) return { count: 0, start: 0, end: 0 }
   let count = 0
   let firstStart = 0
@@ -1627,15 +1955,9 @@ function searchSnippet(value: string, matchStart: number, matchEnd: number): str
   const characters = Array.from(value)
   if (characters.length <= 120) return value
   const boundedStart = Math.min(Math.max(0, matchStart), characters.length - 1)
-  const boundedEnd = Math.min(
-    characters.length,
-    Math.max(boundedStart + 1, matchEnd),
-  )
+  const boundedEnd = Math.min(characters.length, Math.max(boundedStart + 1, matchEnd))
   const center = Math.floor((boundedStart + boundedEnd) / 2)
-  let start = Math.min(
-    characters.length - 118,
-    Math.max(0, center - Math.floor(118 / 2)),
-  )
+  let start = Math.min(characters.length - 118, Math.max(0, center - Math.floor(118 / 2)))
   let end = start + 118
   if (start === 0) {
     end = 119
@@ -1695,7 +2017,13 @@ interface FxGoalProjection {
 
 /** One durable goal change. */
 type FxGoalChange =
-  | { kind: 'goal/change'; version: 1; operation: 'clear'; cleared: { id: string; revision: number }; clearedAt: number }
+  | {
+    kind: 'goal/change'
+    version: 1
+    operation: 'clear'
+    cleared: { id: string; revision: number }
+    clearedAt: number
+  }
   | {
     kind: 'goal/change'
     version: 1
@@ -1712,14 +2040,21 @@ type FxGoalChange =
  */
 function backscanGoal(log: readonly SessionEvent[]): FxGoalProjection | null {
   for (let i = log.length - 1; i >= 0; i--) {
-    const event = log[i] as unknown as {
-      type: string
-      data?: FxGoalChange
-    } | undefined
+    const event = log[i] as unknown as
+      | {
+        type: string
+        data?: FxGoalChange
+      }
+      | undefined
     if (event === undefined || event.type !== 'goal/change' || event.data === undefined) continue
     const change = event.data
     if (change.operation === 'clear') return null
-    return { goal: change.goal, roundsStarted: change.roundsStarted, createdAt: change.createdAt, updatedAt: change.updatedAt }
+    return {
+      goal: change.goal,
+      roundsStarted: change.roundsStarted,
+      createdAt: change.createdAt,
+      updatedAt: change.updatedAt,
+    }
   }
   return null
 }
@@ -1824,20 +2159,45 @@ export function createFixtureFaces(options: FixtureOptions = {}): FixtureWorld {
 /** Build the fixture's Remote RPC face over one state graph. */
 function createFixtureWorld(options: FixtureOptions): FixtureWorld {
   // The resident fixture sessions all carry history, so none of them is blank.
-  const sessions: FixtureSessionSummary[] = options.empty ? [] : [
-    { sessionId: sid('fx-alpha'), updatedAt: Date.now(), running: true, blank: false, cwd: '/tmp/fixture' },
-    { sessionId: sid('fx-beta'), updatedAt: Date.now() - 60_000, running: false, blank: false, parentSessionId: sid('fx-alpha'), cwd: '/tmp/fixture' },
-    { sessionId: sid('fx-gamma'), updatedAt: Date.now() - 120_000, running: false, blank: false, cwd: '/tmp/fixture' },
-  ]
+  const sessions: FixtureSessionSummary[] = options.empty
+    ? []
+    : [
+      {
+        sessionId: sid('fx-alpha'),
+        updatedAt: Date.now(),
+        running: true,
+        blank: false,
+        cwd: '/tmp/fixture',
+      },
+      {
+        sessionId: sid('fx-beta'),
+        updatedAt: Date.now() - 60_000,
+        running: false,
+        blank: false,
+        parentSessionId: sid('fx-alpha'),
+        cwd: '/tmp/fixture',
+      },
+      {
+        sessionId: sid('fx-gamma'),
+        updatedAt: Date.now() - 120_000,
+        running: false,
+        blank: false,
+        cwd: '/tmp/fixture',
+      },
+    ]
   const logs = new Map<SessionId, SessionEvent[]>([[sid('fx-alpha'), buildAlphaLog()]])
-  const modelSelections = new Map<SessionId, ModelSelection>(sessions.map(session => [
-    session.sessionId,
-    { provider: 'deepseek-official', model: 'deepseek-v4-flash' },
-  ]))
-  const attachments = new Map<string, { attachment: ImageAttachmentRef; data: string }>([[
-    String(FIXTURE_IMAGE_REF.attachmentId),
-    { attachment: FIXTURE_IMAGE_REF, data: FIXTURE_IMAGE_DATA },
-  ]])
+  const modelSelections = new Map<SessionId, ModelSelection>(
+    sessions.map(session => [
+      session.sessionId,
+      { provider: 'deepseek-official', model: 'deepseek-v4-flash' },
+    ]),
+  )
+  const attachments = new Map<string, { attachment: ImageAttachmentRef; data: string }>([
+    [
+      String(FIXTURE_IMAGE_REF.attachmentId),
+      { attachment: FIXTURE_IMAGE_REF, data: FIXTURE_IMAGE_DATA },
+    ],
+  ])
   /** Credential store double: set/unset flip the describe badge, values never read back. */
   const fixtureCredentials = new Map<string, true>([
     // The assembled fixture represents an already-configured shipped
@@ -1856,14 +2216,16 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
         value: {
           writable: true,
           hasDocument: true,
-          namespaces: [{
-            ns: 'llm-deepseek',
-            schema: {},
-            value: { apiKeyEnv: 'DEEPSEEK_API_KEY' },
-            applies: 'live',
-            secrets: [{ path: ['apiKey'], set: false }],
-            revision: 0,
-          }],
+          namespaces: [
+            {
+              ns: 'llm-deepseek',
+              schema: {},
+              value: { apiKeyEnv: 'DEEPSEEK_API_KEY' },
+              applies: 'live',
+              secrets: [{ path: ['apiKey'], set: false }],
+              revision: 0,
+            },
+          ],
         },
       }
     },
@@ -1901,9 +2263,9 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
     openSettingsDocument(): RpcResult<{ opened: true }> {
       return { ok: true, value: { opened: true } }
     },
-    openAgentPresetDirectory(agentPreset: string): RpcResult<
-      { opened: true } | { opened: false; path: string }
-    > {
+    openAgentPresetDirectory(
+      agentPreset: string,
+    ): RpcResult<{ opened: true } | { opened: false; path: string }> {
       const existing = fixturePresets.get(agentPreset)
       if (existing === undefined || existing.trust === 'system') {
         return {
@@ -1923,11 +2285,16 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
     describe(refs: readonly string[]): RpcResult<Record<string, CredentialInfo>> {
       return {
         ok: true,
-        value: Object.fromEntries(refs.map(ref => [ref, {
-          configured: fixtureCredentials.has(ref),
-          ...fixtureCredentials.has(ref) ? { source: 'file' } : {},
-          writable: true,
-        }])),
+        value: Object.fromEntries(
+          refs.map(ref => [
+            ref,
+            {
+              configured: fixtureCredentials.has(ref),
+              ...(fixtureCredentials.has(ref) ? { source: 'file' } : {}),
+              writable: true,
+            },
+          ]),
+        ),
       }
     },
     set(ref: string): RpcResult<void> {
@@ -1946,9 +2313,21 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
    * roster a GUI journey sees after writing is the text it wrote.
    */
   const fixturePresets = new Map<string, { trust: 'system' | 'user'; content: string }>([
-    ['standard', { trust: 'system', content: "- id: tool-bash\n  name: '@deepseek-ai/dsh-tool-bash'\n" }],
-    ['minimal', { trust: 'system', content: "- id: tool-web-search\n  name: '@deepseek-ai/dsh-tool-web-search'\n" }],
-    ['my-agent', { trust: 'user', content: "- id: tool-read\n  name: '@deepseek-ai/dsh-tool-read'\n" }],
+    [
+      'standard',
+      { trust: 'system', content: "- id: tool-bash\n  name: '@deepseek-ai/dsh-tool-bash'\n" },
+    ],
+    [
+      'minimal',
+      {
+        trust: 'system',
+        content: "- id: tool-web-search\n  name: '@deepseek-ai/dsh-tool-web-search'\n",
+      },
+    ],
+    [
+      'my-agent',
+      { trust: 'user', content: "- id: tool-read\n  name: '@deepseek-ai/dsh-tool-read'\n" },
+    ],
   ])
   let fixtureDefaultPreset = 'standard'
   const nextTurn = new Map<SessionId, number>([[sid('fx-alpha'), 75]])
@@ -1958,21 +2337,26 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
   const wid = (raw: string): WorkspaceId => raw as WorkspaceId
   const fixtureEpoch = new Date(Date.now() - 300_000).toISOString()
   const FIXTURE_HOME = '/home/fixture'
-  const workspaces: FixtureWorkspace[] = options.empty ? [] : [{
-    workspaceId: wid('fx-ws-fixture'),
-    path: '/tmp/fixture',
-    title: 'fixture',
-    sessionIds: [sid('fx-alpha'), sid('fx-beta'), sid('fx-gamma')],
-    createdAt: fixtureEpoch,
-    updatedAt: fixtureEpoch,
-  }, {
-    workspaceId: wid('fx-ws-home'),
-    path: `${FIXTURE_HOME}/Documents/project`,
-    title: 'project',
-    sessionIds: [],
-    createdAt: fixtureEpoch,
-    updatedAt: fixtureEpoch,
-  }]
+  const workspaces: FixtureWorkspace[] = options.empty
+    ? []
+    : [
+      {
+        workspaceId: wid('fx-ws-fixture'),
+        path: '/tmp/fixture',
+        title: 'fixture',
+        sessionIds: [sid('fx-alpha'), sid('fx-beta'), sid('fx-gamma')],
+        createdAt: fixtureEpoch,
+        updatedAt: fixtureEpoch,
+      },
+      {
+        workspaceId: wid('fx-ws-home'),
+        path: `${FIXTURE_HOME}/Documents/project`,
+        title: 'project',
+        sessionIds: [],
+        createdAt: fixtureEpoch,
+        updatedAt: fixtureEpoch,
+      },
+    ]
   let nextWorkspace = 1
   // Registry-global archive set mirroring the host: archived sessions keep
   // their workspace accounting slot and only grouping surfaces hide them.
@@ -1997,10 +2381,19 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
     ['/', ['home']],
     ['/home', ['fixture']],
     [FIXTURE_HOME, ['Documents', 'Downloads', '.config']],
-    [`${FIXTURE_HOME}/Documents`, [
-      'project', 'deepseek-iOS', 'deepseek-android', 'deepseek-platform',
-      'deepseek-web', 'deepseek-harness', 'deepseek-app', 'deepseek-landing-blog',
-    ]],
+    [
+      `${FIXTURE_HOME}/Documents`,
+      [
+        'project',
+        'deepseek-iOS',
+        'deepseek-android',
+        'deepseek-platform',
+        'deepseek-web',
+        'deepseek-harness',
+        'deepseek-app',
+        'deepseek-landing-blog',
+      ],
+    ],
   ])
   const childrenOf = (path: string): string[] | undefined => {
     const known = directoryTree.get(path)
@@ -2029,7 +2422,10 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       header: '偏好',
       question: '你现在更想招哪类 Agent/Harness 候选人？',
       options: [
-        { label: '工程落地型 (Recommended)', description: '更看重能直接做 runtime、tool executor、sandbox、trace 和线上问题排查。' },
+        {
+          label: '工程落地型 (Recommended)',
+          description: '更看重能直接做 runtime、tool executor、sandbox、trace 和线上问题排查。',
+        },
         { label: '研究潜力型', description: '更看重 Agent 理解、训练评测思路和长期成长空间。' },
         { label: '均衡型', description: '同时要求工程能力和 Agent 认知，但可能筛选门槛更高。' },
       ],
@@ -2049,11 +2445,7 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       question: '哪些面试信号最重要？',
       detail: '按当前招聘目标选择；跳过则视为不设偏好。',
       multiSelect: true,
-      options: [
-        { label: '系统设计' },
-        { label: '代码质量' },
-        { label: 'Agent 产品判断' },
-      ],
+      options: [{ label: '系统设计' }, { label: '代码质量' }, { label: 'Agent 产品判断' }],
     },
   ]
 
@@ -2087,43 +2479,66 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
     for (const conn of followConns.get(sessionId) ?? []) conn.push(entry)
   }
   const emitAssistant = (sessionId: SessionId, frame: FixtureAssistantStreamFrame): void => {
-    for (const conn of followConns.get(sessionId) ?? []) conn.push({ type: 'assistant-stream', frame })
+    for (const conn of followConns.get(sessionId) ?? [])
+      conn.push({ type: 'assistant-stream', frame })
   }
   const nextAssistantRevision = (sessionId: SessionId): number => {
     const revision = (assistantRevisions.get(sessionId) ?? 0) + 1
     assistantRevisions.set(sessionId, revision)
     return revision
   }
-  const beginAssistant = (sessionId: SessionId, turn: number, step: number): FixtureAttemptState => {
-    const attemptId = LlmAttemptId(`${sessionId}:fixture:${String(nextAssistantRevision(sessionId))}`)
+  const beginAssistant = (
+    sessionId: SessionId,
+    turn: number,
+    step: number,
+  ): FixtureAttemptState => {
+    const attemptId = LlmAttemptId(
+      `${sessionId}:fixture:${String(nextAssistantRevision(sessionId))}`,
+    )
     const lastSeq = logOf(sessionId).length - 1
     const startedAfterSeq = lastSeq < 0 ? -1 : SessionSeq(lastSeq)
     const attempt = {
-      attemptId, startedAfterSeq, turn, step,
-      stream: new AssistantStreamAccumulator(), index: 0,
+      attemptId,
+      startedAfterSeq,
+      turn,
+      step,
+      stream: new AssistantStreamAccumulator(),
+      index: 0,
     }
     activeAttempts.set(sessionId, attempt)
     emitAssistant(sessionId, {
-      type: 'start', attemptId, revision: assistantRevisions.get(sessionId) as number,
-      startedAfterSeq, turn, step,
+      type: 'start',
+      attemptId,
+      revision: assistantRevisions.get(sessionId) as number,
+      startedAfterSeq,
+      turn,
+      step,
     })
     return attempt
   }
   const pushAssistant = (sessionId: SessionId, chunk: StreamChunk): void => {
     const attempt = activeAttempts.get(sessionId)
-    if (attempt === undefined) throw new Error(`fixture: no active Assistant attempt for ${sessionId}`)
+    if (attempt === undefined)
+      throw new Error(`fixture: no active Assistant attempt for ${sessionId}`)
     const timed = attempt.stream.push({ time: Date.now(), chunk })
     emitAssistant(sessionId, {
-      type: 'chunk', attemptId: attempt.attemptId, revision: nextAssistantRevision(sessionId),
-      index: attempt.index++, time: timed.time, chunk: timed.chunk as unknown as JsonValue,
+      type: 'chunk',
+      attemptId: attempt.attemptId,
+      revision: nextAssistantRevision(sessionId),
+      index: attempt.index++,
+      time: timed.time,
+      chunk: timed.chunk as unknown as JsonValue,
     })
   }
   const commitAssistant = (sessionId: SessionId, event: SessionEvent): void => {
     const attempt = activeAttempts.get(sessionId)
-    if (attempt === undefined) throw new Error(`fixture: no active Assistant attempt for ${sessionId}`)
+    if (attempt === undefined)
+      throw new Error(`fixture: no active Assistant attempt for ${sessionId}`)
     activeAttempts.delete(sessionId)
     emitAssistant(sessionId, {
-      type: 'end', attemptId: attempt.attemptId, revision: nextAssistantRevision(sessionId),
+      type: 'end',
+      attemptId: attempt.attemptId,
+      revision: nextAssistantRevision(sessionId),
       index: attempt.index,
       outcome: {
         kind: 'committed',
@@ -2141,10 +2556,11 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
     return Promise.resolve({ ok: false, error })
   }
 
-  const summaryOf = (id: SessionId): FixtureSessionSummary | undefined => sessions.find(s => s.sessionId === id)
-  const requireRemoteSession = (
-    request: { readonly sessionId: SessionId },
-  ): Promise<ConnectionRpcResult<never>> | undefined => {
+  const summaryOf = (id: SessionId): FixtureSessionSummary | undefined =>
+    sessions.find(s => s.sessionId === id)
+  const requireRemoteSession = (request: {
+    readonly sessionId: SessionId
+  }): Promise<ConnectionRpcResult<never>> | undefined => {
     if (summaryOf(request.sessionId) !== undefined) return undefined
     return sessionErr({
       code: 'session/not-found',
@@ -2204,11 +2620,17 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
     error: { code: 'gateway/internal', message, details: {} },
   })
 
-  const requireGoalSession = (id: SessionId): RpcResult<never> | undefined => (
+  const requireGoalSession = (id: SessionId): RpcResult<never> | undefined =>
     summaryOf(id) === undefined
-      ? { ok: false, error: { code: 'session/not-found', message: `no session ${id}`, details: { sessionId: id } } }
+      ? {
+        ok: false,
+        error: {
+          code: 'session/not-found',
+          message: `no session ${id}`,
+          details: { sessionId: id },
+        },
+      }
       : undefined
-  )
 
   /** Canonical fixture implementation of the generated Commands Remote contract. */
   const commandRemotes = {
@@ -2220,13 +2642,29 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
         value: [
           { name: 'compact', description: 'fixture：压缩当前会话上下文' },
           { name: 'echo', description: 'fixture：回显参数', input: { hint: 'text to echo' } },
-          { name: 'goal', description: 'set or view the goal for a long-running task', input: { hint: '<objective>', attachments: true } },
-          { name: 'permission', description: 'Switch the permission preset (sandbox mode + approval policy)', input: { hint: '<preset>' } },
-          { name: 'plan', description: 'Enter or leave plan mode', input: { hint: '[off|message]', attachments: true } },
+          {
+            name: 'goal',
+            description: 'set or view the goal for a long-running task',
+            input: { hint: '<objective>', attachments: true },
+          },
+          {
+            name: 'permission',
+            description: 'Switch the permission preset (sandbox mode + approval policy)',
+            input: { hint: '<preset>' },
+          },
+          {
+            name: 'plan',
+            description: 'Enter or leave plan mode',
+            input: { hint: '[off|message]', attachments: true },
+          },
         ],
       }
     },
-    execute(id: SessionId, line: string, attachments: readonly unknown[] = []): RpcResult<CommandExecution | undefined> {
+    execute(
+      id: SessionId,
+      line: string,
+      attachments: readonly unknown[] = [],
+    ): RpcResult<CommandExecution | undefined> {
       const missing = requireGoalSession(id)
       if (missing !== undefined) return missing
       // Structured split mirroring the Host parser: name + verbatim rawInput
@@ -2242,16 +2680,20 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       // bytes, so an accepted batch is acknowledged and dropped.
       const known = ['permission', 'goal', 'compact', 'echo', 'plan']
       if (attachments.length > 0 && name !== undefined && known.includes(name)) {
-        const rejection = name !== 'goal' && name !== 'plan'
-          ? `/${name} does not accept attachments`
-          : name === 'goal' && args.trim() === ''
-            ? 'Attachments only accompany a goal objective: /goal <objective> or /goal edit <objective>.'
-            : name === 'plan' && args.trim() === 'off'
-              ? 'Attachments cannot accompany /plan off.'
-              : undefined
+        const rejection =
+          name !== 'goal' && name !== 'plan'
+            ? `/${name} does not accept attachments`
+            : name === 'goal' && args.trim() === ''
+              ? 'Attachments only accompany a goal objective: /goal <objective> or /goal edit <objective>.'
+              : name === 'plan' && args.trim() === 'off'
+                ? 'Attachments cannot accompany /plan off.'
+                : undefined
         if (rejection !== undefined) {
           const commandId = `fx-cmd-${logOf(id).length}` as CommandId
-          append(id, { type: 'command/run', data: { commandId, name, args, source: { kind: 'user' } } })
+          append(id, {
+            type: 'command/run',
+            data: { commandId, name, args, source: { kind: 'user' } },
+          })
           const result: CommandResult = { kind: 'error', text: rejection }
           append(id, { type: 'command/done', data: { commandId, ...result } })
           return { ok: true, value: { commandId, result } }
@@ -2260,16 +2702,26 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       if (name === 'permission') {
         const preset = args.trim()
         const commandId = `fx-cmd-${logOf(id).length}` as CommandId
-        append(id, { type: 'command/run', data: { commandId, name, args, source: { kind: 'user' } } })
+        append(id, {
+          type: 'command/run',
+          data: { commandId, name, args, source: { kind: 'user' } },
+        })
         const spec = PERMISSION_PRESETS[preset]
         let result: CommandResult
         if (preset === '') {
           const current = permissionSelectOf(logOf(id)).currentValue
-          result = { kind: 'success', text: `current preset ${current} (available: ${Object.keys(PERMISSION_PRESETS).join(', ')})` }
+          result = {
+            kind: 'success',
+            text: `current preset ${current} (available: ${Object.keys(PERMISSION_PRESETS).join(', ')})`,
+          }
         } else if (spec === undefined) {
-          result = { kind: 'error', text: `unknown preset "${preset}" (available: ${Object.keys(PERMISSION_PRESETS).join(', ')})` }
+          result = {
+            kind: 'error',
+            text: `unknown preset "${preset}" (available: ${Object.keys(PERMISSION_PRESETS).join(', ')})`,
+          }
         } else {
-          if (permissionSelectOf(logOf(id)).currentValue !== preset) append(id, { type: 'permission/preset', data: { preset } })
+          if (permissionSelectOf(logOf(id)).currentValue !== preset)
+            append(id, { type: 'permission/preset', data: { preset } })
           append(id, { type: 'sandbox/mode', data: { mode: spec.sandbox } })
           append(id, { type: 'approval/policy', data: { policy: spec.approval } })
           result = { kind: 'success', text: `preset ${preset}` }
@@ -2279,19 +2731,35 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       }
       if (name === 'goal') {
         const commandId = `fx-cmd-${logOf(id).length}` as CommandId
-        append(id, { type: 'command/run', data: { commandId, name, args, source: { kind: 'user' } } })
+        append(id, {
+          type: 'command/run',
+          data: { commandId, name, args, source: { kind: 'user' } },
+        })
         const objective = args.trim()
         const current = backscanGoal(logOf(id))
         let text: string
         if (objective === '') {
-          text = current === null ? 'No goal is set. Usage: /goal <objective>' : `Current goal: ${current.goal.objective}`
+          text =
+            current === null
+              ? 'No goal is set. Usage: /goal <objective>'
+              : `Current goal: ${current.goal.objective}`
         } else if (current !== null && current.goal.phase !== 'complete') {
           text = `A goal already exists (${current.goal.objective}). Clear it first.`
         } else {
           const created = appendGoalChange(id, {
-            kind: 'goal/change', version: 1, operation: 'create',
-            goal: { id: `fx-goal-${logOf(id).length}`, revision: 1, objective, phase: 'active', maxGoalRounds: 256 },
-            roundsStarted: 0, createdAt: Date.now(), updatedAt: Date.now(),
+            kind: 'goal/change',
+            version: 1,
+            operation: 'create',
+            goal: {
+              id: `fx-goal-${logOf(id).length}`,
+              revision: 1,
+              objective,
+              phase: 'active',
+              maxGoalRounds: 256,
+            },
+            roundsStarted: 0,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
           })
           text = `Goal created: ${created.goal.objective}`
         }
@@ -2303,11 +2771,14 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       const outcomes: Record<string, string> = {
         compact: 'fixture：已压缩（假动作）',
         echo: args.trim(),
-        plan: args.trim() === 'off'
-          ? (running ? 'Leaving plan mode (applies from the next step).' : 'Plan mode off.')
-          : (running
-            ? 'Entering plan mode (applies from the next step). Use /plan off to leave.'
-            : 'Plan mode on. Use /plan off to leave.'),
+        plan:
+          args.trim() === 'off'
+            ? running
+              ? 'Leaving plan mode (applies from the next step).'
+              : 'Plan mode off.'
+            : running
+              ? 'Entering plan mode (applies from the next step). Use /plan off to leave.'
+              : 'Plan mode on. Use /plan off to leave.',
       }
       const text = name === undefined ? undefined : outcomes[name]
       if (name === undefined || text === undefined) return { ok: true, value: undefined }
@@ -2319,7 +2790,7 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
           append(id, { type: 'plan/mode', data: { active: plan.wanted } })
         }
       }
-      const result: CommandResult = { kind: 'success', ...text === '' ? {} : { text } }
+      const result: CommandResult = { kind: 'success', ...(text === '' ? {} : { text }) }
       append(id, { type: 'command/done', data: { commandId, ...result } })
       return { ok: true, value: { commandId, result } }
     },
@@ -2347,22 +2818,31 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       ].filter(item => item.path.toLocaleLowerCase().includes(needle))
       return { ok: true, value: items }
     },
-    sessions(id: SessionId, query: string): RpcResult<{
-      sessionId: SessionId
-      label: string
-      cwd?: string
-      createdAt: number
-      mention: string
-    }[]> {
+    sessions(
+      id: SessionId,
+      query: string,
+    ): RpcResult<
+      {
+        sessionId: SessionId
+        label: string
+        cwd?: string
+        createdAt: number
+        mention: string
+      }[]
+    > {
       const missing = requireGoalSession(id)
       if (missing !== undefined) return missing
       const needle = query.toLocaleLowerCase()
       const value = sessions
         .filter(item => item.sessionId !== id)
-        .filter(item => String(item.sessionId).toLocaleLowerCase().includes(needle)
-          || item.cwd?.toLocaleLowerCase().includes(needle) === true)
+        .filter(
+          item =>
+            String(item.sessionId).toLocaleLowerCase().includes(needle) ||
+            item.cwd?.toLocaleLowerCase().includes(needle) === true,
+        )
         .map((item) => {
-          const label = item.sessionId === sid('fx-beta') ? 'Fixture child session' : String(item.sessionId)
+          const label =
+            item.sessionId === sid('fx-beta') ? 'Fixture child session' : String(item.sessionId)
           const encoded = btoa(JSON.stringify(item.sessionId))
             .replaceAll('+', '-')
             .replaceAll('/', '_')
@@ -2370,7 +2850,7 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
           return {
             sessionId: item.sessionId,
             label,
-            ...item.cwd === undefined ? {} : { cwd: item.cwd },
+            ...(item.cwd === undefined ? {} : { cwd: item.cwd }),
             createdAt: item.updatedAt,
             mention: `@[${label}](dsh-session:${encoded})`,
           }
@@ -2393,33 +2873,47 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
   const WORKSPACE_FILES_ROOT = '/tmp/fixture'
   type FixtureWorkspaceEntry = { name: string; type: 'file' | 'directory' | 'other'; size?: number }
   const workspaceFileTree = new Map<string, FixtureWorkspaceEntry[]>([
-    ['', [
-      { name: '.gitignore', type: 'file', size: 24 },
-      { name: 'dev.sock', type: 'other' },
-      { name: 'notes', type: 'directory' },
-      { name: 'package.json', type: 'file', size: 512 },
-      { name: 'README.md', type: 'file', size: 640 },
-      { name: 'src', type: 'directory' },
-    ]],
-    ['notes', [
-      { name: 'demo.txt', type: 'file', size: 14 },
-      { name: 'new-demo.txt', type: 'file', size: 14 },
-    ]],
-    ['src', [
-      { name: 'config.ts', type: 'file', size: 211 },
-      { name: 'index.ts', type: 'file', size: 88 },
-      { name: 'lib', type: 'directory' },
-    ]],
-    ['src/lib', Array.from({ length: 24 }, (_, index) => ({
-      name: `module-${String(index + 1).padStart(2, '0')}.ts`,
-      type: 'file' as const,
-      size: 96 + index,
-    }))],
+    [
+      '',
+      [
+        { name: '.gitignore', type: 'file', size: 24 },
+        { name: 'dev.sock', type: 'other' },
+        { name: 'notes', type: 'directory' },
+        { name: 'package.json', type: 'file', size: 512 },
+        { name: 'README.md', type: 'file', size: 640 },
+        { name: 'src', type: 'directory' },
+      ],
+    ],
+    [
+      'notes',
+      [
+        { name: 'demo.txt', type: 'file', size: 14 },
+        { name: 'new-demo.txt', type: 'file', size: 14 },
+      ],
+    ],
+    [
+      'src',
+      [
+        { name: 'config.ts', type: 'file', size: 211 },
+        { name: 'index.ts', type: 'file', size: 88 },
+        { name: 'lib', type: 'directory' },
+      ],
+    ],
+    [
+      'src/lib',
+      Array.from({ length: 24 }, (_, index) => ({
+        name: `module-${String(index + 1).padStart(2, '0')}.ts`,
+        type: 'file' as const,
+        size: 96 + index,
+      })),
+    ],
   ])
   /** Resolve a `list` argument to its workspace-relative path, or undefined when it leaves the root. */
   const workspaceFilePath = (path: string): string | undefined => {
     const segments: string[] = []
-    for (const segment of (path.startsWith('/') ? path : `${WORKSPACE_FILES_ROOT}/${path}`).split('/')) {
+    for (const segment of (path.startsWith('/') ? path : `${WORKSPACE_FILES_ROOT}/${path}`).split(
+      '/',
+    )) {
       if (segment === '' || segment === '.') continue
       if (segment === '..') {
         segments.pop()
@@ -2428,7 +2922,8 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       segments.push(segment)
     }
     const absolute = `/${segments.join('/')}`
-    if (absolute !== WORKSPACE_FILES_ROOT && !absolute.startsWith(`${WORKSPACE_FILES_ROOT}/`)) return undefined
+    if (absolute !== WORKSPACE_FILES_ROOT && !absolute.startsWith(`${WORKSPACE_FILES_ROOT}/`))
+      return undefined
     return absolute.slice(WORKSPACE_FILES_ROOT.length + 1)
   }
   // Page cap mirrored from the Host default so an over-limit request fails here too.
@@ -2440,9 +2935,20 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
    */
   const workspaceFileLines = (path: string): string[] => {
     const name = path.slice(path.lastIndexOf('/') + 1)
-    const head = [`# ${name}`, '', 'fixture 模式下的示例文本，用于验收侧栏的文本预览。', '真实构建从工作区读取同名文件。']
+    const head = [
+      `# ${name}`,
+      '',
+      'fixture 模式下的示例文本，用于验收侧栏的文本预览。',
+      '真实构建从工作区读取同名文件。',
+    ]
     return path.includes('demo') || path.includes('huge')
-      ? [...head, ...Array.from({ length: 12_000 }, (_, index) => `第 ${index + 5} 行：用于验收分页与滚动的长文本样本。`)]
+      ? [
+        ...head,
+        ...Array.from(
+          { length: 12_000 },
+          (_, index) => `第 ${index + 5} 行：用于验收分页与滚动的长文本样本。`,
+        ),
+      ]
       : head
   }
   const workspaceFileRemotes = {
@@ -2452,22 +2958,38 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       truncated: boolean
     }> {
       if (path.length === 0) {
-        return { ok: false, error: { code: 'gateway/bad-request', message: 'path is required', details: {} } }
+        return {
+          ok: false,
+          error: { code: 'gateway/bad-request', message: 'path is required', details: {} },
+        }
       }
       const relative = workspaceFilePath(path)
       if (relative === undefined) {
         return {
           ok: false,
-          error: { code: 'workspace-file/outside-workspace', message: `${path} is outside the workspace`, details: { path } },
+          error: {
+            code: 'workspace-file/outside-workspace',
+            message: `${path} is outside the workspace`,
+            details: { path },
+          },
         }
       }
       const entries = workspaceFileTree.get(relative)
       if (entries === undefined) {
         const cut = relative.lastIndexOf('/')
         const name = relative.slice(cut + 1)
-        const sibling = workspaceFileTree.get(cut === -1 ? '' : relative.slice(0, cut))?.find(entry => entry.name === name)
+        const sibling = workspaceFileTree
+          .get(cut === -1 ? '' : relative.slice(0, cut))
+          ?.find(entry => entry.name === name)
         if (sibling === undefined) {
-          return { ok: false, error: { code: 'workspace-file/not-found', message: `no entry at ${path}`, details: { path } } }
+          return {
+            ok: false,
+            error: {
+              code: 'workspace-file/not-found',
+              message: `no entry at ${path}`,
+              details: { path },
+            },
+          }
         }
         return {
           ok: false,
@@ -2480,7 +3002,10 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       }
       return { ok: true, value: { path: relative, entries, truncated: relative === 'src/lib' } }
     },
-    read(path: string, range: { offset?: number; limit?: number }): ConnectionRpcResult<{
+    read(
+      path: string,
+      range: { offset?: number; limit?: number },
+    ): ConnectionRpcResult<{
       absolutePath: string
       version: string
       bytes: number
@@ -2493,8 +3018,21 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       if (!located.ok) return located
       const offset = range.offset ?? 1
       const limit = range.limit ?? WORKSPACE_FILE_PAGE_LINES
-      if (!Number.isInteger(offset) || offset < 1 || !Number.isInteger(limit) || limit < 1 || limit > WORKSPACE_FILE_PAGE_LINES) {
-        return { ok: false, error: { code: 'gateway/bad-request', message: 'offset and limit must be positive integers within the page cap', details: {} } }
+      if (
+        !Number.isInteger(offset) ||
+        offset < 1 ||
+        !Number.isInteger(limit) ||
+        limit < 1 ||
+        limit > WORKSPACE_FILE_PAGE_LINES
+      ) {
+        return {
+          ok: false,
+          error: {
+            code: 'gateway/bad-request',
+            message: 'offset and limit must be positive integers within the page cap',
+            details: {},
+          },
+        }
       }
       const lines = workspaceFileLines(path)
       const page = lines.slice(offset - 1, offset - 1 + limit)
@@ -2509,14 +3047,23 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
         },
       }
     },
-    stat(path: string): ConnectionRpcResult<{ absolutePath: string; version: string; bytes: number }> {
+    stat(
+      path: string,
+    ): ConnectionRpcResult<{ absolutePath: string; version: string; bytes: number }> {
       if (path.length === 0) {
-        return { ok: false, error: { code: 'gateway/bad-request', message: 'path is required', details: {} } }
+        return {
+          ok: false,
+          error: { code: 'gateway/bad-request', message: 'path is required', details: {} },
+        }
       }
       if (path.endsWith('.png') || path.endsWith('.bin')) {
         return {
           ok: false,
-          error: { code: 'workspace-file/not-text', message: `${path} is not UTF-8 text`, details: { path } },
+          error: {
+            code: 'workspace-file/not-text',
+            message: `${path} is not UTF-8 text`,
+            details: { path },
+          },
         }
       }
       return {
@@ -2546,7 +3093,11 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       if (children === undefined) {
         return {
           ok: false,
-          error: { code: 'directory-picker/unreadable', message: `cannot list ${target}: not in the fixture tree`, details: { path: target } },
+          error: {
+            code: 'directory-picker/unreadable',
+            message: `cannot list ${target}: not in the fixture tree`,
+            details: { path: target },
+          },
         }
       }
       return {
@@ -2555,8 +3106,13 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
           path: target,
           home: FIXTURE_HOME,
           crumbs: crumbsOf(target),
-          entries: [...children].sort((a, b) => a.localeCompare(b))
-            .map(name => ({ name, path: target === '/' ? `/${name}` : `${target}/${name}`, hidden: name.startsWith('.') })),
+          entries: [...children]
+            .sort((a, b) => a.localeCompare(b))
+            .map(name => ({
+              name,
+              path: target === '/' ? `/${name}` : `${target}/${name}`,
+              hidden: name.startsWith('.'),
+            })),
           // The fixture tree is tiny; no level ever reaches a backend bound.
           truncated: false,
         },
@@ -2565,13 +3121,27 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
     createDirectory(parent: string, name: string): ConnectionRpcResult<string> {
       const children = childrenOf(parent)
       if (children === undefined) {
-        return { ok: false, error: { code: 'directory-picker/create-failed', message: `missing parent ${parent}`, details: { path: parent } } }
+        return {
+          ok: false,
+          error: {
+            code: 'directory-picker/create-failed',
+            message: `missing parent ${parent}`,
+            details: { path: parent },
+          },
+        }
       }
       // Same root special case as list's entry paths: a plain join under '/'
       // would mint '//name' and fork the tree's identity.
       const target = parent === '/' ? `/${name}` : `${parent}/${name}`
       if (children.includes(name)) {
-        return { ok: false, error: { code: 'directory-picker/exists', message: `${target} already exists`, details: { path: target } } }
+        return {
+          ok: false,
+          error: {
+            code: 'directory-picker/exists',
+            message: `${target} already exists`,
+            details: { path: target },
+          },
+        }
       }
       directoryTree.set(parent, [...children, name])
       directoryTree.set(target, [])
@@ -2580,7 +3150,10 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
   }
 
   const goalRemotes = {
-    create(id: SessionId, request: { objective: string; maxGoalRounds?: number }): RpcResult<{ ref: FxGoalRef }> {
+    create(
+      id: SessionId,
+      request: { objective: string; maxGoalRounds?: number },
+    ): RpcResult<{ ref: FxGoalRef }> {
       const missing = requireGoalSession(id)
       if (missing !== undefined) return missing
       const current = backscanGoal(logOf(id))
@@ -2589,7 +3162,9 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       }
       const now = Date.now()
       const projection = appendGoalChange(id, {
-        kind: 'goal/change', version: 1, operation: 'create',
+        kind: 'goal/change',
+        version: 1,
+        operation: 'create',
         goal: {
           id: `fx-goal-${logOf(id).length}`,
           revision: 1,
@@ -2597,38 +3172,49 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
           phase: 'active',
           maxGoalRounds: request.maxGoalRounds ?? 256,
         },
-        roundsStarted: 0, createdAt: now, updatedAt: now,
+        roundsStarted: 0,
+        createdAt: now,
+        updatedAt: now,
       })
-      return { ok: true, value: { ref: { id: projection.goal.id, revision: projection.goal.revision } } }
+      return {
+        ok: true,
+        value: { ref: { id: projection.goal.id, revision: projection.goal.revision } },
+      }
     },
-    edit(id: SessionId, ref: FxGoalRef, request: { objective?: string; maxGoalRounds?: number }): RpcResult<FxGoalView> {
+    edit(
+      id: SessionId,
+      ref: FxGoalRef,
+      request: { objective?: string; maxGoalRounds?: number },
+    ): RpcResult<FxGoalView> {
       return mutateGoal(id, ref, current => ({
         ...current.goal,
         revision: current.goal.revision + 1,
-        ...request.objective === undefined ? {} : { objective: request.objective },
-        ...request.maxGoalRounds === undefined ? {} : { maxGoalRounds: request.maxGoalRounds },
+        ...(request.objective === undefined ? {} : { objective: request.objective }),
+        ...(request.maxGoalRounds === undefined ? {} : { maxGoalRounds: request.maxGoalRounds }),
       }))
     },
     pause(id: SessionId, ref: FxGoalRef): RpcResult<FxGoalView> {
-      return mutateGoal(id, ref, current => (
+      return mutateGoal(id, ref, current =>
         current.goal.phase === 'active'
           ? { ...current.goal, revision: current.goal.revision + 1, phase: 'paused' }
-          : undefined
-      ))
+          : undefined,
+      )
     },
     resume(id: SessionId, ref: FxGoalRef): RpcResult<FxGoalView> {
-      return mutateGoal(id, ref, current => (
-        current.goal.phase === 'paused' || current.goal.phase === 'blocked' || current.goal.phase === 'active'
+      return mutateGoal(id, ref, current =>
+        current.goal.phase === 'paused' ||
+        current.goal.phase === 'blocked' ||
+        current.goal.phase === 'active'
           ? { ...current.goal, revision: current.goal.revision + 1, phase: 'active' }
-          : undefined
-      ))
+          : undefined,
+      )
     },
     complete(id: SessionId, ref: FxGoalRef): RpcResult<FxGoalView> {
-      return mutateGoal(id, ref, current => (
+      return mutateGoal(id, ref, current =>
         current.goal.phase === 'complete'
           ? undefined
-          : { ...current.goal, revision: current.goal.revision + 1, phase: 'complete' }
-      ))
+          : { ...current.goal, revision: current.goal.revision + 1, phase: 'complete' },
+      )
     },
     clear(id: SessionId, ref: FxGoalRef): RpcResult<FxGoalRef> {
       const resolved = resolveGoal(id, ref)
@@ -2636,7 +3222,11 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       const current = resolved.value
       const tombstone = { id: current.goal.id, revision: current.goal.revision + 1 }
       appendGoalChange(id, {
-        kind: 'goal/change', version: 1, operation: 'clear', cleared: tombstone, clearedAt: Date.now(),
+        kind: 'goal/change',
+        version: 1,
+        operation: 'clear',
+        cleared: tombstone,
+        clearedAt: Date.now(),
       })
       return { ok: true, value: tombstone }
     },
@@ -2667,9 +3257,20 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       return goalFailure(`invalid goal transition from "${current.goal.phase}"`)
     }
     const projection = appendGoalChange(id, {
-      kind: 'goal/change', version: 1,
-      operation: goal.phase === current.goal.phase ? 'edit' : goal.phase === 'paused' ? 'pause' : goal.phase === 'active' ? 'resume' : 'complete',
-      goal, roundsStarted: current.roundsStarted, createdAt: current.createdAt, updatedAt: Date.now(),
+      kind: 'goal/change',
+      version: 1,
+      operation:
+        goal.phase === current.goal.phase
+          ? 'edit'
+          : goal.phase === 'paused'
+            ? 'pause'
+            : goal.phase === 'active'
+              ? 'resume'
+              : 'complete',
+      goal,
+      roundsStarted: current.roundsStarted,
+      createdAt: current.createdAt,
+      updatedAt: Date.now(),
     })
     return { ok: true, value: goalView(projection) }
   }
@@ -2678,7 +3279,10 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
   const presetRemotes = {
     // Both trusts appear, because a surface must present a locally authored
     // preset differently from one the deployment vetted.
-    list(): RpcResult<{ presets: { id: string; trust: 'system' | 'user'; isDefault: boolean }[]; authorable: boolean }> {
+    list(): RpcResult<{
+      presets: { id: string; trust: 'system' | 'user'; isDefault: boolean }[]
+      authorable: boolean
+    }> {
       return {
         ok: true,
         value: {
@@ -2695,7 +3299,9 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       fixtureDefaultPreset = agentPreset
       return { ok: true, value: agentPreset }
     },
-    read(agentPreset: string): RpcResult<{ agentPreset: string; trust: 'system' | 'user'; content: string }> {
+    read(
+      agentPreset: string,
+    ): RpcResult<{ agentPreset: string; trust: 'system' | 'user'; content: string }> {
       const preset = fixturePresets.get(agentPreset)
       if (preset === undefined) {
         return {
@@ -2751,7 +3357,10 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
   }
 
   /** At most one in-flight replay per session; cancel clears it. */
-  const replays = new Map<SessionId, { timer: ReturnType<typeof setTimeout>; finish(aborted: boolean): void }>()
+  const replays = new Map<
+    SessionId,
+    { timer: ReturnType<typeof setTimeout>; finish(aborted: boolean): void }
+  >()
 
   /** History transit delay; the page snapshot is taken at request time. */
   let historyDelayMs = 0
@@ -2781,7 +3390,10 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
     appendTitle(id: string, title: string): void {
       const log = logOf(sid(id))
       const messageSeqs = log.filter(event => event.type === 'user/message').map(event => event.seq)
-      append(sid(id), { type: 'session/title', data: { title, messageSeqs, source: { kind: 'provider', provider: 'fixture' } } })
+      append(sid(id), {
+        type: 'session/title',
+        data: { title, messageSeqs, source: { kind: 'provider', provider: 'fixture' } },
+      })
     },
     /** Start an externally paced reasoning stream for the opt-in browser stress lane. */
     startReasoningChunkStorm(
@@ -2824,9 +3436,13 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       activeReasoningChunkStorm = state
 
       setRunning(sessionId, true)
-      append(sessionId, { type: 'turn/start', data: { turn, trigger: { kind: 'message', source: { kind: 'user' } } } })
       append(sessionId, {
-        type: 'user/message', surfaceOp: 'append',
+        type: 'turn/start',
+        data: { turn, trigger: { kind: 'message', source: { kind: 'user' } } },
+      })
+      append(sessionId, {
+        type: 'user/message',
+        surfaceOp: 'append',
         data: userMessage(text(`Reasoning chunk stress: ${String(chunkCount)} chunks.`)),
       })
       append(sessionId, { type: 'step/start', data: { turn, step: 0 } })
@@ -2836,12 +3452,14 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       const startedAt = Date.now()
       const pump = (): void => {
         const elapsedIntervals = Math.floor((Date.now() - startedAt) / intervalMs) + 1
-        const due = Math.max(state.emitted + chunksPerInterval, elapsedIntervals * chunksPerInterval)
+        const due = Math.max(
+          state.emitted + chunksPerInterval,
+          elapsedIntervals * chunksPerInterval,
+        )
         const end = Math.min(due, chunkCount)
         for (let index = state.emitted; index < end; index++) {
-          const chunkText = index === chunkCount - 1
-            ? `\n${marker}`
-            : index % 64 === 63 ? '推理\n' : '推理'
+          const chunkText =
+            index === chunkCount - 1 ? `\n${marker}` : index % 64 === 63 ? '推理\n' : '推理'
           pushAssistant(sessionId, { type: 'reasoning-delta', index: 0, text: chunkText })
         }
         state.emitted = end
@@ -2866,7 +3484,11 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       retryScenarios.set(sessionId, { turn, stepStarted: true })
       setRunning(sessionId, true)
       append(sessionId, { type: 'turn/start', data: { turn } })
-      append(sessionId, { type: 'user/message', surfaceOp: 'append', data: { content: text('请重试这个请求'), source: { kind: 'user' } } })
+      append(sessionId, {
+        type: 'user/message',
+        surfaceOp: 'append',
+        data: { content: text('请重试这个请求'), source: { kind: 'user' } },
+      })
       append(sessionId, { type: 'step/start', data: { turn, step: 1 } })
       beginAssistant(sessionId, turn, 1)
       pushAssistant(sessionId, { type: 'block-start', index: 0, blockType: 'text' })
@@ -2880,22 +3502,33 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       if (!scenario.stepStarted) {
         beginAssistant(sessionId, scenario.turn, 1)
         pushAssistant(sessionId, { type: 'block-start', index: 0, blockType: 'text' })
-        pushAssistant(sessionId, { type: 'text-delta', index: 0, text: `第 ${String(retry)} 次应撤回的回复` })
+        pushAssistant(sessionId, {
+          type: 'text-delta',
+          index: 0,
+          text: `第 ${String(retry)} 次应撤回的回复`,
+        })
         scenario.stepStarted = true
       }
       const failure = { code: 'TRANSPORT', message: '连接被重置' }
       pushAssistant(sessionId, { type: 'finish', reason: { kind: 'error', failure } })
       const attempt = activeAttempts.get(sessionId) as FixtureAttemptState
       const attemptEvent = append(sessionId, {
-        type: 'assistant/attempt', data: { turn: scenario.turn, step: 1, stream: attempt.stream.snapshot() },
+        type: 'assistant/attempt',
+        data: { turn: scenario.turn, step: 1, stream: attempt.stream.snapshot() },
       })
       commitAssistant(sessionId, attemptEvent)
       append(sessionId, {
         type: 'llm/retry',
         data: {
-          turn: scenario.turn, step: 1,
-          provider: 'fixture', mode: 'normal', policyKey: 'fixture-normal',
-          retry, maxRetries: 2, delayMs, failure,
+          turn: scenario.turn,
+          step: 1,
+          provider: 'fixture',
+          mode: 'normal',
+          policyKey: 'fixture-normal',
+          retry,
+          maxRetries: 2,
+          delayMs,
+          failure,
         },
       })
       scenario.stepStarted = false
@@ -2910,21 +3543,30 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       if (active !== undefined) {
         pushAssistant(sessionId, { type: 'finish', reason: { kind: 'error', failure } })
         const attemptEvent = append(sessionId, {
-          type: 'assistant/attempt', data: { turn: scenario.turn, step: 1, stream: active.stream.snapshot() },
+          type: 'assistant/attempt',
+          data: { turn: scenario.turn, step: 1, stream: active.stream.snapshot() },
         })
         commitAssistant(sessionId, attemptEvent)
       }
       append(sessionId, {
         type: 'llm/retry',
         data: {
-          turn: scenario.turn, step: 1,
-          provider: 'fixture', mode: 'normal', policyKey: 'fixture-normal',
-          retry: 1, maxRetries: 2, delayMs, failure,
+          turn: scenario.turn,
+          step: 1,
+          provider: 'fixture',
+          mode: 'normal',
+          policyKey: 'fixture-normal',
+          retry: 1,
+          maxRetries: 2,
+          delayMs,
+          failure,
         },
       })
       append(sessionId, { type: 'step/end', data: { turn: scenario.turn, step: 1 } })
-      append(sessionId, { type: 'turn/end', data: { turn: scenario.turn, reason: { kind: 'aborted', reason: { kind: 'user' } },
-      } })
+      append(sessionId, {
+        type: 'turn/end',
+        data: { turn: scenario.turn, reason: { kind: 'aborted', reason: { kind: 'user' } } },
+      })
       retryScenarios.delete(sessionId)
       setRunning(sessionId, false)
     },
@@ -2938,7 +3580,11 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       beginAssistant(sessionId, scenario.turn, 1)
       pushAssistant(sessionId, { type: 'block-start', index: 0, blockType: 'text' })
       pushAssistant(sessionId, { type: 'text-delta', index: 0, text: completed })
-      pushAssistant(sessionId, { type: 'block-end', index: 0, block: { type: 'text', text: completed } })
+      pushAssistant(sessionId, {
+        type: 'block-end',
+        index: 0,
+        block: { type: 'text', text: completed },
+      })
       pushAssistant(sessionId, { type: 'finish', reason: { kind: 'stop' } })
       const attempt = activeAttempts.get(sessionId) as FixtureAttemptState
       const message = append(sessionId, {
@@ -2953,13 +3599,22 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       })
       commitAssistant(sessionId, message)
       append(sessionId, { type: 'step/end', data: { turn: scenario.turn, step: 1 } })
-      append(sessionId, { type: 'turn/end', data: { turn: scenario.turn, reason: { kind: 'completed' } } })
+      append(sessionId, {
+        type: 'turn/end',
+        data: { turn: scenario.turn, reason: { kind: 'completed' } },
+      })
       setRunning(sessionId, false)
     },
     /** Log append without follow delivery: a frame lost in transit that page repair must recover. */
     appendSilent(id: string, msg: string): void {
       const log = logOf(sid(id))
-      log.push({ type: 'user/message', surfaceOp: 'append', seq: SessionSeq(log.length), time: Date.now(), data: userMessage(text(msg)) } as unknown as SessionEvent)
+      log.push({
+        type: 'user/message',
+        surfaceOp: 'append',
+        seq: SessionSeq(log.length),
+        time: Date.now(),
+        data: userMessage(text(msg)),
+      } as unknown as SessionEvent)
     },
     /** End every open stream generator (client sees both streams close -> reconnect + resync path). */
     breakStreams(): void {
@@ -2998,10 +3653,13 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       })
       commitAssistant(id, message)
       append(id, { type: 'step/end', data: { turn, step } })
-      append(id, { type: 'turn/end', data: {
-        turn,
-        reason: aborted ? { kind: 'aborted', reason: { kind: 'user' } } : { kind: 'completed' },
-      } })
+      append(id, {
+        type: 'turn/end',
+        data: {
+          turn,
+          reason: aborted ? { kind: 'aborted', reason: { kind: 'user' } } : { kind: 'completed' },
+        },
+      })
       setRunning(id, false)
     }
     const tick = (): void => {
@@ -3028,28 +3686,34 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
         })
       }
       const query = searchTokenSpans(request.query).tokens.map(token => token.value)
-      const matches = sessions.flatMap((summary) => {
-        const log = logs.get(summary.sessionId) ?? []
-        const current = new Set(foldSurface(log).nodes)
-        const best = log.flatMap((event): FixtureSearchCandidate[] => {
-          if (!current.has(event.seq)) return []
-          const eventText = searchEventText(event)
-          const document = searchTokenSpans(eventText)
-          const match = phraseMatch(document.tokens, query)
-          if (match.count === 0) return []
-          return [{
-            sessionId: summary.sessionId,
-            seq: event.seq,
-            time: event.time,
-            text: document.text,
-            matchCount: match.count,
-            matchStart: match.start,
-            matchEnd: match.end,
-            documentLength: Array.from(eventText).length,
-          }]
-        }).sort(compareSearchCandidates)[0]
-        return best === undefined ? [] : [best]
-      }).sort(compareSearchCandidates)
+      const matches = sessions
+        .flatMap((summary) => {
+          const log = logs.get(summary.sessionId) ?? []
+          const current = new Set(foldSurface(log).nodes)
+          const best = log
+            .flatMap((event): FixtureSearchCandidate[] => {
+              if (!current.has(event.seq)) return []
+              const eventText = searchEventText(event)
+              const document = searchTokenSpans(eventText)
+              const match = phraseMatch(document.tokens, query)
+              if (match.count === 0) return []
+              return [
+                {
+                  sessionId: summary.sessionId,
+                  seq: event.seq,
+                  time: event.time,
+                  text: document.text,
+                  matchCount: match.count,
+                  matchStart: match.start,
+                  matchEnd: match.end,
+                  documentLength: Array.from(eventText).length,
+                },
+              ]
+            })
+            .sort(compareSearchCandidates)[0]
+          return best === undefined ? [] : [best]
+        })
+        .sort(compareSearchCandidates)
       return sessionOk({
         items: matches.slice(0, FIXTURE_SESSION_SEARCH_RESULT_LIMIT).map(match => ({
           sessionId: match.sessionId,
@@ -3059,9 +3723,10 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       })
     },
     create: async (request) => {
-      const workspace = request.workspaceId === undefined
-        ? undefined
-        : workspaces.find(w => w.workspaceId === request.workspaceId)
+      const workspace =
+        request.workspaceId === undefined
+          ? undefined
+          : workspaces.find(w => w.workspaceId === request.workspaceId)
       if (request.workspaceId !== undefined && workspace === undefined) {
         return sessionErr({
           code: 'workspace/not-found',
@@ -3081,11 +3746,12 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       const attachFailure = (
         sessionId: SessionId,
         workspaceId: WorkspaceId,
-      ): Promise<ConnectionRpcResult<{ sessionId: SessionId }>> => sessionErr({
-        code: 'session/workspace-attach-failed' as const,
-        message: `fixture rejected Workspace attachment for ${sessionId}`,
-        details: { sessionId, workspaceId },
-      })
+      ): Promise<ConnectionRpcResult<{ sessionId: SessionId }>> =>
+        sessionErr({
+          code: 'session/workspace-attach-failed' as const,
+          message: `fixture rejected Workspace attachment for ${sessionId}`,
+          details: { sessionId, workspaceId },
+        })
       if (requestedId !== undefined) {
         const existing = summaryOf(requestedId)
         if (existing !== undefined) {
@@ -3093,21 +3759,33 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
             return sessionErr({
               code: 'session/conflict',
               message: `session ${requestedId} already uses ${existing.cwd ?? 'no cwd'}`,
-              details: { sessionId: requestedId, requestedCwd: cwd, ...existing.cwd === undefined ? {} : { existingCwd: existing.cwd } },
+              details: {
+                sessionId: requestedId,
+                requestedCwd: cwd,
+                ...(existing.cwd === undefined ? {} : { existingCwd: existing.cwd }),
+              },
             })
           }
           if (workspace !== undefined && !workspace.sessionIds.includes(requestedId)) {
-            if (options.failWorkspaceAttach) return attachFailure(requestedId, workspace.workspaceId)
+            if (options.failWorkspaceAttach)
+              return attachFailure(requestedId, workspace.workspaceId)
             attachWorkspace(requestedId)
           }
           return sessionOk({ sessionId: requestedId })
         }
       }
       const created: FixtureSessionSummary = {
-        sessionId: requestedId ?? sid(`fx-${nextSession++}`), updatedAt: Date.now(), running: false, blank: true, cwd,
+        sessionId: requestedId ?? sid(`fx-${nextSession++}`),
+        updatedAt: Date.now(),
+        running: false,
+        blank: true,
+        cwd,
       }
       sessions.push(created)
-      modelSelections.set(created.sessionId, { provider: 'deepseek-official', model: 'deepseek-v4-flash' })
+      modelSelections.set(created.sessionId, {
+        provider: 'deepseek-official',
+        model: 'deepseek-v4-flash',
+      })
       const emitSession = (): void => {
         emitRemote('api-session/added', [created])
       }
@@ -3122,7 +3800,8 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
         emitSession()
         if (workspace !== undefined) attachWorkspace(created.sessionId)
       }
-      if (options.dropSessionCreateResponse) throw new Error('fixture: dropped session.create response after publication')
+      if (options.dropSessionCreateResponse)
+        throw new Error('fixture: dropped session.create response after publication')
       return sessionOk({ sessionId: created.sessionId })
     },
     rename: (request) => {
@@ -3158,28 +3837,32 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       }
       const log = logs.get(sessionId) ?? []
       const lastSeq = log.at(-1)?.seq ?? -1
-      const anchoredBoundary = atSeq === undefined
-        ? undefined
-        : log.find(e => e.type === 'turn/end' && e.seq >= atSeq)
-      const boundary = anchoredBoundary
-          ?? (atSeq === undefined || atSeq > lastSeq
-            ? log.findLast(e => e.type === 'turn/end')
-            : undefined)
+      const anchoredBoundary =
+        atSeq === undefined ? undefined : log.find(e => e.type === 'turn/end' && e.seq >= atSeq)
+      const boundary =
+        anchoredBoundary ??
+        (atSeq === undefined || atSeq > lastSeq
+          ? log.findLast(e => e.type === 'turn/end')
+          : undefined)
       if (boundary === undefined) {
         return sessionErr({
           code: 'session/fork-unavailable',
-          message: atSeq !== undefined && atSeq <= lastSeq
-            ? `session ${sessionId} has not completed the turn containing event ${String(atSeq)}`
-            : `session ${sessionId} has no completed turn`,
+          message:
+            atSeq !== undefined && atSeq <= lastSeq
+              ? `session ${sessionId} has not completed the turn containing event ${String(atSeq)}`
+              : `session ${sessionId} has no completed turn`,
           details: { sessionId },
         })
       }
       let cut = boundary.seq + 1
       while (cut < log.length && log[cut]?.type !== 'turn/start') cut++
       const child: FixtureSessionSummary = {
-        sessionId: sid(`fx-${nextSession++}`), updatedAt: Date.now(), running: false, blank: false,
+        sessionId: sid(`fx-${nextSession++}`),
+        updatedAt: Date.now(),
+        running: false,
+        blank: false,
         parentSessionId: sessionId,
-        ...source.cwd === undefined ? {} : { cwd: source.cwd },
+        ...(source.cwd === undefined ? {} : { cwd: source.cwd }),
       }
       logs.set(child.sessionId, log.slice(0, cut))
       sessions.push(child)
@@ -3209,9 +3892,9 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       const selected: ModelSelection = {
         provider: request.provider,
         model: request.model,
-        ...request.reasoningEffort === undefined
+        ...(request.reasoningEffort === undefined
           ? {}
-          : { reasoningEffort: request.reasoningEffort },
+          : { reasoningEffort: request.reasoningEffort }),
       }
       append(request.sessionId, { type: 'model/selection', data: selected })
       modelSelections.set(request.sessionId, selected)
@@ -3221,7 +3904,11 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       const { sessionId: id, mode, content } = request
       const summary = summaryOf(id)
       if (summary === undefined) {
-        return sessionErr({ code: 'session/not-found', message: `no session ${id}`, details: { sessionId: id } })
+        return sessionErr({
+          code: 'session/not-found',
+          message: `no session ${id}`,
+          details: { sessionId: id },
+        })
       }
       if (options.rejectPrompt) {
         if (content.some(block => block.type === 'image')) {
@@ -3248,12 +3935,12 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
           mediaType: block.mediaType,
           bytes: Math.max(
             1,
-            Math.floor(block.data.length * 3 / 4)
-              - (block.data.endsWith('==') ? 2 : block.data.endsWith('=') ? 1 : 0),
+            Math.floor((block.data.length * 3) / 4) -
+              (block.data.endsWith('==') ? 2 : block.data.endsWith('=') ? 1 : 0),
           ),
           width: 160,
           height: 90,
-          ...block.name === undefined ? {} : { name: block.name },
+          ...(block.name === undefined ? {} : { name: block.name }),
         }
         attachments.set(String(attachment.attachmentId), { attachment, data: block.data })
         return { type: 'image', attachment }
@@ -3265,7 +3952,11 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       const promptSource = { kind: 'user', rpcId: request.requestId } as MessageSource
       if (mode === 'steer' && replays.has(id)) {
         // Steering: the durable user/message lands inside the current turn; the replay continues.
-        append(id, { type: 'user/message', surfaceOp: 'append', data: userMessage(durable, promptSource) })
+        append(id, {
+          type: 'user/message',
+          surfaceOp: 'append',
+          data: userMessage(durable, promptSource),
+        })
         return sessionOk({ accepted: true as const })
       }
       const turn = nextTurn.get(id) ?? 0
@@ -3278,21 +3969,29 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       if (plan.wanted !== null && plan.wanted !== plan.active) {
         append(id, { type: 'plan/mode', data: { active: plan.wanted } })
       }
-      append(id, { type: 'user/message', surfaceOp: 'append', data: userMessage(durable, promptSource) })
+      append(id, {
+        type: 'user/message',
+        surfaceOp: 'append',
+        data: userMessage(durable, promptSource),
+      })
       // Capacity parallel of the host token-meter's request/context record:
       // log-only, appended inside the open turn, and deduplicated against the
       // route already recorded (the fixture never varies contextWindow).
-      const selection = modelSelections.get(id) ?? { provider: 'deepseek', model: 'deepseek-v4-flash' }
+      const selection = modelSelections.get(id) ?? {
+        provider: 'deepseek',
+        model: 'deepseek-v4-flash',
+      }
       const previousHeader = logOf(id).findLast(event => event.type === 'request/header')
-      const previousSelection = previousHeader?.type === 'request/header'
-        ? {
-          provider: previousHeader.data.header.config.provider,
-          model: previousHeader.data.header.config.model,
-          ...(previousHeader.data.header.config.reasoningEffort === undefined
-            ? {}
-            : { reasoningEffort: previousHeader.data.header.config.reasoningEffort }),
-        }
-        : null
+      const previousSelection =
+        previousHeader?.type === 'request/header'
+          ? {
+            provider: previousHeader.data.header.config.provider,
+            model: previousHeader.data.header.config.model,
+            ...(previousHeader.data.header.config.reasoningEffort === undefined
+              ? {}
+              : { reasoningEffort: previousHeader.data.header.config.reasoningEffort }),
+          }
+          : null
       if (!sameModelSelection(previousSelection, selection)) {
         append(id, {
           type: 'request/header',
@@ -3316,8 +4015,12 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
           : userText === 'report model'
             ? (() => {
               const selection = modelSelections.get(id)
-              return `当前模型：${selection?.provider ?? 'unknown'}/${selection?.model ?? 'unknown'}`
-                  + (selection?.reasoningEffort === undefined ? '' : ` · 推理等级：${selection.reasoningEffort}`)
+              return (
+                `当前模型：${selection?.provider ?? 'unknown'}/${selection?.model ?? 'unknown'}` +
+                  (selection?.reasoningEffort === undefined
+                    ? ''
+                    : ` · 推理等级：${selection.reasoningEffort}`)
+              )
             })()
             : `回声：${userText}。这是 fixture 的流式回复，用于验证打字机增长与定稿切换。`,
       )
@@ -3332,10 +4035,9 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
           details: { reason: 'ATTACHMENT_NOT_FOUND' },
         })
       }
-      if (!logReferencesAttachment(
-        logs.get(request.sessionId) ?? [],
-        String(request.attachmentId),
-      )) {
+      if (
+        !logReferencesAttachment(logs.get(request.sessionId) ?? [], String(request.attachmentId))
+      ) {
         return sessionErr({
           code: 'session/attachment-invalid',
           message: 'fixture attachment is not referenced by this session',
@@ -3344,11 +4046,12 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       }
       return sessionOk(stored)
     },
-    updateQueue: request => sessionErr({
-      code: 'session/queue-item-not-found',
-      message: 'fixture has no pending queue item',
-      details: { itemId: request.itemId },
-    }),
+    updateQueue: request =>
+      sessionErr({
+        code: 'session/queue-item-not-found',
+        message: 'fixture has no pending queue item',
+        details: { itemId: request.itemId },
+      }),
     cancel: (request) => {
       const replay = replays.get(request.sessionId)
       if (replay !== undefined) {
@@ -3411,7 +4114,9 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
     signal.throwIfAborted()
     const conn = new FxInbox<FixtureControlFrame>()
     controlConns.add(conn)
-    const breakNow = (): void => { conn.breakNow() }
+    const breakNow = (): void => {
+      conn.breakNow()
+    }
     streamBreakers.add(breakNow)
     try {
       yield controlBaseline()
@@ -3426,7 +4131,9 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
     signal.throwIfAborted()
     const conn = new FxInbox<WorkspaceFollowFrame>()
     workspaceConns.add(conn)
-    const breakNow = (): void => { conn.breakNow() }
+    const breakNow = (): void => {
+      conn.breakNow()
+    }
     streamBreakers.add(breakNow)
     try {
       yield workspaceBaseline()
@@ -3437,16 +4144,26 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
     }
   }
 
-  async function* openWorkspaceFileChanges(signal: AbortSignal): AsyncGenerator<FixtureWorkspaceFileWatchFrame> {
+  async function* openWorkspaceFileChanges(
+    signal: AbortSignal,
+  ): AsyncGenerator<FixtureWorkspaceFileWatchFrame> {
     signal.throwIfAborted()
     const conn = new FxInbox<FixtureWorkspaceFileWatchFrame>()
-    const breakNow = (): void => { conn.breakNow() }
+    const breakNow = (): void => {
+      conn.breakNow()
+    }
     streamBreakers.add(breakNow)
     // Opt-in only: an unprompted frame would age every preview of demo.txt
     // into its changed state on a timer the assembled snapshots cannot see.
     const announce = options.fileChanges
       ? setTimeout(() => {
-        conn.push({ kind: 'change', change: { absolutePath: `${WORKSPACE_FILES_ROOT}/notes/demo.txt`, version: 'fx-demo-v2' } })
+        conn.push({
+          kind: 'change',
+          change: {
+            absolutePath: `${WORKSPACE_FILES_ROOT}/notes/demo.txt`,
+            version: 'fx-demo-v2',
+          },
+        })
       }, 1000)
       : undefined
     try {
@@ -3488,9 +4205,10 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
     signal: AbortSignal,
   ): AsyncGenerator<FixtureFollowFrame> {
     signal.throwIfAborted()
-    const sessionId = request.address.kind === 'session'
-      ? request.address.sessionId
-      : request.address.childSessionId
+    const sessionId =
+      request.address.kind === 'session'
+        ? request.address.sessionId
+        : request.address.childSessionId
     if (summaryOf(sessionId) === undefined) throw new Error(`fixture: no session ${sessionId}`)
     const conn = new FxInbox<FixtureFollowEventFrame>()
     let conns = followConns.get(sessionId)
@@ -3499,7 +4217,9 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       followConns.set(sessionId, conns)
     }
     conns.add(conn)
-    const breakNow = (): void => { conn.breakNow() }
+    const breakNow = (): void => {
+      conn.breakNow()
+    }
     streamBreakers.add(breakNow)
     const snapshot = [...logOf(sessionId)]
     const cursor = snapshot.at(-1)?.seq ?? -1
@@ -3516,7 +4236,9 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
           id: sessionId,
           createdAt: summary.updatedAt,
           ...(summary.cwd === undefined ? {} : { cwd: summary.cwd }),
-          ...(summary.parentSessionId === undefined ? {} : { parentSession: summary.parentSessionId }),
+          ...(summary.parentSessionId === undefined
+            ? {}
+            : { parentSession: summary.parentSessionId }),
           isSeeded: summary.parentSessionId !== undefined,
           ...(summary.origin === undefined ? {} : { origin: summary.origin }),
           ...(summary.agentPreset === undefined ? {} : { agentPreset: summary.agentPreset }),
@@ -3525,21 +4247,28 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
         records: initial.records,
         hasMore: initial.hasMore,
         projections: { asOfSeq: cursor, values: projectionValuesOf(snapshot) },
-        ...(request.assistantStream === true ? {
-          assistantStream: {
-            revision: assistantRevisions.get(sessionId) ?? 0,
-            ...(activeAttempts.get(sessionId) === undefined
-              ? {}
-              : { activeAttempt: {
-                attemptId: (activeAttempts.get(sessionId) as FixtureAttemptState).attemptId,
-                startedAfterSeq: (activeAttempts.get(sessionId) as FixtureAttemptState).startedAfterSeq,
-                turn: (activeAttempts.get(sessionId) as FixtureAttemptState).turn,
-                step: (activeAttempts.get(sessionId) as FixtureAttemptState).step,
-                nextIndex: (activeAttempts.get(sessionId) as FixtureAttemptState).index,
-                stream: (activeAttempts.get(sessionId) as FixtureAttemptState).stream.snapshot(),
-              } }),
-          },
-        } : {}),
+        ...(request.assistantStream === true
+          ? {
+            assistantStream: {
+              revision: assistantRevisions.get(sessionId) ?? 0,
+              ...(activeAttempts.get(sessionId) === undefined
+                ? {}
+                : {
+                  activeAttempt: {
+                    attemptId: (activeAttempts.get(sessionId) as FixtureAttemptState).attemptId,
+                    startedAfterSeq: (activeAttempts.get(sessionId) as FixtureAttemptState)
+                      .startedAfterSeq,
+                    turn: (activeAttempts.get(sessionId) as FixtureAttemptState).turn,
+                    step: (activeAttempts.get(sessionId) as FixtureAttemptState).step,
+                    nextIndex: (activeAttempts.get(sessionId) as FixtureAttemptState).index,
+                    stream: (
+                      activeAttempts.get(sessionId) as FixtureAttemptState
+                    ).stream.snapshot(),
+                  },
+                }),
+            },
+          }
+          : {}),
       }
       for await (const frame of conn.drain(signal)) {
         if (frame.type === 'assistant-stream') {
@@ -3622,7 +4351,11 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
         })
       }
       if (title !== workspace.title) {
-        if (workspaces.some(candidate => candidate.workspaceId !== request.workspaceId && candidate.title === title)) {
+        if (
+          workspaces.some(
+            candidate => candidate.workspaceId !== request.workspaceId && candidate.title === title,
+          )
+        ) {
           return sessionErr({
             code: 'workspace/name-conflict',
             message: `workspace name '${title}' is already in use`,
@@ -3649,15 +4382,15 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       return sessionOk({ deleted: true })
     },
     insertBefore: (request) => {
-      const source = workspaces.findIndex(workspace => workspace.workspaceId === request.workspaceId)
-      const anchor = request.beforeWorkspaceId === undefined
-        ? workspaces.length
-        : workspaces.findIndex(workspace => workspace.workspaceId === request.beforeWorkspaceId)
-      const missing = source === -1
-        ? request.workspaceId
-        : anchor === -1
-          ? request.beforeWorkspaceId
-          : undefined
+      const source = workspaces.findIndex(
+        workspace => workspace.workspaceId === request.workspaceId,
+      )
+      const anchor =
+        request.beforeWorkspaceId === undefined
+          ? workspaces.length
+          : workspaces.findIndex(workspace => workspace.workspaceId === request.beforeWorkspaceId)
+      const missing =
+        source === -1 ? request.workspaceId : anchor === -1 ? request.beforeWorkspaceId : undefined
       if (missing !== undefined) {
         return sessionErr({
           code: 'workspace/not-found',
@@ -3669,10 +4402,12 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
         const previousOrder = workspaces.map(workspace => workspace.workspaceId)
         const [workspace] = workspaces.splice(source, 1)
         /* v8 ignore next -- source was resolved from the same array immediately above. */
-        if (workspace === undefined) throw new Error(`fixture lost workspace ${request.workspaceId}`)
-        const at = request.beforeWorkspaceId === undefined
-          ? workspaces.length
-          : workspaces.findIndex(candidate => candidate.workspaceId === request.beforeWorkspaceId)
+        if (workspace === undefined)
+          throw new Error(`fixture lost workspace ${request.workspaceId}`)
+        const at =
+          request.beforeWorkspaceId === undefined
+            ? workspaces.length
+            : workspaces.findIndex(candidate => candidate.workspaceId === request.beforeWorkspaceId)
         workspaces.splice(at, 0, workspace)
         if (workspaces.some((candidate, index) => candidate.workspaceId !== previousOrder[index])) {
           emitWorkspace({
@@ -3692,20 +4427,28 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
           details: { workspaceId: request.workspaceId },
         })
       }
-      if (!workspace.sessionIds.includes(request.sessionId)
-        || (request.beforeSessionId !== undefined && !workspace.sessionIds.includes(request.beforeSessionId))) {
+      if (
+        !workspace.sessionIds.includes(request.sessionId) ||
+        (request.beforeSessionId !== undefined &&
+          !workspace.sessionIds.includes(request.beforeSessionId))
+      ) {
         return sessionErr({
           code: 'workspace/move-invalid',
           message: `session or anchor is not accounted by workspace ${request.workspaceId}`,
           details: {
             workspaceId: request.workspaceId,
             sessionId: request.sessionId,
-            ...request.beforeSessionId === undefined ? {} : { beforeSessionId: request.beforeSessionId },
+            ...(request.beforeSessionId === undefined
+              ? {}
+              : { beforeSessionId: request.beforeSessionId }),
           },
         })
       }
       const without = workspace.sessionIds.filter(id => id !== request.sessionId)
-      const at = request.beforeSessionId === undefined ? without.length : without.indexOf(request.beforeSessionId)
+      const at =
+        request.beforeSessionId === undefined
+          ? without.length
+          : without.indexOf(request.beforeSessionId)
       const sessionIds = [...without.slice(0, at), request.sessionId, ...without.slice(at)]
       if (!sessionIds.every((id, index) => id === workspace.sessionIds[index])) {
         workspace.sessionIds = sessionIds
@@ -3733,90 +4476,138 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
   const rpc: ClientConnectionRpc = {
     call(channel, endpoint, payload, signal) {
       if (channel !== '/api') {
-        return Promise.reject(new Error(`fixture connection RPC channel ${JSON.stringify(channel)} is unavailable`))
+        return Promise.reject(
+          new Error(`fixture connection RPC channel ${JSON.stringify(channel)} is unavailable`),
+        )
       }
-      const args = (payload as {
-        args: Readonly<{
-          agentId: SessionId
-          line?: string
-          query?: string
-          path?: string
-          range?: { offset?: number; limit?: number }
-          name?: string
-          images?: readonly unknown[]
-          // A goal ref and a credential reference name share this wire field name.
-          ref?: string | { id: string; revision: number }
-          refs?: readonly string[]
-          value?: string
-          ns?: string
-          settingsNs?: string
-          agentPreset?: string
-          from?: string
-          id?: string
-          request?: unknown
-          _request?: unknown
-        }>
-      }).args
+      const args = (
+        payload as {
+          args: Readonly<{
+            agentId: SessionId
+            line?: string
+            query?: string
+            path?: string
+            range?: { offset?: number; limit?: number }
+            name?: string
+            images?: readonly unknown[]
+            // A goal ref and a credential reference name share this wire field name.
+            ref?: string | { id: string; revision: number }
+            refs?: readonly string[]
+            value?: string
+            ns?: string
+            settingsNs?: string
+            agentPreset?: string
+            from?: string
+            id?: string
+            request?: unknown
+            _request?: unknown
+          }>
+        }
+      ).args
       const sessionId = args.agentId
       const callSignal = signal ?? new AbortController().signal
       const request = args.request
       switch (endpoint) {
-        case 'commands/list': return Promise.resolve(commandRemotes.list(sessionId))
-        case 'commands/execute': return Promise.resolve(commandRemotes.execute(sessionId, args.line as string, args.images ?? []))
-        case 'fileReferences/list': return Promise.resolve(referenceRemotes.files(sessionId, args.query ?? ''))
-        case 'sessionReferenceResolver/candidates': return Promise.resolve(referenceRemotes.sessions(sessionId, args.query ?? ''))
-        case 'directoryPicker/pick': return Promise.resolve(directoryPickerRemotes.pick())
-        case 'directoryPicker/list': return Promise.resolve(directoryPickerRemotes.list(args.path))
+        case 'commands/list':
+          return Promise.resolve(commandRemotes.list(sessionId))
+        case 'commands/execute':
+          return Promise.resolve(
+            commandRemotes.execute(sessionId, args.line as string, args.images ?? []),
+          )
+        case 'fileReferences/list':
+          return Promise.resolve(referenceRemotes.files(sessionId, args.query ?? ''))
+        case 'sessionReferenceResolver/candidates':
+          return Promise.resolve(referenceRemotes.sessions(sessionId, args.query ?? ''))
+        case 'directoryPicker/pick':
+          return Promise.resolve(directoryPickerRemotes.pick())
+        case 'directoryPicker/list':
+          return Promise.resolve(directoryPickerRemotes.list(args.path))
         case 'directoryPicker/createDirectory':
-          return Promise.resolve(directoryPickerRemotes.createDirectory(args.path ?? '', args.name ?? ''))
-        case 'goals/create': return Promise.resolve(goalRemotes.create(sessionId, {
-          objective: (request as { objective?: string } | undefined)?.objective as string,
-          ...(request as { maxGoalRounds?: number } | undefined)?.maxGoalRounds === undefined
-            ? {}
-            : { maxGoalRounds: (request as { maxGoalRounds: number }).maxGoalRounds },
-        }))
-        case 'goals/edit': return Promise.resolve(goalRemotes.edit(
-          sessionId,
-          args.ref as FxGoalRef,
-          request as { objective?: string; maxGoalRounds?: number },
-        ))
-        case 'goals/pause': return Promise.resolve(goalRemotes.pause(sessionId, args.ref as FxGoalRef))
-        case 'goals/resume': return Promise.resolve(goalRemotes.resume(sessionId, args.ref as FxGoalRef))
-        case 'goals/complete': return Promise.resolve(goalRemotes.complete(sessionId, args.ref as FxGoalRef))
-        case 'goals/clear': return Promise.resolve(goalRemotes.clear(sessionId, args.ref as FxGoalRef))
-        case 'agentPresets/list': return Promise.resolve(presetRemotes.list())
-        case 'agentPresets/select': return Promise.resolve(presetRemotes.select(sessionId, args.agentPreset as string))
-        case 'agentPresets/read': return Promise.resolve(presetRemotes.read(args.agentPreset as string))
-        case 'agentPresets/copy': return Promise.resolve(presetRemotes.copy(args.from as string, args.id as string))
-        case 'agentPresets/deletePreset': return Promise.resolve(presetRemotes.deletePreset(args.id as string))
-        case 'subagents/list': return Promise.resolve({
-          ok: true,
-          value: { entries: [], parentAvailable: true },
-        })
-        case 'subagents/prompt': return Promise.resolve({
-          ok: true,
-          value: {
-            messageId: `fixture-message-${(request as { childSessionId: SessionId }).childSessionId}`,
-          },
-        })
-        case 'subagents/interruptByParent': return Promise.resolve({ ok: true, value: { accepted: true } })
-        case 'credentials/describe': return Promise.resolve(credentialRemotes.describe(args.refs ?? []))
-        case 'credentials/set': return Promise.resolve(credentialRemotes.set(args.ref as string))
-        case 'credentials/unset': return Promise.resolve(credentialRemotes.unset(args.ref as string))
-        case 'settings/describe': return Promise.resolve(settingsRemotes.describe())
-        case 'settings/canOpenAgentPresetDirectory': return Promise.resolve({ ok: true, value: true })
-        case 'settings/openSettingsDocument': return Promise.resolve(settingsRemotes.openSettingsDocument())
-        case 'settings/openAgentPresetDirectory': return Promise.resolve(
-          settingsRemotes.openAgentPresetDirectory(args.agentPreset as string),
-        )
+          return Promise.resolve(
+            directoryPickerRemotes.createDirectory(args.path ?? '', args.name ?? ''),
+          )
+        case 'goals/create':
+          return Promise.resolve(
+            goalRemotes.create(sessionId, {
+              objective: (request as { objective?: string } | undefined)?.objective as string,
+              ...((request as { maxGoalRounds?: number } | undefined)?.maxGoalRounds === undefined
+                ? {}
+                : { maxGoalRounds: (request as { maxGoalRounds: number }).maxGoalRounds }),
+            }),
+          )
+        case 'goals/edit':
+          return Promise.resolve(
+            goalRemotes.edit(
+              sessionId,
+              args.ref as FxGoalRef,
+              request as { objective?: string; maxGoalRounds?: number },
+            ),
+          )
+        case 'goals/pause':
+          return Promise.resolve(goalRemotes.pause(sessionId, args.ref as FxGoalRef))
+        case 'goals/resume':
+          return Promise.resolve(goalRemotes.resume(sessionId, args.ref as FxGoalRef))
+        case 'goals/complete':
+          return Promise.resolve(goalRemotes.complete(sessionId, args.ref as FxGoalRef))
+        case 'goals/clear':
+          return Promise.resolve(goalRemotes.clear(sessionId, args.ref as FxGoalRef))
+        case 'agentPresets/list':
+          return Promise.resolve(presetRemotes.list())
+        case 'agentPresets/select':
+          return Promise.resolve(presetRemotes.select(sessionId, args.agentPreset as string))
+        case 'agentPresets/read':
+          return Promise.resolve(presetRemotes.read(args.agentPreset as string))
+        case 'agentPresets/copy':
+          return Promise.resolve(presetRemotes.copy(args.from as string, args.id as string))
+        case 'agentPresets/deletePreset':
+          return Promise.resolve(presetRemotes.deletePreset(args.id as string))
+        case 'subagents/list':
+          return Promise.resolve({
+            ok: true,
+            value: { entries: [], parentAvailable: true },
+          })
+        case 'subagents/prompt':
+          return Promise.resolve({
+            ok: true,
+            value: {
+              messageId: `fixture-message-${(request as { childSessionId: SessionId }).childSessionId}`,
+            },
+          })
+        case 'subagents/interruptByParent':
+          return Promise.resolve({ ok: true, value: { accepted: true } })
+        case 'credentials/describe':
+          return Promise.resolve(credentialRemotes.describe(args.refs ?? []))
+        case 'credentials/set':
+          return Promise.resolve(credentialRemotes.set(args.ref as string))
+        case 'credentials/unset':
+          return Promise.resolve(credentialRemotes.unset(args.ref as string))
+        case 'settings/describe':
+          return Promise.resolve(settingsRemotes.describe())
+        case 'settings/canOpenAgentPresetDirectory':
+          return Promise.resolve({ ok: true, value: true })
+        case 'settings/openSettingsDocument':
+          return Promise.resolve(settingsRemotes.openSettingsDocument())
+        case 'settings/openAgentPresetDirectory':
+          return Promise.resolve(
+            settingsRemotes.openAgentPresetDirectory(args.agentPreset as string),
+          )
         case 'skills/list': {
           const skillRequest = request as { readonly sessionId: SessionId }
           const missing = requireRemoteSession(skillRequest)
           if (missing !== undefined) return missing
           return sessionOk({
             skills: [
-              { name: 'fixture-demo', description: 'fixture 技能样本', whenToUse: '仅供 UI 目录渲染验收', modelInvocable: true },
-              { name: 'fixture-user-only', description: 'fixture 仅用户技能样本', modelInvocable: false },
+              {
+                name: 'fixture-demo',
+                description: 'fixture 技能样本',
+                whenToUse: '仅供 UI 目录渲染验收',
+                modelInvocable: true,
+              },
+              {
+                name: 'fixture-user-only',
+                description: 'fixture 仅用户技能样本',
+                modelInvocable: false,
+              },
             ],
           })
         }
@@ -3832,96 +4623,127 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
         case 'workspaceFiles/list': {
           return Promise.resolve(workspaceFileRemotes.list(args.path ?? ''))
         }
-        case 'session/canOpenWorkspacePath': return Promise.resolve({ ok: true, value: true })
-        case 'session/modelCatalog': return Promise.resolve({
-          ok: true,
-          value: {
-            default: { provider: 'deepseek-official', model: 'deepseek-v4-flash' },
-            routableProviders: ['deepseek-official', 'openai', 'acme-gateway'],
-            groups: fixtureModelGroups(),
-            failures: [],
-          },
-        })
-        case 'llm/listProviders': return Promise.resolve({
-          ok: true,
-          value: [
-            { id: 'deepseek-official', name: 'DeepSeek' },
-            { id: 'openai', name: 'openai' },
-            { id: 'acme-gateway', name: 'Acme Gateway' },
-          ],
-        })
-        case 'llm/listConfigurableProviders': return Promise.resolve({
-          ok: true,
-          value: [
-            { provider: 'deepseek-official', displayName: 'DeepSeek', settingsNs: 'llm-deepseek', settingsPath: [] },
-            { provider: 'openai', displayName: 'openai', settingsNs: 'llm-pi-ai', settingsPath: ['providers', 'openai'], declared: false },
-            { provider: 'anthropic', displayName: 'anthropic', settingsNs: 'llm-pi-ai', settingsPath: ['providers', 'anthropic'], declared: false },
-            { provider: 'acme-gateway', displayName: 'Acme Gateway', settingsNs: 'llm-pi-ai', settingsPath: ['providers', 'acme-gateway'], declared: true },
-          ],
-        })
+        case 'session/canOpenWorkspacePath':
+          return Promise.resolve({ ok: true, value: true })
+        case 'session/modelCatalog':
+          return Promise.resolve({
+            ok: true,
+            value: {
+              default: { provider: 'deepseek-official', model: 'deepseek-v4-flash' },
+              routableProviders: ['deepseek-official', 'openai', 'acme-gateway'],
+              groups: fixtureModelGroups(),
+              failures: [],
+            },
+          })
+        case 'llm/listProviders':
+          return Promise.resolve({
+            ok: true,
+            value: [
+              { id: 'deepseek-official', name: 'DeepSeek' },
+              { id: 'openai', name: 'openai' },
+              { id: 'acme-gateway', name: 'Acme Gateway' },
+            ],
+          })
+        case 'llm/listConfigurableProviders':
+          return Promise.resolve({
+            ok: true,
+            value: [
+              {
+                provider: 'deepseek-official',
+                displayName: 'DeepSeek',
+                settingsNs: 'llm-deepseek',
+                settingsPath: [],
+              },
+              {
+                provider: 'openai',
+                displayName: 'openai',
+                settingsNs: 'llm-pi-ai',
+                settingsPath: ['providers', 'openai'],
+                declared: false,
+              },
+              {
+                provider: 'anthropic',
+                displayName: 'anthropic',
+                settingsNs: 'llm-pi-ai',
+                settingsPath: ['providers', 'anthropic'],
+                declared: false,
+              },
+              {
+                provider: 'acme-gateway',
+                displayName: 'Acme Gateway',
+                settingsNs: 'llm-pi-ai',
+                settingsPath: ['providers', 'acme-gateway'],
+                declared: true,
+              },
+            ],
+          })
         // The fixture endpoint is imaginary, so interrogation answers the
         // catalog it already serves without a network request.
-        case 'llm/discoverModels': return Promise.resolve({
-          ok: true,
-          value: fixtureModelGroups().flatMap(group => group.models.map(model => ({ id: model.id, name: model.name }))),
-        })
-        case 'settings/update': return Promise.resolve(settingsRemotes.update(args.ns as string))
-        case 'settings/replace': return Promise.resolve(settingsRemotes.replace(args.ns as string))
-        case 'settings/mutate': return Promise.resolve(settingsRemotes.mutate(args.ns as string))
-        case 'session/list': return sessionApi.list(
-          args._request as Parameters<FixtureSessionApi['list']>[0],
-        )
-        case 'session/search': return sessionApi.search(
-          request as Parameters<FixtureSessionApi['search']>[0],
-          callSignal,
-        )
-        case 'session/create': return sessionApi.create(
-          request as Parameters<FixtureSessionApi['create']>[0],
-        )
-        case 'session/selectModel': return sessionApi.selectModel(
-          request as Parameters<FixtureSessionApi['selectModel']>[0],
-        )
-        case 'session/rename': return sessionApi.rename(
-          request as Parameters<FixtureSessionApi['rename']>[0],
-        )
-        case 'session/fork': return sessionApi.fork(
-          request as Parameters<FixtureSessionApi['fork']>[0],
-        )
-        case 'session/prompt': return sessionApi.prompt(
-          request as Parameters<FixtureSessionApi['prompt']>[0],
-        )
-        case 'session/attachment': return sessionApi.attachment(
-          request as Parameters<FixtureSessionApi['attachment']>[0],
-        )
-        case 'session/updateQueue': return sessionApi.updateQueue(
-          request as Parameters<FixtureSessionApi['updateQueue']>[0],
-        )
-        case 'session/cancel': return sessionApi.cancel(
-          request as Parameters<FixtureSessionApi['cancel']>[0],
-        )
+        case 'llm/discoverModels':
+          return Promise.resolve({
+            ok: true,
+            value: fixtureModelGroups().flatMap(group =>
+              group.models.map(model => ({ id: model.id, name: model.name })),
+            ),
+          })
+        case 'settings/update':
+          return Promise.resolve(settingsRemotes.update(args.ns as string))
+        case 'settings/replace':
+          return Promise.resolve(settingsRemotes.replace(args.ns as string))
+        case 'settings/mutate':
+          return Promise.resolve(settingsRemotes.mutate(args.ns as string))
+        case 'session/list':
+          return sessionApi.list(args._request as Parameters<FixtureSessionApi['list']>[0])
+        case 'session/search':
+          return sessionApi.search(
+            request as Parameters<FixtureSessionApi['search']>[0],
+            callSignal,
+          )
+        case 'session/create':
+          return sessionApi.create(request as Parameters<FixtureSessionApi['create']>[0])
+        case 'session/selectModel':
+          return sessionApi.selectModel(request as Parameters<FixtureSessionApi['selectModel']>[0])
+        case 'session/rename':
+          return sessionApi.rename(request as Parameters<FixtureSessionApi['rename']>[0])
+        case 'session/fork':
+          return sessionApi.fork(request as Parameters<FixtureSessionApi['fork']>[0])
+        case 'session/prompt':
+          return sessionApi.prompt(request as Parameters<FixtureSessionApi['prompt']>[0])
+        case 'session/attachment':
+          return sessionApi.attachment(request as Parameters<FixtureSessionApi['attachment']>[0])
+        case 'session/updateQueue':
+          return sessionApi.updateQueue(request as Parameters<FixtureSessionApi['updateQueue']>[0])
+        case 'session/cancel':
+          return sessionApi.cancel(request as Parameters<FixtureSessionApi['cancel']>[0])
         case 'session/page': {
           const page = request as FixturePageRequest
-          const pageSessionId = page.address.kind === 'session'
-            ? page.address.sessionId
-            : page.address.childSessionId
+          const pageSessionId =
+            page.address.kind === 'session' ? page.address.sessionId : page.address.childSessionId
           return sessionApi.history({
             sessionId: pageSessionId,
             throughSeq: page.throughSeq,
-            ...page.beforeSeq === undefined ? {} : { beforeSeq: page.beforeSeq },
-            ...page.maxMessages === undefined ? {} : { maxMessages: page.maxMessages },
+            ...(page.beforeSeq === undefined ? {} : { beforeSeq: page.beforeSeq }),
+            ...(page.maxMessages === undefined ? {} : { maxMessages: page.maxMessages }),
           })
         }
-        case '$events/result': return Promise.resolve(answerRemoteEvent(args as unknown as FixtureRemoteEventResult))
-        case 'workspace/create': return workspaceApi.create(request as WorkspaceCreateRequest)
-        case 'workspace/rename': return workspaceApi.rename(request as WorkspaceRenameRequest)
-        case 'workspace/delete': return workspaceApi.delete(request as WorkspaceDeleteRequest)
-        case 'workspace/insertBefore': return workspaceApi.insertBefore(request as WorkspaceInsertBeforeRequest)
-        case 'workspace/insertSessionBefore': return workspaceApi.insertSessionBefore(
-          request as WorkspaceInsertSessionBeforeRequest,
-        )
-        case 'workspace/archiveSession': return workspaceApi.archiveSession(request as WorkspaceArchiveSessionRequest)
+        case '$events/result':
+          return Promise.resolve(answerRemoteEvent(args as unknown as FixtureRemoteEventResult))
+        case 'workspace/create':
+          return workspaceApi.create(request as WorkspaceCreateRequest)
+        case 'workspace/rename':
+          return workspaceApi.rename(request as WorkspaceRenameRequest)
+        case 'workspace/delete':
+          return workspaceApi.delete(request as WorkspaceDeleteRequest)
+        case 'workspace/insertBefore':
+          return workspaceApi.insertBefore(request as WorkspaceInsertBeforeRequest)
+        case 'workspace/insertSessionBefore':
+          return workspaceApi.insertSessionBefore(request as WorkspaceInsertSessionBeforeRequest)
+        case 'workspace/archiveSession':
+          return workspaceApi.archiveSession(request as WorkspaceArchiveSessionRequest)
         default:
-          return Promise.reject(new Error(`fixture connection RPC endpoint ${JSON.stringify(endpoint)} is unavailable`))
+          return Promise.reject(
+            new Error(`fixture connection RPC endpoint ${JSON.stringify(endpoint)} is unavailable`),
+          )
       }
     },
     open(channel, endpoint, payload, signal) {
@@ -3930,13 +4752,20 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       }
       const args = (payload as { args: Readonly<{ request?: unknown }> }).args
       switch (endpoint) {
-        case '$events': return openRemoteEvents(signal)
-        case 'session/control': return openControl(signal)
-        case 'session/follow': return openFollow(args.request as FixtureFollowRequest, signal)
-        case 'workspace/follow': return openWorkspace(signal)
-        case 'workspaceFiles/changes': return openWorkspaceFileChanges(signal)
+        case '$events':
+          return openRemoteEvents(signal)
+        case 'session/control':
+          return openControl(signal)
+        case 'session/follow':
+          return openFollow(args.request as FixtureFollowRequest, signal)
+        case 'workspace/follow':
+          return openWorkspace(signal)
+        case 'workspaceFiles/changes':
+          return openWorkspaceFileChanges(signal)
         default:
-          throw new Error(`fixture connection stream endpoint ${JSON.stringify(endpoint)} is unavailable`)
+          throw new Error(
+            `fixture connection stream endpoint ${JSON.stringify(endpoint)} is unavailable`,
+          )
       }
     },
   }
@@ -3960,7 +4789,8 @@ function fixtureOptionsFromLocation(): FixtureOptions {
     rejectPrompt: query.get('fixturePrompt') === 'reject',
     failWorkspaceAttach: query.get('fixtureAttach') === 'fail',
     dropSessionCreateResponse: query.get('fixtureSessionCreate') === 'drop-response',
-    createFrameOrder: query.get('fixtureFrames') === 'workspace-first' ? 'workspace-first' : 'session-first',
+    createFrameOrder:
+      query.get('fixtureFrames') === 'workspace-first' ? 'workspace-first' : 'session-first',
     fileChanges: query.get('fixtureFileChanges') === 'demo',
   }
 }

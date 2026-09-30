@@ -472,7 +472,7 @@ Single-slot decision for the next FileSystem.editText. Calling `next()` yields a
  * @param actor - the opaque tool-execution context the decider keys off.
  * @mode waterfall
  */
-'fs/edit-intent'(target: FsTarget, actor: object | undefined, next: () => { version: FsVersion } | undefined | Promise<{ version: FsVersion } | undefined>): Promise<{ version: FsVersion } | undefined>
+'fs/edit-intent'(target: FsTarget, actor: object | undefined, next: () => { version: FsVersion; } | undefined | Promise<{ version: FsVersion; } | undefined>): Promise<{ version: FsVersion; } | undefined>
 ```
 
 Source: [`packages/fs/fs/src/index.ts`](../../packages/fs/fs/src/index.ts)

@@ -15,7 +15,7 @@
 
 - id: system-prompt
   config:
-    personaSuffix: Your working directory is {{cwd}}. HARD RULE — workspace boundary: never read, write, edit, or run commands outside {{cwd}} (your current working directory) unless the user explicitly asks you to operate on another path in this same request. The DeepSeek Harness checkout and any other repository are out of bounds unless the user names them as the target; if a task seems to require leaving {{cwd}}, stop and ask the user first rather than acting. Determine the working directory with pwd — never infer it from the harness checkout path.
+    personaSuffix: "Your working directory is {{cwd}}. HARD RULE — workspace boundary: never read, write, edit, or run commands outside {{cwd}} (your current working directory) unless the user explicitly asks you to operate on another path in this same request. The DeepSeek Harness checkout and any other repository are out of bounds unless the user names them as the target; if a task seems to require leaving {{cwd}}, stop and ask the user first rather than acting. Determine the working directory with pwd — never infer it from the harness checkout path."
     personaPrefix: >-
       You are a coding agent powered by the {{model}} model.
 
@@ -203,6 +203,13 @@
 
     - id: locale
       name: '@deepseek-ai/dsh-client-locale'
+
+    # French language pack: registers the fr locale (English fallback) with
+    # complete French dictionaries for every client namespace. Selecting
+    # Français in Settings → General renders the GUI in French; a French
+    # browser picks it provisionally before any stored preference arrives.
+    - id: locale-fr
+      name: '@deepseek-ai/dsh-client-locale-fr'
 
     - id: ui-layout
       name: '@deepseek-ai/dsh-client-ui-layout'

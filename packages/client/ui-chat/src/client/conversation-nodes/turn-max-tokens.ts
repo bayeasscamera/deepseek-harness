@@ -1,6 +1,9 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type {
-  ConversationMatch, ConversationNodeContext, ConversationNodeDefinition, TurnMaxTokensNode,
+  ConversationMatch,
+  ConversationNodeContext,
+  ConversationNodeDefinition,
+  TurnMaxTokensNode,
 } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { CHAT_SYNTHETIC_SEQ_OFFSETS, chatNode } from './common.ts'
 
@@ -24,6 +27,27 @@ function lastStep(context: ConversationNodeContext<TurnMaxTokensState>): number 
 }
 
 /**
+ * Whether the turn's latest settled attempt ended at the output ceiling. The
+ * turn's recorded `max-tokens` ending is sticky (any step that hit the ceiling
+ * keeps it), so the notice reads the last attempt's own verdict instead: an
+ * automatic or manual continuation that finished the answer ends the turn with
+ * the same recorded reason, and telling that user the reply was cut off would
+ * be wrong. An absent attempt or an attempt whose stream carries no finish
+ * record defers to the recorded ending.
+ */
+function endedTruncated(context: ConversationNodeContext<TurnMaxTokensState>): boolean {
+  const location = context.start?.location ?? context.matches[0]?.location
+  if (location?.kind !== 'turn' && location?.kind !== 'step') return true
+  const steps = location.turn.steps
+  for (let index = steps.length - 1; index >= 0; index -= 1) {
+    const assistant = steps[index]?.data.get('assistant-step')
+    if (assistant === undefined) continue
+    return assistant.truncated ?? true
+  }
+  return true
+}
+
+/**
  * Anchor the notice between the closing Assistant and the turn-tail so the
  * tail stays the turn's last Chat node and keeps its branch action enabled.
  * Without a closing text Assistant there is no branch action to protect, and
@@ -39,7 +63,8 @@ function noticeAnchor(context: ConversationNodeContext<TurnMaxTokensState>, seq:
 }
 
 function stateFrom(match: ConversationMatch): TurnMaxTokensState | undefined {
-  if (match.event.type !== 'turn/end' || match.event.data.reason.kind !== 'max-tokens') return undefined
+  if (match.event.type !== 'turn/end' || match.event.data.reason.kind !== 'max-tokens')
+    return undefined
   return { turn: match.event.data.turn, seq: match.event.seq, time: match.event.time }
 }
 
@@ -62,6 +87,7 @@ export const turnMaxTokensDefinition: ConversationNodeDefinition<TurnMaxTokensSt
   buildViewNode: (context) => {
     const state = context.state
     if (state === undefined) return null
+    if (!endedTruncated(context)) return null
     const node: TurnMaxTokensNode = {
       kind: 'turn-max-tokens',
       seq: state.seq,

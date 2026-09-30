@@ -8,7 +8,20 @@
  * @module dsh-llm-deepseek/adapter
  */
 
-import { attributionHeaders, contentHasImage, CONTEXT_WINDOW_EXCEEDED_CODE, isContextWindowExceededError, isQuotaExceededError, LlmAdapter, LlmError, offloadedImageText, offloadRequestImagesWithPolicy, ProviderRequestId, QUOTA_EXCEEDED_CODE, ReasoningEffortId } from '@deepseek-ai/dsh-llm'
+import {
+  attributionHeaders,
+  contentHasImage,
+  CONTEXT_WINDOW_EXCEEDED_CODE,
+  isContextWindowExceededError,
+  isQuotaExceededError,
+  LlmAdapter,
+  LlmError,
+  offloadedImageText,
+  offloadRequestImagesWithPolicy,
+  ProviderRequestId,
+  QUOTA_EXCEEDED_CODE,
+  ReasoningEffortId,
+} from '@deepseek-ai/dsh-llm'
 import type {
   ContentBlock,
   GenerateOptions,
@@ -17,7 +30,6 @@ import type {
   LlmProviderInfo,
   PreparedAdapterCall,
   LlmResolvedModelInfo,
-  ModelModality,
   ResolvedRetryPolicy,
   StreamChunk,
 } from '@deepseek-ai/dsh-llm'
@@ -46,6 +58,9 @@ import { translate } from './translate.ts'
 import type { WireError, WireRequest } from './types.ts'
 
 /** One optional model entry advertised by the direct-fetch adapter. */
+/** Input modalities a DeepSeek catalog model accepts: DeepSeek serves text and vision. */
+export type DeepSeekModelModality = 'text' | 'image'
+
 export interface DeepSeekCatalogModel {
   /** Wire model id accepted by the configured endpoint. */
   id: string
@@ -58,7 +73,7 @@ export interface DeepSeekCatalogModel {
   /** Per-request output cap for this model; omission falls back to the profile's {@link DeepSeekConnectionOptions.maxTokens}. */
   maxTokens?: number
   /** Accepted request modalities; omission is text-only. */
-  inputModalities?: ModelModality[]
+  inputModalities?: DeepSeekModelModality[]
   /** Total-pixel budget for one deterministic request preview, or the 512-by-512 `low` preset. */
   imagePixelBudget?: number | 'low'
   /** Encoded-byte target for one deterministic request preview; the smallest quality-ladder output is used when no quality fits. */
@@ -127,11 +142,16 @@ export interface DeepSeekAdapterOptions {
   /** Resolve the current durable attachment service; absence rejects image input. */
   resolveAttachments?: () => AttachmentStore | undefined
   /** Bridge one attachment reference into the current model-tool execution world. */
-  resolveImageAccess?: (attachments: AttachmentStore, ref: ImageAttachmentRef) => ImageAttachmentAccess | undefined
+  resolveImageAccess?: (
+    attachments: AttachmentStore,
+    ref: ImageAttachmentRef,
+  ) => ImageAttachmentAccess | undefined
   /** Resolve the process-wide upload reuse store. */
   resolveFiles?: () => DeepSeekFileStore
   /** Prepare the official API's plugin-contributed top-level fields for one exact wire request. */
-  prepareExtensions: (request: DeepSeekLlmApiExtensionRequest) => Promise<PreparedDeepSeekLlmApiExtensions>
+  prepareExtensions: (
+    request: DeepSeekLlmApiExtensionRequest,
+  ) => Promise<PreparedDeepSeekLlmApiExtensions>
 }
 
 /** Default maximum idle interval while an adapter stream read is outstanding. */
@@ -220,16 +240,17 @@ async function prepareRequestImages(
   for (const message of options.messages) collectImageRefs(message.content, refs)
   const policy = resolveRequestImagePolicy(model)
   const orderedRefs = [...refs.values()]
-  const projected = await Promise.all(orderedRefs.map(
-    ref => attachments.readImageRequest(ref, policy, signal),
-  ))
-  return new Map(orderedRefs.map((ref, index) => (
-    [ref.attachmentId, projected[index] as RequestImageAttachment]
-  )))
+  const projected = await Promise.all(
+    orderedRefs.map(ref => attachments.readImageRequest(ref, policy, signal)),
+  )
+  return new Map(
+    orderedRefs.map((ref, index) => [ref.attachmentId, projected[index] as RequestImageAttachment]),
+  )
 }
 
 function providerRejectedNormalizedImage(detail: string): boolean {
-  const reasonBeforeImage = /(?:unsupported|invalid|cannot read|failed to (?:decode|process)).{0,40}image/iu
+  const reasonBeforeImage =
+    /(?:unsupported|invalid|cannot read|failed to (?:decode|process)).{0,40}image/iu
   const imageBeforeReason = /image.{0,40}(?:unsupported|invalid|cannot be decoded)/iu
   return reasonBeforeImage.test(detail) || imageBeforeReason.test(detail)
 }
@@ -242,8 +263,12 @@ interface UsedRequestFile {
 
 function providerRejectedFileId(detail: string): boolean {
   const file = /\bfile(?:[_ -]?(?:id|api|not[_ -]?found|deleted|expired))?/iu.test(detail)
-  const missing = /(?:expired|not[_ -]?found|deleted|do(?:es)? not exist|not created under (?:this|your) account)/iu.test(detail)
-  const invalidId = /(?:invalid.{0,20}file[_ -]?(?:id|api)|file[_ -]?(?:id|api).{0,20}invalid)/iu.test(detail)
+  const missing =
+    /(?:expired|not[_ -]?found|deleted|do(?:es)? not exist|not created under (?:this|your) account)/iu.test(
+      detail,
+    )
+  const invalidId =
+    /(?:invalid.{0,20}file[_ -]?(?:id|api)|file[_ -]?(?:id|api).{0,20}invalid)/iu.test(detail)
   return file && (missing || invalidId)
 }
 
@@ -252,30 +277,35 @@ function detailNamesFileId(detail: string, fileId: DeepSeekFileId): boolean {
   while (index >= 0) {
     const before = detail[index - 1]
     const after = detail[index + fileId.length]
-    if ((before === undefined || !/[\p{L}\p{N}_-]/u.test(before))
-      && (after === undefined || !/[\p{L}\p{N}_-]/u.test(after))) return true
+    if (
+      (before === undefined || !/[\p{L}\p{N}_-]/u.test(before)) &&
+      (after === undefined || !/[\p{L}\p{N}_-]/u.test(after))
+    )
+      return true
     index = detail.indexOf(fileId, index + 1)
   }
   return false
 }
 
-function staleMappings(
-  files: readonly UsedRequestFile[],
-  detail: string,
-): UsedRequestFile[] {
-  const unique = [...new Map(files.map(file => [`${file.version.variantId}\0${file.fileId}`, file])).values()]
+function staleMappings(files: readonly UsedRequestFile[], detail: string): UsedRequestFile[] {
+  const unique = [
+    ...new Map(files.map(file => [`${file.version.variantId}\0${file.fileId}`, file])).values(),
+  ]
   const exact = unique.filter(file => detailNamesFileId(detail, file.fileId))
   return exact.length > 0 ? exact : unique
 }
 
-function normalizedImageFacts(
-  file: { version: RequestImageAttachment; location: ImageWireLocation },
-): string {
+function normalizedImageFacts(file: {
+  version: RequestImageAttachment
+  location: ImageWireLocation
+}): string {
   const version = file.version
   const name = version.attachment.name ?? version.attachment.attachmentId
   const colour = version.hasAlpha ? 'sRGBA' : 'sRGB'
-  return `"${name}" at message ${file.location.message}, image ${file.location.image} `
-    + `(${version.mediaType}, 8-bit ${colour}, ${version.width}x${version.height})`
+  return (
+    `"${name}" at message ${file.location.message}, image ${file.location.image} ` +
+    `(${version.mediaType}, 8-bit ${colour}, ${version.width}x${version.height})`
+  )
 }
 
 function normalizedImageDiagnostic(
@@ -286,16 +316,24 @@ function normalizedImageDiagnostic(
   const exact = files.find(file => detailNamesFileId(providerDetail, file.fileId))
   const target = exact ?? (files.length === 1 ? files[0] : undefined)
   if (target !== undefined) {
-    return `DeepSeek rejected normalized image ${normalizedImageFacts(target)}: ${providerMessage}. `
-      + 'The provider rejected bytes already normalized by the harness; PNG, JPEG, WebP, and GIF remain supported input formats.'
+    return (
+      `DeepSeek rejected normalized image ${normalizedImageFacts(target)}: ${providerMessage}. ` +
+      'The provider rejected bytes already normalized by the harness; PNG, JPEG, WebP, and GIF remain supported input formats.'
+    )
   }
-  const candidates = [...new Map(files.map(file => [
-    `${file.version.variantId}\0${file.location.message}\0${file.location.image}`,
-    file,
-  ])).values()]
-  return `DeepSeek rejected a normalized request image: ${providerMessage}. Candidate images: `
-    + `${candidates.map(normalizedImageFacts).join('; ')}. `
-    + 'The provider rejected bytes already normalized by the harness; PNG, JPEG, WebP, and GIF remain supported input formats.'
+  const candidates = [
+    ...new Map(
+      files.map(file => [
+        `${file.version.variantId}\0${file.location.message}\0${file.location.image}`,
+        file,
+      ]),
+    ).values(),
+  ]
+  return (
+    `DeepSeek rejected a normalized request image: ${providerMessage}. Candidate images: ` +
+    `${candidates.map(normalizedImageFacts).join('; ')}. ` +
+    'The provider rejected bytes already normalized by the harness; PNG, JPEG, WebP, and GIF remain supported input formats.'
+  )
 }
 
 function modelInfo(provider: string, model: DeepSeekCatalogModel): LlmModelInfo {
@@ -303,7 +341,7 @@ function modelInfo(provider: string, model: DeepSeekCatalogModel): LlmModelInfo 
     provider,
     id: model.id,
     name: model.name ?? model.id,
-    ...model.description === undefined ? {} : { description: model.description },
+    ...(model.description === undefined ? {} : { description: model.description }),
     inputModalities: model.inputModalities ?? ['text'],
   }
 }
@@ -366,15 +404,18 @@ export class DeepSeekAdapter extends LlmAdapter {
     return this.config.options().retryPolicy
   }
 
-  override imageRequestPricing(_provider: string, model: string): ReturnType<LlmAdapter['imageRequestPricing']> {
+  override imageRequestPricing(
+    _provider: string,
+    model: string,
+  ): ReturnType<LlmAdapter['imageRequestPricing']> {
     // The same access resolution the serializer uses, so priced handle and
     // placeholder text matches what the request actually sends.
     const attachments = this.config.resolveAttachments?.()
-    const resolveAccess = attachments === undefined
-      ? undefined
-      : (ref: ImageAttachmentRef): ImageAttachmentAccess | undefined => (
-        this.config.resolveImageAccess?.(attachments, ref)
-      )
+    const resolveAccess =
+      attachments === undefined
+        ? undefined
+        : (ref: ImageAttachmentRef): ImageAttachmentAccess | undefined =>
+          this.config.resolveImageAccess?.(attachments, ref)
     return deepSeekImageRequestPricing(this.config.options(), model, resolveAccess)
   }
 
@@ -396,18 +437,17 @@ export class DeepSeekAdapter extends LlmAdapter {
     model: string,
   ): LlmResolvedModelInfo {
     const configured = connection.models.find(entry => entry.id === model)
-    const contextWindow = configured?.contextWindow
-      ?? connection.defaultContextWindow
+    const contextWindow = configured?.contextWindow ?? connection.defaultContextWindow
     return {
       // An uncatalogued endpoint is safely treated as text-only. Declaring an
       // unverified image capability would let the host persist input that the
       // endpoint may reject on every later turn.
-      ...configured === undefined
+      ...(configured === undefined
         ? { provider, id: model, name: model, inputModalities: ['text' as const] }
-        : modelInfo(provider, configured),
+        : modelInfo(provider, configured)),
       context: { contextWindow },
       defaultMaxTokens: configured?.maxTokens ?? connection.maxTokens,
-      ...connection.defaults.thinking === 'disabled'
+      ...(connection.defaults.thinking === 'disabled'
         ? {
           reasoning: {
             efforts: OFF_ONLY_REASONING_EFFORTS,
@@ -417,19 +457,24 @@ export class DeepSeekAdapter extends LlmAdapter {
         : {
           reasoning: {
             efforts: REASONING_EFFORTS,
-            defaultEffort: connection.defaults.reasoningEffort === 'off'
-              ? OFF_REASONING_EFFORT
-              : connection.defaults.reasoningEffort === 'low'
-                ? LOW_REASONING_EFFORT
-                : connection.defaults.reasoningEffort === 'max'
-                  ? MAX_REASONING_EFFORT
-                  : HIGH_REASONING_EFFORT,
+            defaultEffort:
+                connection.defaults.reasoningEffort === 'off'
+                  ? OFF_REASONING_EFFORT
+                  : connection.defaults.reasoningEffort === 'low'
+                    ? LOW_REASONING_EFFORT
+                    : connection.defaults.reasoningEffort === 'max'
+                      ? MAX_REASONING_EFFORT
+                      : HIGH_REASONING_EFFORT,
           },
-        },
+        }),
     }
   }
 
-  override prepareCall(provider: string, model: string, _signal?: AbortSignal): Promise<PreparedAdapterCall> {
+  override prepareCall(
+    provider: string,
+    model: string,
+    _signal?: AbortSignal,
+  ): Promise<PreparedAdapterCall> {
     const connection = this.config.options()
     return Promise.resolve({
       model: this.modelInfoFor(connection, provider, model),
@@ -441,7 +486,7 @@ export class DeepSeekAdapter extends LlmAdapter {
     return this.streamWithConnection(options, this.config.options())
   }
 
-  private async * streamWithConnection(
+  private async *streamWithConnection(
     options: GenerateOptions,
     connection: DeepSeekConnectionOptions,
   ): AsyncIterable<StreamChunk> {
@@ -471,10 +516,15 @@ export class DeepSeekAdapter extends LlmAdapter {
     const apiKey = await this.config.resolveApiKey(connection)
     const userId = this.config.resolveUserId()
     const consumer = new AbortController()
-    const upstream = options.signal === undefined
-      ? consumer.signal
-      : AbortSignal.any([options.signal, consumer.signal])
-    using watchdog = idleWatchdog(upstream, connection.streamIdleTimeoutMs, STREAM_IDLE_TIMEOUT_CODE)
+    const upstream =
+      options.signal === undefined
+        ? consumer.signal
+        : AbortSignal.any([options.signal, consumer.signal])
+    using watchdog = idleWatchdog(
+      upstream,
+      connection.streamIdleTimeoutMs,
+      STREAM_IDLE_TIMEOUT_CODE,
+    )
     const iterator = this.request(
       options,
       watchdog.signal,
@@ -482,7 +532,9 @@ export class DeepSeekAdapter extends LlmAdapter {
       apiKey,
       userId,
       attachments,
-      () => { watchdog.pulse() },
+      () => {
+        watchdog.pulse()
+      },
     )[Symbol.asyncIterator]()
     let exhausted = false
     try {
@@ -506,7 +558,9 @@ export class DeepSeekAdapter extends LlmAdapter {
         throw new LlmError('DeepSeek request aborted by caller', 'ABORTED', { cause: error })
       }
       if (error instanceof LlmError) throw error
-      throw new LlmError(`DeepSeek API stream from ${connection.baseURL} failed`, 'TRANSPORT', { cause: error })
+      throw new LlmError(`DeepSeek API stream from ${connection.baseURL} failed`, 'TRANSPORT', {
+        cause: error,
+      })
     } finally {
       consumer.abort('DeepSeek stream consumer stopped')
       if (!exhausted && iterator.return !== undefined) {
@@ -519,7 +573,7 @@ export class DeepSeekAdapter extends LlmAdapter {
     }
   }
 
-  private async * request(
+  private async *request(
     options: GenerateOptions,
     signal: AbortSignal,
     connection: DeepSeekConnectionOptions,
@@ -529,39 +583,46 @@ export class DeepSeekAdapter extends LlmAdapter {
     onActivity: () => void,
   ): AsyncIterable<StreamChunk> {
     const headers = {
-      'authorization': `Bearer ${apiKey}`,
+      authorization: `Bearer ${apiKey}`,
       'content-type': 'application/json',
-      'accept': 'text/event-stream',
+      accept: 'text/event-stream',
       ...attributionHeaders(),
       'x-deepseek-harness-user-id': String(userId),
-      ...options.sessionId !== undefined
+      ...(options.sessionId !== undefined
         ? { 'x-deepseek-harness-session-id': String(options.sessionId) }
-        : {},
-      ...options.purpose === 'compaction'
-        ? { 'x-deepseek-harness-compact': '1' }
-        : {},
+        : {}),
+      ...(options.purpose === 'compaction' ? { 'x-deepseek-harness-compact': '1' } : {}),
     }
 
     const fileConnection = { baseURL: connection.baseURL, apiKey }
     const model = connection.models.find(entry => entry.id === options.model)
     const policy = model === undefined ? undefined : resolveRequestImagePolicy(model)
-    const resolveImageAccess = attachments === undefined
-      ? undefined
-      : (ref: ImageAttachmentRef): ImageAttachmentAccess | undefined => this.config.resolveImageAccess?.(attachments, ref)
+    const resolveImageAccess =
+      attachments === undefined
+        ? undefined
+        : (ref: ImageAttachmentRef): ImageAttachmentAccess | undefined =>
+          this.config.resolveImageAccess?.(attachments, ref)
     const imageAccessOptions = resolveImageAccess === undefined ? {} : { resolveImageAccess }
-    const requestMessages = policy === undefined ? options.messages : offloadRequestImagesWithPolicy(options.messages, {
-      representation: 'raw',
-      maxBytes: connection.maxRequestFilesBytes,
-      maxImages: connection.maxImagesPerRequest,
-      byteQuantum: connection.imageOffloadByteQuantum,
-      countQuantum: connection.imageOffloadCountQuantum,
-      byteLength: ref => Math.min(ref.bytes, policy.maxBytes),
-      placeholder: ref => offloadedImageText(ref, resolveImageAccess?.(ref)),
-    })
-    const requestOptions = requestMessages === options.messages ? options : { ...options, messages: [...requestMessages] }
-    const requestImages = attachments === undefined || model === undefined
-      ? new Map<AttachmentId, RequestImageAttachment>()
-      : await prepareRequestImages(requestOptions, attachments, model, signal)
+    const requestMessages =
+      policy === undefined
+        ? options.messages
+        : offloadRequestImagesWithPolicy(options.messages, {
+          representation: 'raw',
+          maxBytes: connection.maxRequestFilesBytes,
+          maxImages: connection.maxImagesPerRequest,
+          byteQuantum: connection.imageOffloadByteQuantum,
+          countQuantum: connection.imageOffloadCountQuantum,
+          byteLength: ref => Math.min(ref.bytes, policy.maxBytes),
+          placeholder: ref => offloadedImageText(ref, resolveImageAccess?.(ref)),
+        })
+    const requestOptions =
+      requestMessages === options.messages
+        ? options
+        : { ...options, messages: [...requestMessages] }
+    const requestImages =
+      attachments === undefined || model === undefined
+        ? new Map<AttachmentId, RequestImageAttachment>()
+        : await prepareRequestImages(requestOptions, attachments, model, signal)
     let representation: 'file' | 'base64' = 'file'
     let fileAttempt = 0
     while (true) {
@@ -570,46 +631,58 @@ export class DeepSeekAdapter extends LlmAdapter {
       if (attachments === undefined) {
         body = serializeRequest(requestOptions, connection.defaults)
       } else if (representation === 'base64') {
-        body = await serializeRequestWithImages(requestOptions, {
-          representation: { kind: 'base64' },
-          requestImages,
-          ...imageAccessOptions,
-          maxRequestImageBytes: connection.maxInlineRequestImageBytes,
-          maxImagesPerRequest: connection.maxImagesPerRequest,
-          byteQuantum: connection.inlineImageOffloadByteQuantum,
-          countQuantum: connection.imageOffloadCountQuantum,
-        }, connection.defaults)
-      } else {
-        try {
-          body = await serializeRequestWithImages(requestOptions, {
-            representation: {
-              kind: 'file',
-              resolveFileId: async (version, _block, location) => {
-                using filesDeadline = deadline(signal, connection.filesApiTimeoutMs, FILES_API_TIMEOUT_CODE)
-                let resolved: Awaited<ReturnType<DeepSeekFileStore['ensureUploaded']>>
-                try {
-                  resolved = await this.files.ensureUploaded(
-                    version,
-                    fileConnection,
-                    connection.filePolicy,
-                    filesDeadline.signal,
-                  )
-                } catch (error: unknown) {
-                  if (signal.aborted) throw error
-                  throw new FileResolutionFailure(error)
-                }
-                onActivity()
-                usedFiles.push({ version, fileId: resolved.record.fileId, location })
-                return resolved.record.fileId
-              },
-            },
+        body = await serializeRequestWithImages(
+          requestOptions,
+          {
+            representation: { kind: 'base64' },
             requestImages,
             ...imageAccessOptions,
-            maxRequestImageBytes: connection.maxRequestFilesBytes,
+            maxRequestImageBytes: connection.maxInlineRequestImageBytes,
             maxImagesPerRequest: connection.maxImagesPerRequest,
-            byteQuantum: connection.imageOffloadByteQuantum,
+            byteQuantum: connection.inlineImageOffloadByteQuantum,
             countQuantum: connection.imageOffloadCountQuantum,
-          }, connection.defaults)
+          },
+          connection.defaults,
+        )
+      } else {
+        try {
+          body = await serializeRequestWithImages(
+            requestOptions,
+            {
+              representation: {
+                kind: 'file',
+                resolveFileId: async (version, _block, location) => {
+                  using filesDeadline = deadline(
+                    signal,
+                    connection.filesApiTimeoutMs,
+                    FILES_API_TIMEOUT_CODE,
+                  )
+                  let resolved: Awaited<ReturnType<DeepSeekFileStore['ensureUploaded']>>
+                  try {
+                    resolved = await this.files.ensureUploaded(
+                      version,
+                      fileConnection,
+                      connection.filePolicy,
+                      filesDeadline.signal,
+                    )
+                  } catch (error: unknown) {
+                    if (signal.aborted) throw error
+                    throw new FileResolutionFailure(error)
+                  }
+                  onActivity()
+                  usedFiles.push({ version, fileId: resolved.record.fileId, location })
+                  return resolved.record.fileId
+                },
+              },
+              requestImages,
+              ...imageAccessOptions,
+              maxRequestImageBytes: connection.maxRequestFilesBytes,
+              maxImagesPerRequest: connection.maxImagesPerRequest,
+              byteQuantum: connection.imageOffloadByteQuantum,
+              countQuantum: connection.imageOffloadCountQuantum,
+            },
+            connection.defaults,
+          )
         } catch (error: unknown) {
           if (!(error instanceof FileResolutionFailure)) throw error
           representation = 'base64'
@@ -621,15 +694,20 @@ export class DeepSeekAdapter extends LlmAdapter {
         extensions = await this.config.prepareExtensions({
           body: body as unknown as Readonly<Record<string, DeepSeekLlmApiJson>>,
           signal,
-          ...options.sessionId === undefined ? {} : { sessionId: String(options.sessionId) },
-          ...options.purpose === undefined ? {} : { purpose: options.purpose },
+          ...(options.sessionId === undefined ? {} : { sessionId: String(options.sessionId) }),
+          ...(options.purpose === undefined ? {} : { purpose: options.purpose }),
         })
       } catch (error) {
-        throw new LlmError('DeepSeek request extension preparation failed', 'REQUEST_EXTENSION', { cause: error })
+        throw new LlmError('DeepSeek request extension preparation failed', 'REQUEST_EXTENSION', {
+          cause: error,
+        })
       }
       for (const field of Object.keys(extensions.fields)) {
         if (Object.hasOwn(body, field)) {
-          throw new LlmError(`DeepSeek request extension field ${JSON.stringify(field)} collides with the base request`, 'REQUEST_EXTENSION')
+          throw new LlmError(
+            `DeepSeek request extension field ${JSON.stringify(field)} collides with the base request`,
+            'REQUEST_EXTENSION',
+          )
         }
       }
       // Prepared outside the try so the TRANSPORT label below covers exactly the
@@ -648,11 +726,9 @@ export class DeepSeekAdapter extends LlmAdapter {
         })
       } catch (error: unknown) {
         if (signal.aborted) throw error
-        throw new LlmError(
-          `DeepSeek API request to ${connection.baseURL} failed`,
-          'TRANSPORT',
-          { cause: error },
-        )
+        throw new LlmError(`DeepSeek API request to ${connection.baseURL} failed`, 'TRANSPORT', {
+          cause: error,
+        })
       }
 
       if (!response.ok) {
@@ -671,30 +747,40 @@ export class DeepSeekAdapter extends LlmAdapter {
           .join(' ')
         const staleFile = usedFiles.length > 0 && providerRejectedFileId(detail)
         if (staleFile) {
-          await Promise.all(staleMappings(usedFiles, detail).map(file => (
-            this.files.invalidate(file.version, file.fileId, fileConnection)
-          )))
+          await Promise.all(
+            staleMappings(usedFiles, detail).map(file =>
+              this.files.invalidate(file.version, file.fileId, fileConnection),
+            ),
+          )
           if (fileAttempt === 0) {
             fileAttempt += 1
             continue
           }
         }
-        if (response.status === 400 && usedFiles.length > 0 && providerRejectedNormalizedImage(detail)) {
+        if (
+          response.status === 400 &&
+          usedFiles.length > 0 &&
+          providerRejectedNormalizedImage(detail)
+        ) {
           message = normalizedImageDiagnostic(usedFiles, message, detail)
         }
         const delay = providerRetryAfterMs(response.headers.get('retry-after'))
         const id = requestId(response.headers)
         throw new LlmError(message, httpErrorCode(response.status, providerError), {
-          cause: new Error(rawResponse.length > 0 ? rawResponse : `DeepSeek HTTP ${response.status}`),
+          cause: new Error(
+            rawResponse.length > 0 ? rawResponse : `DeepSeek HTTP ${response.status}`,
+          ),
           status: response.status,
-          ...delay === undefined ? {} : { providerRetryAfterMs: delay },
-          ...id === undefined ? {} : { requestId: id },
+          ...(delay === undefined ? {} : { providerRetryAfterMs: delay }),
+          ...(id === undefined ? {} : { requestId: id }),
         })
       }
       try {
         await extensions.accept()
       } catch (error) {
-        throw new LlmError('DeepSeek request extension acceptance failed', 'REQUEST_EXTENSION', { cause: error })
+        throw new LlmError('DeepSeek request extension acceptance failed', 'REQUEST_EXTENSION', {
+          cause: error,
+        })
       }
       if (!response.body) {
         throw new LlmError('DeepSeek API returned no response body', 'EMPTY_RESPONSE')

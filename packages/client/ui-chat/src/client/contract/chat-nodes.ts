@@ -1,6 +1,12 @@
 import type {
-  AssistantBlock, AssistantMessageNode, CommandNode, CompactionSummaryNode,
-  ConversationLocation, ConversationViewNode, ModelRetryNode, RunningToolCall,
+  AssistantBlock,
+  AssistantMessageNode,
+  CommandNode,
+  CompactionSummaryNode,
+  ConversationLocation,
+  ConversationViewNode,
+  ModelRetryNode,
+  RunningToolCall,
   ToolCallBlock,
 } from '@deepseek-ai/dsh-client-ui-conversation/client'
 
@@ -35,6 +41,14 @@ export interface AssistantChatData {
   readonly time: number
   readonly usage?: unknown
   readonly finalNode?: AssistantMessageNode
+  /**
+   * Whether this attempt's durable stream ended at the model output ceiling, or
+   * `undefined` when its stream carries no finish record (an older or authored
+   * log). The turn-end truncation notice reads the turn's LAST settled attempt:
+   * `true` shows it, `false` hides it because a continuation finished the
+   * answer, and `undefined` defers to the turn's sticky recorded ending.
+   */
+  readonly truncated?: boolean
 }
 
 /** Settled or interrupted Assistant payload with its durable presentation node. */
@@ -115,7 +129,9 @@ export interface TurnProcessChatData {
  * @param block - Tool root lifecycle value.
  * @returns whether the root carries its final result.
  */
-export function isSettledTool(block: ToolCallBlock): block is Extract<ToolCallBlock, { kind: 'tool-result' }> {
+export function isSettledTool(
+  block: ToolCallBlock,
+): block is Extract<ToolCallBlock, { kind: 'tool-result' }> {
   return 'kind' in block
 }
 

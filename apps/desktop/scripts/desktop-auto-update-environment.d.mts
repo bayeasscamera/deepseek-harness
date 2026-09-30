@@ -56,10 +56,7 @@ export function desktopBuildRecordFilename(target: DesktopAutoUpdateTarget): str
  * @param platform - Target platform.
  * @returns Channel metadata filename emitted for the target.
  */
-export function desktopUpdateMetadataFilename(
-  version: string,
-  platform: NodeJS.Platform,
-): string
+export function desktopUpdateMetadataFilename(version: string, platform: NodeJS.Platform): string
 
 /**
  * Resolve the public updater URL for one release target.

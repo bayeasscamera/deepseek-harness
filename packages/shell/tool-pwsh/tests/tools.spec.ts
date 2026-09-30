@@ -22,11 +22,21 @@ import LocalJobRegistry from '@deepseek-ai/dsh-jobs-local'
 import * as ToolTasks from '@deepseek-ai/dsh-tool-jobs'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import { SESSION_FORMAT_VERSION, SessionId, SessionLogOffset, SessionSeq } from '@deepseek-ai/dsh-session'
+import {
+  SESSION_FORMAT_VERSION,
+  SessionId,
+  SessionLogOffset,
+  SessionSeq,
+} from '@deepseek-ai/dsh-session'
 import ApprovalService from '@deepseek-ai/dsh-user-approval'
 import type { ApprovalOutcome } from '@deepseek-ai/dsh-user-approval'
 import { ShellExecutor } from '@deepseek-ai/dsh-shell'
-import type { ShellExecRequest, ShellExecSpec, ShellProcess, ShellRunResult } from '@deepseek-ai/dsh-shell'
+import type {
+  ShellExecRequest,
+  ShellExecSpec,
+  ShellProcess,
+  ShellRunResult,
+} from '@deepseek-ai/dsh-shell'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import { turnBoundaryProjectionDefinition } from '@deepseek-ai/dsh-agent-loop'
 import SandboxPolicyService from '@deepseek-ai/dsh-sandbox-policy'
@@ -63,10 +73,10 @@ class FakeBash extends ShellExecutor {
       workdir: request.workdir ?? process.cwd(),
       timeoutMs: request.timeoutMs ?? 60_000,
       stdoutMaxBytes: request.stdoutMaxBytes ?? 64_000,
-      ...request.signal ? { signal: request.signal } : {},
-      ...request.stdin !== undefined ? { stdin: request.stdin } : {},
-      ...request.env !== undefined ? { env: request.env } : {},
-      ...request.dshEnv !== undefined ? { dshEnv: request.dshEnv } : {},
+      ...(request.signal ? { signal: request.signal } : {}),
+      ...(request.stdin !== undefined ? { stdin: request.stdin } : {}),
+      ...(request.env !== undefined ? { env: request.env } : {}),
+      ...(request.dshEnv !== undefined ? { dshEnv: request.dshEnv } : {}),
       sandboxPolicy: request.sandboxPolicy,
     }
   }
@@ -117,7 +127,9 @@ function fakeProcess(delta = 'bg-ok\n'): ShellProcess {
 /** A running background handle whose kill() settles it as killed (like a real job_kill). */
 function killableProcess(): ShellProcess {
   let resolveDone: () => void = () => {}
-  const done = new Promise<void>((resolve) => { resolveDone = resolve })
+  const done = new Promise<void>((resolve) => {
+    resolveDone = resolve
+  })
   const proc: ShellProcess = {
     status: 'running',
     exitCode: null,
@@ -184,8 +196,8 @@ class ConfiningFakeBash extends ShellExecutor {
       workdir: request.workdir ?? process.cwd(),
       timeoutMs: request.timeoutMs ?? 60_000,
       stdoutMaxBytes: request.stdoutMaxBytes ?? 64_000,
-      ...request.signal ? { signal: request.signal } : {},
-      ...request.dshEnv !== undefined ? { dshEnv: request.dshEnv } : {},
+      ...(request.signal ? { signal: request.signal } : {}),
+      ...(request.dshEnv !== undefined ? { dshEnv: request.dshEnv } : {}),
       sandboxPolicy: request.sandboxPolicy,
     }
   }
@@ -196,9 +208,9 @@ class ConfiningFakeBash extends ShellExecutor {
       sandbox: {
         mode: spec.sandboxPolicy?.mode ?? 'read-only',
         denied: false,
-        ...spec.command === 'without optional sandbox facts'
+        ...(spec.command === 'without optional sandbox facts'
           ? {}
-          : { enforcement: 'full' as const, runnerFailed: false },
+          : { enforcement: 'full' as const, runnerFailed: false }),
       },
     })
   }
@@ -247,22 +259,22 @@ function sandboxAgent(
     seq: ReturnType<typeof SessionSeq>
     time: number
     data: Record<string, unknown>
-  }> = [
-    { type: 'turn/start', seq: SessionSeq(0), time: 0, data: { turn: 1 } },
-  ]
+  }> = [{ type: 'turn/start', seq: SessionSeq(0), time: 0, data: { turn: 1 } }]
   if (mode !== undefined) {
     events.push({ type: 'sandbox/mode', seq: SessionSeq(1), time: 1, data: { mode } })
   }
   const id = SessionId('sandbox-session')
   return {
     id,
-    ...ctx === undefined ? {} : { ctx: ctx.plugin(() => {}).ctx },
+    ...(ctx === undefined ? {} : { ctx: ctx.plugin(() => {}).ctx }),
     session: {
       id,
       header: { version: SESSION_FORMAT_VERSION, id, createdAt: 0, isSeeded: false },
       inheritedEventCount: SessionLogOffset(0),
       firstLiveSeq: SessionLogOffset(0),
-      get seq() { return SessionLogOffset(events.length) },
+      get seq() {
+        return SessionLogOffset(events.length)
+      },
       eventAt: (seq: ReturnType<typeof SessionSeq>) => events[seq],
       snapshotEvents: (
         fromSeq = SessionLogOffset(0),
@@ -316,12 +328,15 @@ function call(ctx: Context, name: string, args: unknown, agent?: Agent) {
     callId: ToolCallId(`call-${++callCounter}`),
     name,
     arguments: args,
-    ...agent ? { agent } : {},
+    ...(agent ? { agent } : {}),
   })
 }
 
 function text(result: { content: { type: string; text?: string }[] }): string {
-  return result.content.filter(b => b.type === 'text').map(b => b.text).join('')
+  return result.content
+    .filter(b => b.type === 'text')
+    .map(b => b.text)
+    .join('')
 }
 
 async function callUntilText(
@@ -338,7 +353,9 @@ async function callUntilText(
     if (text(last).includes(expected)) return last
     await new Promise(resolve => setTimeout(resolve, 20))
   }
-  throw new Error(`tool output did not include ${JSON.stringify(expected)}; last text ${JSON.stringify(last === undefined ? '' : text(last))}`)
+  throw new Error(
+    `tool output did not include ${JSON.stringify(expected)}; last text ${JSON.stringify(last === undefined ? '' : text(last))}`,
+  )
 }
 
 describe('registration', () => {
@@ -384,10 +401,17 @@ describe('registration', () => {
 describe('argument validation', () => {
   it('rejects a blank command or description and a non-positive timeoutMs', async () => {
     const { ctx } = await setup()
-    expect(text(await call(ctx, 'pwsh', { command: '  ', description: 'd' }))).toContain('expected a non-empty string')
-    expect(text(await call(ctx, 'pwsh', { command: 'Write-Output hi', description: ' ' }))).toContain('expected a non-empty string')
-    expect(text(await call(ctx, 'pwsh', { command: 'Write-Output hi', description: 'd', timeoutMs: -1 })))
-      .toContain('invalid timeoutMs: expected a positive number')
+    expect(text(await call(ctx, 'pwsh', { command: '  ', description: 'd' }))).toContain(
+      'expected a non-empty string',
+    )
+    expect(
+      text(await call(ctx, 'pwsh', { command: 'Write-Output hi', description: ' ' })),
+    ).toContain('expected a non-empty string')
+    expect(
+      text(
+        await call(ctx, 'pwsh', { command: 'Write-Output hi', description: 'd', timeoutMs: -1 }),
+      ),
+    ).toContain('invalid timeoutMs: expected a positive number')
   })
 })
 
@@ -399,11 +423,16 @@ describe('execution through the bash seam', () => {
     bash.handler = () => runResult('hi\n')
     const agent = registerFakeAgent(ctx, 'session-1')
     Object.assign(agent.session.header, { cwd: '/sessions/s1' })
-    const result = await call(ctx, 'pwsh', {
-      command: 'Write-Output hi',
-      description: 'say hi',
-      timeoutMs: 1234,
-    }, agent)
+    const result = await call(
+      ctx,
+      'pwsh',
+      {
+        command: 'Write-Output hi',
+        description: 'say hi',
+        timeoutMs: 1234,
+      },
+      agent,
+    )
     expect(result.isError).toBe(false)
     const request = bash.requests[0]
     expect(request?.command).toBe('Write-Output hi')
@@ -424,7 +453,12 @@ describe('execution through the bash seam', () => {
     Object.assign(agent.session.header, { cwd: '/sessions/s1' })
     await call(ctx, 'pwsh', { command: 'pwd', description: 'cwd', workdir: 'sub/dir' }, agent)
     expect(bash.requests[0]?.workdir).toBe(resolvePath('/sessions/s1', 'sub/dir'))
-    await call(ctx, 'pwsh', { command: 'pwd', description: 'cwd', workdir: resolvePath('/abs/path') }, agent)
+    await call(
+      ctx,
+      'pwsh',
+      { command: 'pwd', description: 'cwd', workdir: resolvePath('/abs/path') },
+      agent,
+    )
     expect(bash.requests[1]?.workdir).toBe(resolvePath('/abs/path'))
   })
 
@@ -455,11 +489,12 @@ describe('execution through the bash seam', () => {
 
   it('projects the canonical foreground result with stdout, stderr, and exit facts', async () => {
     const { ctx, bash } = await setup()
-    bash.handler = () => runResult('out\n', {
-      exitCode: 2,
-      stderr: { text: 'err\n', truncated: false },
-      timeoutMs: 5000,
-    })
+    bash.handler = () =>
+      runResult('out\n', {
+        exitCode: 2,
+        stderr: { text: 'err\n', truncated: false },
+        timeoutMs: 5000,
+      })
     const result = await call(ctx, 'pwsh', { command: 'failing', description: 'fail' })
     expect(result.isError).toBe(false)
     if (result.isError) throw new Error('expected pwsh success')
@@ -483,40 +518,47 @@ describe('execution through the bash seam', () => {
     expect(text(clean)).toBe('hi\n')
 
     bash.handler = () => runResult('')
-    const empty = await call(ctx, 'pwsh', { command: 'Write-Output -NoNewline ""', description: 'nothing' })
+    const empty = await call(ctx, 'pwsh', {
+      command: 'Write-Output -NoNewline ""',
+      description: 'nothing',
+    })
     expect(text(empty)).toBe('(no output)')
   })
 
   it('renders stderr-only output without a stdout prefix', async () => {
     const { ctx, bash } = await setup()
-    bash.handler = () => runResult('', {
-      stderr: { text: 'err\n', truncated: false },
-      exitCode: 1,
-    })
+    bash.handler = () =>
+      runResult('', {
+        stderr: { text: 'err\n', truncated: false },
+        exitCode: 1,
+      })
     const result = await call(ctx, 'pwsh', { command: 'fail', description: 'fail' })
     expect(text(result)).toBe('[stderr]\nerr\n[exit code: 1]')
   })
 
   it('inserts the separating newline before the stderr section when stdout lacks one', async () => {
     const { ctx, bash } = await setup()
-    bash.handler = () => runResult('out', {
-      stderr: { text: 'err\n', truncated: false },
-      exitCode: 1,
-    })
+    bash.handler = () =>
+      runResult('out', {
+        stderr: { text: 'err\n', truncated: false },
+        exitCode: 1,
+      })
     const result = await call(ctx, 'pwsh', { command: 'fail', description: 'fail' })
     expect(text(result)).toBe('out\n[stderr]\nerr\n[exit code: 1]')
   })
 
   it('renders the truncation notice with the spill path, then markers', async () => {
     const { ctx, bash } = await setup()
-    bash.handler = () => runResult('tail', {
-      stdout: { text: 'tail', truncated: true, spillPath: '/spill/out.log' },
-      stderr: { text: '', truncated: false },
-    })
+    bash.handler = () =>
+      runResult('tail', {
+        stdout: { text: 'tail', truncated: true, spillPath: '/spill/out.log' },
+        stderr: { text: '', truncated: false },
+      })
     const result = await call(ctx, 'pwsh', { command: 'noisy', description: 'noise' })
     expect(text(result)).toBe('tail\n[output truncated; full output: /spill/out.log]')
 
-    bash.handler = () => runResult('', { timedOut: true, exitCode: null, signal: 'SIGTERM', timeoutMs: 500 })
+    bash.handler = () =>
+      runResult('', { timedOut: true, exitCode: null, signal: 'SIGTERM', timeoutMs: 500 })
     const timedOut = await call(ctx, 'pwsh', { command: 'slow', description: 'slow' })
     // A timeout kill carries both facts, mirroring the bash tool's markers.
     expect(text(timedOut)).toBe('(no output)\n[timed out after 500ms]\n[killed by signal: SIGTERM]')
@@ -524,10 +566,11 @@ describe('execution through the bash seam', () => {
 
   it('renders the truncation notice with (unavailable) when no spill path exists', async () => {
     const { ctx, bash } = await setup()
-    bash.handler = () => runResult('tail', {
-      stdout: { text: 'tail', truncated: true },
-      stderr: { text: '', truncated: false },
-    })
+    bash.handler = () =>
+      runResult('tail', {
+        stdout: { text: 'tail', truncated: true },
+        stderr: { text: '', truncated: false },
+      })
     const result = await call(ctx, 'pwsh', { command: 'noisy', description: 'noise' })
     expect(text(result)).toBe('tail\n[output truncated; full output: (unavailable)]')
   })
@@ -535,20 +578,28 @@ describe('execution through the bash seam', () => {
   it('translates an aborted run into the TOOL_ABORTED HarnessError', async () => {
     const { ctx, bash } = await setup()
     bash.handler = () => runResult('', { aborted: true, exitCode: null, signal: 'SIGTERM' })
-    const result = await call(ctx, 'pwsh', { command: 'Start-Sleep -Seconds 60', description: 'sleep' })
+    const result = await call(ctx, 'pwsh', {
+      command: 'Start-Sleep -Seconds 60',
+      description: 'sleep',
+    })
     expect(result.isError).toBe(true)
     expect(result.error).toMatchObject({ info: { name: 'AbortError', code: TOOL_ABORTED } })
   })
 })
 
 describe('per-call sandbox policy resolution', () => {
-  it('stamps the CALLING SESSION\'s resolved policy onto the request (session cwd, not the server launch dir)', async () => {
+  it("stamps the CALLING SESSION's resolved policy onto the request (session cwd, not the server launch dir)", async () => {
     const { ctx, bash } = await setupSandboxed()
     const sessionCwd = mkdtempSync(join(tmpdir(), 'dsh-tool-pwsh-policy-'))
     tempDirs.push(sessionCwd)
     const agent = registerFakeAgent(ctx, 'policy-session')
     Object.assign(agent.session.header, { cwd: sessionCwd })
-    const result = await call(ctx, 'pwsh', { command: 'Write-Output hi', description: 'say hi' }, agent)
+    const result = await call(
+      ctx,
+      'pwsh',
+      { command: 'Write-Output hi', description: 'say hi' },
+      agent,
+    )
     expect(result.isError).toBe(false)
     // The policy's workspace root is the session cwd canonicalized by the
     // policy service (realpath + resolve), NEVER the web server's launch dir;
@@ -600,7 +651,10 @@ describe('sandbox escalation through ctx.approval', () => {
     const { ctx } = await setupSandboxed()
     const schema = ctx.tools.schemas().find(item => item.name === 'pwsh')!
     const properties = schema.parameters.properties as Record<string, { enum?: string[] }>
-    expect(properties['sandbox_permissions']?.enum).toEqual(['workspace-write', 'danger-full-access'])
+    expect(properties['sandbox_permissions']?.enum).toEqual([
+      'workspace-write',
+      'danger-full-access',
+    ])
     expect(schema.description).toContain('approval prompt')
     expect(schema.description).toContain('ConstrainedLanguage')
     expect(schema.description).toContain('workspace-write stays in FullLanguage')
@@ -610,7 +664,12 @@ describe('sandbox escalation through ctx.approval', () => {
     for (const args of [
       { command: 'Write-Output ok', description: 'd', sandbox_permissions: 'workspace-write' },
       { command: 'Write-Output ok', description: 'd', justification: 'why' },
-      { command: 'Write-Output ok', description: 'd', sandbox_permissions: 'workspace-write', justification: ' ' },
+      {
+        command: 'Write-Output ok',
+        description: 'd',
+        sandbox_permissions: 'workspace-write',
+        justification: ' ',
+      },
     ]) {
       expect((await call(ctx, 'pwsh', args)).isError).toBe(true)
     }
@@ -627,30 +686,46 @@ describe('sandbox escalation through ctx.approval', () => {
 
   it('rejects injected escalation without a sandbox and non-widening escalation without prompting', async () => {
     const plain = await setup()
-    expect(text(await call(plain.ctx, 'pwsh', escalate))).toContain('not available in this composition')
+    expect(text(await call(plain.ctx, 'pwsh', escalate))).toContain(
+      'not available in this composition',
+    )
 
     const { ctx } = await setupSandboxed(true)
     const prompted = vi.fn()
-    ctx.on('approval/request', () => { prompted(); return Promise.resolve<ApprovalOutcome>('allowed-once') })
-    const result = await call(ctx, 'pwsh', { ...escalate, sandbox_permissions: 'workspace-write' }, sandboxAgent('workspace-write'))
+    ctx.on('approval/request', () => {
+      prompted()
+      return Promise.resolve<ApprovalOutcome>('allowed-once')
+    })
+    const result = await call(
+      ctx,
+      'pwsh',
+      { ...escalate, sandbox_permissions: 'workspace-write' },
+      sandboxAgent('workspace-write'),
+    )
     expect(text(result)).toContain('not strictly wider')
     expect(prompted).not.toHaveBeenCalled()
 
     const malformed = sandboxAgent()
-    ;(malformed.session.append as unknown as (
-      type: string,
-      data: Record<string, unknown>,
-    ) => unknown)('sandbox/mode', { mode: 'unknown-mode' })
+    ;(
+      malformed.session.append as unknown as (
+        type: string,
+        data: Record<string, unknown>,
+      ) => unknown
+    )('sandbox/mode', { mode: 'unknown-mode' })
     expect(text(await call(ctx, 'pwsh', escalate, malformed))).toContain('not strictly wider')
   })
 
   it('fails closed when approval cannot be routed', async () => {
     const withoutService = await setupSandboxed()
-    expect(text(await call(withoutService.ctx, 'pwsh', escalate, sandboxAgent()))).toContain('no approval service')
+    expect(text(await call(withoutService.ctx, 'pwsh', escalate, sandboxAgent()))).toContain(
+      'no approval service',
+    )
 
     const withService = await setupSandboxed(true)
     expect(text(await call(withService.ctx, 'pwsh', escalate))).toContain('no agent to route')
-    expect(text(await call(withService.ctx, 'pwsh', escalate, sandboxAgent()))).toContain('no approval channel')
+    expect(text(await call(withService.ctx, 'pwsh', escalate, sandboxAgent()))).toContain(
+      'no approval channel',
+    )
   })
 
   it.each([
@@ -743,7 +818,11 @@ describe('sandbox escalation through ctx.approval', () => {
 describe('background execution through the job runtime', () => {
   it('run_in_background acks with the job id, readable through the REAL job_output tool', async () => {
     const { ctx } = await setupWithTasks()
-    const started = await call(ctx, 'pwsh', { command: 'Write-Output bg-ok', description: 'test command', run_in_background: true })
+    const started = await call(ctx, 'pwsh', {
+      command: 'Write-Output bg-ok',
+      description: 'test command',
+      run_in_background: true,
+    })
     expect(started.isError).toBe(false)
     if (started.isError) throw new Error('expected background pwsh success')
     expect(started.value).toEqual({ kind: 'background', jobId: 'pwsh-1' })
@@ -752,14 +831,23 @@ describe('background execution through the job runtime', () => {
     const read = await callUntilText(ctx, 'job_output', { job_id: 'pwsh-1' }, 'bg-ok')
     expect(text(read)).toContain('bg-ok')
     // A later read reports the terminal outcome in the generic status line.
-    const final = await callUntilText(ctx, 'job_output', { job_id: 'pwsh-1' }, '[status: completed, exit code: 0]')
+    const final = await callUntilText(
+      ctx,
+      'job_output',
+      { job_id: 'pwsh-1' },
+      '[status: completed, exit code: 0]',
+    )
     expect(final.isError).toBe(false)
   })
 
   it('a running background job is killable through the REAL job_kill tool', async () => {
     const { ctx, bash } = await setupWithTasks()
     bash.backgroundHandler = () => killableProcess()
-    await call(ctx, 'pwsh', { command: 'Start-Sleep -Seconds 60', description: 'test command', run_in_background: true })
+    await call(ctx, 'pwsh', {
+      command: 'Start-Sleep -Seconds 60',
+      description: 'test command',
+      run_in_background: true,
+    })
 
     const killed = await call(ctx, 'job_kill', { job_id: 'pwsh-1' })
     expect(text(killed)).toBe('requested cancellation of job pwsh-1')
@@ -772,7 +860,12 @@ describe('background execution through the job runtime', () => {
   it('a background job started by an agent is registered with that agent as owner', async () => {
     const { ctx } = await setupWithTasks()
     const agent = registerFakeAgent(ctx, 'sess-owner')
-    const started = await call(ctx, 'pwsh', { command: 'Start-Sleep -Seconds 60', description: 'test command', run_in_background: true }, agent)
+    const started = await call(
+      ctx,
+      'pwsh',
+      { command: 'Start-Sleep -Seconds 60', description: 'test command', run_in_background: true },
+      agent,
+    )
     expect(text(started)).toBe('started background job pwsh-1')
 
     const anon = await call(ctx, 'job_output', { job_id: 'pwsh-1' })
@@ -786,9 +879,15 @@ describe('background execution through the job runtime', () => {
 
   it('fails loud when the job runtime is not loaded', async () => {
     const { ctx } = await setup() // no LocalJobRegistry / ToolTasks
-    const result = await call(ctx, 'pwsh', { command: 'Start-Sleep -Seconds 60', description: 'test command', run_in_background: true })
+    const result = await call(ctx, 'pwsh', {
+      command: 'Start-Sleep -Seconds 60',
+      description: 'test command',
+      run_in_background: true,
+    })
     expect(result.isError).toBe(true)
-    expect(text(result)).toContain('background jobs unavailable: load @deepseek-ai/dsh-jobs and @deepseek-ai/dsh-tool-jobs')
+    expect(text(result)).toContain(
+      'background jobs unavailable: load @deepseek-ai/dsh-jobs and @deepseek-ai/dsh-tool-jobs',
+    )
   })
 
   it('a pre-aborted call is skipped before the process starts', async () => {
@@ -798,7 +897,11 @@ describe('background execution through the job runtime', () => {
     const result = await ctx.tools.execute({
       callId: ToolCallId('call-pre-aborted'),
       name: 'pwsh',
-      arguments: { command: 'Start-Sleep -Seconds 60', description: 'test command', run_in_background: true },
+      arguments: {
+        command: 'Start-Sleep -Seconds 60',
+        description: 'test command',
+        run_in_background: true,
+      },
       signal: controller.signal,
     })
     expect(result.isError).toBe(true)
@@ -820,7 +923,11 @@ describe('background execution through the job runtime', () => {
     await ctx.plugin(ToolPwsh)
     const bash = ctx.shell as FakeBash
 
-    const result = await call(ctx, 'pwsh', { command: 'Start-Sleep -Seconds 60', description: 'test command', run_in_background: true })
+    const result = await call(ctx, 'pwsh', {
+      command: 'Start-Sleep -Seconds 60',
+      description: 'test command',
+      run_in_background: true,
+    })
     expect(result.isError).toBe(true)
     expect(text(result)).toContain('no job controller serves this agent')
     // Declare-then-execute: the failed preflight means no process ever ran.
@@ -830,16 +937,27 @@ describe('background execution through the job runtime', () => {
   it('enableRunInBackground: false removes the parameter and flips the description', async () => {
     const { ctx } = await setup({ enableRunInBackground: false })
     const schema = ctx.tools.schemas().find(s => s.name === 'pwsh')!
-    expect(Object.keys(schema.parameters.properties as Record<string, unknown>))
-      .toEqual(['command', 'description', 'timeoutMs', 'workdir'])
+    expect(Object.keys(schema.parameters.properties as Record<string, unknown>)).toEqual([
+      'command',
+      'description',
+      'timeoutMs',
+      'workdir',
+    ])
     expect(schema.description).toContain('Background execution is not available')
     expect(schema.description).not.toContain('run_in_background')
 
     // Schema omission is advertising; execution must also enforce the opt-out.
-    const forced = await call(ctx, 'pwsh', { command: 'Write-Output hi', description: 'test command', run_in_background: true })
+    const forced = await call(ctx, 'pwsh', {
+      command: 'Write-Output hi',
+      description: 'test command',
+      run_in_background: true,
+    })
     expect(forced.isError).toBe(true)
     expect(text(forced)).toContain('run_in_background is disabled for this deployment')
-    const foreground = await call(ctx, 'pwsh', { command: 'Write-Output hi', description: 'test command' })
+    const foreground = await call(ctx, 'pwsh', {
+      command: 'Write-Output hi',
+      description: 'test command',
+    })
     expect(foreground.isError).toBe(false)
   })
 
@@ -874,20 +992,28 @@ describe('UI presentation', () => {
   it('the pending call view is a terminal card carrying command, description, and optional cwd', async () => {
     const { ctx } = await setup()
     const definition = ctx.tools.get('pwsh')
-    expect(definition?.presentCall?.({ command: 'Get-Process', description: 'List processes' }))
-      .toEqual({ card: 'terminal', title: 'Get-Process', description: 'List processes' })
-    expect(definition?.presentCall?.({ command: 'Get-Process', description: 'List processes', workdir: 'C:\\work' }))
-      .toMatchObject({ cwd: 'C:\\work' })
+    expect(
+      definition?.presentCall?.({ command: 'Get-Process', description: 'List processes' }),
+    ).toEqual({ card: 'terminal', title: 'Get-Process', description: 'List processes' })
+    expect(
+      definition?.presentCall?.({
+        command: 'Get-Process',
+        description: 'List processes',
+        workdir: 'C:\\work',
+      }),
+    ).toMatchObject({ cwd: 'C:\\work' })
   })
 
   it('a background pending call renders the generic card like the bash tool', async () => {
     const { ctx } = await setup()
     const definition = ctx.tools.get('pwsh')
-    expect(definition?.presentCall?.({
-      command: 'Start-Sleep -Seconds 60',
-      description: 'long wait',
-      run_in_background: true,
-    })).toEqual({
+    expect(
+      definition?.presentCall?.({
+        command: 'Start-Sleep -Seconds 60',
+        description: 'long wait',
+        run_in_background: true,
+      }),
+    ).toEqual({
       card: 'generic',
       title: 'Start-Sleep -Seconds 60',
       kind: 'execute',
@@ -900,19 +1026,29 @@ describe('UI presentation', () => {
     const { ctx } = await setup()
     const present = ctx.tools.get('pwsh')
     const args = { command: 'x', description: 'x' }
-    expect(present?.presentResult?.(args, { content: [{ type: 'text', text: 'oops\n[exit code: 3]' }], isError: false }))
-      .toEqual({ card: 'terminal', output: 'oops', exitCode: 3 })
-    expect(present?.presentResult?.(args, { content: [{ type: 'text', text: 'gone\n[killed by signal: SIGKILL]' }], isError: false }))
-      .toEqual({ card: 'terminal', output: 'gone', signal: 'SIGKILL' })
+    expect(
+      present?.presentResult?.(args, {
+        content: [{ type: 'text', text: 'oops\n[exit code: 3]' }],
+        isError: false,
+      }),
+    ).toEqual({ card: 'terminal', output: 'oops', exitCode: 3 })
+    expect(
+      present?.presentResult?.(args, {
+        content: [{ type: 'text', text: 'gone\n[killed by signal: SIGKILL]' }],
+        isError: false,
+      }),
+    ).toEqual({ card: 'terminal', output: 'gone', signal: 'SIGKILL' })
   })
 
   it('presentResult: markers a pill CANNOT show (timeout) stay in the terminal output', async () => {
     const { ctx } = await setup()
     const args = { command: 'x', description: 'x' }
-    expect(ctx.tools.get('pwsh')?.presentResult?.(
-      args,
-      { content: [{ type: 'text', text: 'slow\n[timed out after 100ms]\n[exit code: 143]' }], isError: false },
-    )).toEqual({ card: 'terminal', output: 'slow\n[timed out after 100ms]', exitCode: 143 })
+    expect(
+      ctx.tools.get('pwsh')?.presentResult?.(args, {
+        content: [{ type: 'text', text: 'slow\n[timed out after 100ms]\n[exit code: 143]' }],
+        isError: false,
+      }),
+    ).toEqual({ card: 'terminal', output: 'slow\n[timed out after 100ms]', exitCode: 143 })
   })
 
   it('presentResult exit parse is the inverse of renderPwshResult markers (round-trip)', async () => {
@@ -927,15 +1063,25 @@ describe('UI presentation', () => {
     const cases = [
       { result: { ...base, exitCode: 0, signal: null, timedOut: false }, expect: { exitCode: 0 } },
       { result: { ...base, exitCode: 7, signal: null, timedOut: false }, expect: { exitCode: 7 } },
-      { result: { ...base, exitCode: null, signal: 'SIGTERM' as const, timedOut: false }, expect: { signal: 'SIGTERM' } },
+      {
+        result: { ...base, exitCode: null, signal: 'SIGTERM' as const, timedOut: false },
+        expect: { signal: 'SIGTERM' },
+      },
       // A trapped-timeout run that exits 0 has no signal/exit marker → reads as exit 0 (it did exit 0).
       { result: { ...base, exitCode: 0, signal: null, timedOut: true }, expect: { exitCode: 0 } },
     ]
     for (const c of cases) {
       const rendered = renderPwshResult(c.result)
-      const out = present.presentResult!({ command: 'x', description: 'x' }, { content: [{ type: 'text', text: rendered }], isError: false })
+      const out = present.presentResult!(
+        { command: 'x', description: 'x' },
+        { content: [{ type: 'text', text: rendered }], isError: false },
+      )
       // Drop card + output; the remaining fields are the parsed exit.
-      const { card: _c, output, ...exit } = out as { card: string; output?: string; exitCode?: number; signal?: string }
+      const {
+        card: _c,
+        output,
+        ...exit
+      } = out as { card: string; output?: string; exitCode?: number; signal?: string }
       expect(exit).toEqual(c.expect)
       // Whatever the parse consumed is gone from the body, so a card with an
       // exit pill never shows the same status twice.
@@ -948,10 +1094,16 @@ describe('UI presentation', () => {
     const args = { command: 'Write-Output "[exit code: 5]"', description: 'print' }
     // A successful command may print marker-like text. A clean result appends no marker or
     // newline; parsing requires the leading newline emitted for real markers, so this stays exit 0.
-    const out = ctx.tools.get('pwsh')!.presentResult!(args, { content: [{ type: 'text', text: '[exit code: 5]' }], isError: false })
+    const out = ctx.tools.get('pwsh')!.presentResult!(args, {
+      content: [{ type: 'text', text: '[exit code: 5]' }],
+      isError: false,
+    })
     expect(out).toEqual({ card: 'terminal', output: '[exit code: 5]', exitCode: 0 })
     // Same for a fake signal marker with no leading newline.
-    const sig = ctx.tools.get('pwsh')!.presentResult!(args, { content: [{ type: 'text', text: '[killed by signal: SIGKILL]' }], isError: false })
+    const sig = ctx.tools.get('pwsh')!.presentResult!(args, {
+      content: [{ type: 'text', text: '[killed by signal: SIGKILL]' }],
+      isError: false,
+    })
     expect(sig).toEqual({ card: 'terminal', output: '[killed by signal: SIGKILL]', exitCode: 0 })
   })
 
@@ -961,7 +1113,10 @@ describe('UI presentation', () => {
       { command: 'Start-Sleep -Seconds 60', description: 'long wait', run_in_background: true },
       { content: [{ type: 'text', text: 'started background job pwsh-1' }], isError: false },
     )
-    expect(result).toEqual({ card: 'generic', content: [{ type: 'text', text: '```console\nstarted background job pwsh-1\n```' }] })
+    expect(result).toEqual({
+      card: 'generic',
+      content: [{ type: 'text', text: '```console\nstarted background job pwsh-1\n```' }],
+    })
   })
 
   it('presentResult: an isError result is a generic card (no real process exit to report)', async () => {
@@ -970,14 +1125,23 @@ describe('UI presentation', () => {
       { command: 'x', description: 'x' },
       { content: [{ type: 'text', text: 'tool call aborted' }], isError: true },
     )
-    expect(out).toEqual({ card: 'generic', content: [{ type: 'text', text: '```console\ntool call aborted\n```' }] })
+    expect(out).toEqual({
+      card: 'generic',
+      content: [{ type: 'text', text: '```console\ntool call aborted\n```' }],
+    })
   })
 
   it('presentResult falls back to undefined for multi-block or non-text content', async () => {
     const { ctx } = await setup()
     const definition = ctx.tools.get('pwsh')
     const args = { command: 'Write-Output hi', description: 'say hi' }
-    const multi = { content: [{ type: 'text' as const, text: 'a' }, { type: 'text' as const, text: 'b' }], isError: false }
+    const multi = {
+      content: [
+        { type: 'text' as const, text: 'a' },
+        { type: 'text' as const, text: 'b' },
+      ],
+      isError: false,
+    }
     expect(definition?.presentResult?.(args, multi as never)).toBeUndefined()
     const image = { content: [{ type: 'image' as const, text: 'a' }], isError: false }
     expect(definition?.presentResult?.(args, image as never)).toBeUndefined()
@@ -995,21 +1159,24 @@ describe('renderPwshResult sandbox markers', () => {
   }
 
   it('a denied run reports the denial marker before the exit marker', () => {
-    expect(renderPwshResult({ ...base, exitCode: 2, sandbox: { mode: 'read-only', denied: true } }))
-      .toBe('out\n[sandbox: file access denied under read-only mode]\n[exit code: 2]')
+    expect(
+      renderPwshResult({ ...base, exitCode: 2, sandbox: { mode: 'read-only', denied: true } }),
+    ).toBe('out\n[sandbox: file access denied under read-only mode]\n[exit code: 2]')
   })
 
   it('hints only when the composition advertises escalation', () => {
     const denied = { ...base, sandbox: { mode: 'read-only' as const, denied: true } }
     expect(renderPwshResult(denied, ['workspace-write'])).toBe(
-      'out\n[sandbox: file access denied under read-only mode]\n'
-      + '[sandbox: escalation available — retry this exact command once with sandbox_permissions '
-      + '(the narrowest wider mode that suffices) + justification; the approval prompt asks the user]',
+      'out\n[sandbox: file access denied under read-only mode]\n' +
+        '[sandbox: escalation available — retry this exact command once with sandbox_permissions ' +
+        '(the narrowest wider mode that suffices) + justification; the approval prompt asks the user]',
     )
   })
 
   it('a confined run without a denial adds no sandbox marker', () => {
-    expect(renderPwshResult({ ...base, sandbox: { mode: 'read-only', denied: false } })).toBe('out\n')
+    expect(renderPwshResult({ ...base, sandbox: { mode: 'read-only', denied: false } })).toBe(
+      'out\n',
+    )
   })
 })
 
@@ -1022,46 +1189,66 @@ describe('renderPwshProcessRead', () => {
   })
 
   it('appends the loss notice with the available spill paths', () => {
-    expect(renderPwshProcessRead({ ...base, lossy: true, stdoutSpillPath: 'C:\\spill\\out.log' }))
-      .toBe('out\n[some output was dropped from memory; full output: C:\\spill\\out.log]')
-    expect(renderPwshProcessRead({
-      ...base,
-      lossy: true,
-      stdoutSpillPath: 'C:\\spill\\out.log',
-      stderrSpillPath: 'C:\\spill\\err.log',
-    }))
-      .toBe('out\n[some output was dropped from memory; full output: C:\\spill\\out.log, C:\\spill\\err.log]')
+    expect(
+      renderPwshProcessRead({ ...base, lossy: true, stdoutSpillPath: 'C:\\spill\\out.log' }),
+    ).toBe('out\n[some output was dropped from memory; full output: C:\\spill\\out.log]')
+    expect(
+      renderPwshProcessRead({
+        ...base,
+        lossy: true,
+        stdoutSpillPath: 'C:\\spill\\out.log',
+        stderrSpillPath: 'C:\\spill\\err.log',
+      }),
+    ).toBe(
+      'out\n[some output was dropped from memory; full output: C:\\spill\\out.log, C:\\spill\\err.log]',
+    )
   })
 
   it('reports (unavailable) when a lossy read has no safe spill path', () => {
-    expect(renderPwshProcessRead({ ...base, lossy: true }))
-      .toBe('out\n[some output was dropped from memory; full output: (unavailable)]')
+    expect(renderPwshProcessRead({ ...base, lossy: true })).toBe(
+      'out\n[some output was dropped from memory; full output: (unavailable)]',
+    )
   })
 
   it('an empty lossy delta is the notice alone', () => {
-    expect(renderPwshProcessRead({ delta: '', lossy: true, stderrSpillPath: 'C:\\spill\\err.log' }))
-      .toBe('[some output was dropped from memory; full output: C:\\spill\\err.log]')
+    expect(
+      renderPwshProcessRead({ delta: '', lossy: true, stderrSpillPath: 'C:\\spill\\err.log' }),
+    ).toBe('[some output was dropped from memory; full output: C:\\spill\\err.log]')
   })
 
   it('inserts the separating newline only when the delta lacks one', () => {
-    expect(renderPwshProcessRead({ delta: 'tail', lossy: true }))
-      .toBe('tail\n[some output was dropped from memory; full output: (unavailable)]')
-    expect(renderPwshProcessRead({ delta: 'tail\n', lossy: true }))
-      .toBe('tail\n[some output was dropped from memory; full output: (unavailable)]')
+    expect(renderPwshProcessRead({ delta: 'tail', lossy: true })).toBe(
+      'tail\n[some output was dropped from memory; full output: (unavailable)]',
+    )
+    expect(renderPwshProcessRead({ delta: 'tail\n', lossy: true })).toBe(
+      'tail\n[some output was dropped from memory; full output: (unavailable)]',
+    )
   })
 
   it('appends the runner-failed notice (denial outranked)', () => {
-    expect(renderPwshProcessRead({ delta: 'x', lossy: false }, { mode: 'read-only', denied: true, runnerFailed: true }))
-      .toBe('x\n[sandbox: the sandbox runner itself failed under read-only mode — the command did not run; this is a sandbox problem, not a command failure]')
+    expect(
+      renderPwshProcessRead(
+        { delta: 'x', lossy: false },
+        { mode: 'read-only', denied: true, runnerFailed: true },
+      ),
+    ).toBe(
+      'x\n[sandbox: the sandbox runner itself failed under read-only mode — the command did not run; this is a sandbox problem, not a command failure]',
+    )
   })
 
   it('appends the denial marker and hints only when escalation is advertised', () => {
-    expect(renderPwshProcessRead({ delta: 'x', lossy: false }, { mode: 'read-only', denied: true }))
-      .toBe('x\n[sandbox: file access denied under read-only mode]')
-    expect(renderPwshProcessRead({ delta: 'x', lossy: false }, { mode: 'read-only', denied: true }, ['workspace-write']))
-      .toBe('x\n[sandbox: file access denied under read-only mode]\n'
-        + '[sandbox: escalation available — retry this exact command once with sandbox_permissions '
-        + '(the narrowest wider mode that suffices) + justification; the approval prompt asks the user]')
+    expect(
+      renderPwshProcessRead({ delta: 'x', lossy: false }, { mode: 'read-only', denied: true }),
+    ).toBe('x\n[sandbox: file access denied under read-only mode]')
+    expect(
+      renderPwshProcessRead({ delta: 'x', lossy: false }, { mode: 'read-only', denied: true }, [
+        'workspace-write',
+      ]),
+    ).toBe(
+      'x\n[sandbox: file access denied under read-only mode]\n' +
+        '[sandbox: escalation available — retry this exact command once with sandbox_permissions ' +
+        '(the narrowest wider mode that suffices) + justification; the approval prompt asks the user]',
+    )
   })
 })
 
@@ -1079,22 +1266,30 @@ describe('processOutcome', () => {
   }
 
   it('maps a signal-killed process to killed with the signal detail', () => {
-    expect(processOutcome(settled({ status: 'killed', signal: 'SIGTERM' })))
-      .toEqual({ status: 'killed', detail: 'signal: SIGTERM' })
+    expect(processOutcome(settled({ status: 'killed', signal: 'SIGTERM' }))).toEqual({
+      status: 'killed',
+      detail: 'signal: SIGTERM',
+    })
   })
 
   it('maps a killed process without a recorded signal (kill raced exit / spawn failure)', () => {
-    expect(processOutcome(settled({ status: 'killed', exitCode: null })))
-      .toEqual({ status: 'killed', detail: 'killed before exit' })
+    expect(processOutcome(settled({ status: 'killed', exitCode: null }))).toEqual({
+      status: 'killed',
+      detail: 'killed before exit',
+    })
   })
 
   it('maps a completed process to its exit code', () => {
-    expect(processOutcome(settled({ exitCode: 3 })))
-      .toEqual({ status: 'completed', detail: 'exit code: 3' })
+    expect(processOutcome(settled({ exitCode: 3 }))).toEqual({
+      status: 'completed',
+      detail: 'exit code: 3',
+    })
   })
 
   it('defensively reads a null exit code as 0 (handle shapes from other executors)', () => {
-    expect(processOutcome(settled({ exitCode: null })))
-      .toEqual({ status: 'completed', detail: 'exit code: 0' })
+    expect(processOutcome(settled({ exitCode: null }))).toEqual({
+      status: 'completed',
+      detail: 'exit code: 0',
+    })
   })
 })

@@ -3,9 +3,13 @@
 // deferred-controlled timing). Session streams are hand pumps: pushFollow/pushControl.
 import type {
   MessageId,
-  SessionId, SessionSearchItem,
-  SubagentCatalog, SubagentInterruptReceipt, SubagentPromptReceipt,
-  WorkspaceId, WorkspaceView,
+  SessionId,
+  SessionSearchItem,
+  SubagentCatalog,
+  SubagentInterruptReceipt,
+  SubagentPromptReceipt,
+  WorkspaceId,
+  WorkspaceView,
 } from '@deepseek-ai/dsh-api-remotes/client'
 import type {
   SessionAddress,
@@ -23,10 +27,7 @@ import type {
 import type { WorkspaceRemote } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { WorkspaceFollowFrame } from '@deepseek-ai/dsh-api-workspace-controller/types'
 import type { RemoteFailure, RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
-import {
-  RemoteStream,
-  type RemoteStreamOptions,
-} from '@deepseek-ai/dsh-api-gateway/client'
+import { RemoteStream, type RemoteStreamOptions } from '@deepseek-ai/dsh-api-gateway/client'
 import type { SessionRemotes } from '../src/client/sessions/remotes.ts'
 import { SESSION_FORMAT_VERSION } from '@deepseek-ai/dsh-session/types'
 import { historyRecordLastSeq } from '../src/client/sessions/history-records.ts'
@@ -122,33 +123,72 @@ export class FakeApiClient {
   readonly followStarts: SessionId[] = []
 
   // Programmable slots (defaults answer OK-empty); reassign per case.
-  onList: (payload: unknown) => Promise<RemoteResult<{ items: never[] }>> = () => Promise.resolve(ok({ items: [] }))
-  onSearch: (payload: unknown) => Promise<RemoteResult<{ items: SessionSearchItem[]; hasMore: boolean }>> =
-    () => Promise.resolve(ok({ items: [], hasMore: false }))
-  onCreate: (payload: unknown) => Promise<RemoteResult<{ sessionId: SessionId }>> = () => Promise.resolve(ok({ sessionId: 'fk-new' as SessionId }))
-  onSelectModel: (payload: SessionSelectModelRequest) => Promise<RemoteResult<SessionSelectModelValue>> =
-    payload => Promise.resolve(ok({
-      selected: {
-        provider: payload.provider,
-        model: payload.model,
-        ...(payload.reasoningEffort === undefined
-          ? {}
-          : { reasoningEffort: payload.reasoningEffort }),
-      },
-    }))
-  onRename: (payload: unknown) => Promise<RemoteResult<{ title: string; seq: number }>> = () => Promise.resolve(ok({ title: 'fk-renamed', seq: 0 }))
-  onFork: (payload: unknown) => Promise<RemoteResult<{ sessionId: SessionId }>> = () => Promise.resolve(ok({ sessionId: 'fk-fork' as SessionId }))
-  onHistory: (payload: { sessionId: SessionId; throughSeq?: number; beforeSeq?: number; maxMessages?: number })
-  => Promise<RemoteResult<SessionPage & { readonly projections?: SessionProjectionBaseline }>> =
+  onList: (payload: unknown) => Promise<RemoteResult<{ items: never[] }>> = () =>
+    Promise.resolve(ok({ items: [] }))
+  onSearch: (
+    payload: unknown,
+  ) => Promise<RemoteResult<{ items: SessionSearchItem[]; hasMore: boolean }>> = () =>
+    Promise.resolve(ok({ items: [], hasMore: false }))
+  onCreate: (payload: unknown) => Promise<RemoteResult<{ sessionId: SessionId }>> = () =>
+    Promise.resolve(ok({ sessionId: 'fk-new' as SessionId }))
+  onSelectModel: (
+    payload: SessionSelectModelRequest,
+  ) => Promise<RemoteResult<SessionSelectModelValue>> = payload =>
+    Promise.resolve(
+      ok({
+        selected: {
+          provider: payload.provider,
+          model: payload.model,
+          ...(payload.reasoningEffort === undefined
+            ? {}
+            : { reasoningEffort: payload.reasoningEffort }),
+        },
+      }),
+    )
+  onRename: (payload: unknown) => Promise<RemoteResult<{ title: string; seq: number }>> = () =>
+    Promise.resolve(ok({ title: 'fk-renamed', seq: 0 }))
+  onFork: (payload: unknown) => Promise<RemoteResult<{ sessionId: SessionId }>> = () =>
+    Promise.resolve(ok({ sessionId: 'fk-fork' as SessionId }))
+  onHistory: (payload: {
+    sessionId: SessionId
+    throughSeq?: number
+    beforeSeq?: number
+    maxMessages?: number
+  }) => Promise<RemoteResult<SessionPage & { readonly projections?: SessionProjectionBaseline }>> =
     () => Promise.resolve(ok({ records: [], hasMore: false }))
 
-  onPrompt: (payload: unknown) => Promise<RemoteResult<{ accepted: true }>> = () => Promise.resolve(ok({ accepted: true as const }))
-  onAttachment: (payload: unknown) => Promise<RemoteResult<{ attachment: { attachmentId: never; mediaType: 'image/png'; bytes: number; width: number; height: number }; data: string }>> =
-    () => Promise.resolve(ok({ attachment: { attachmentId: 'a' as never, mediaType: 'image/png', bytes: 1, width: 1, height: 1 }, data: 'AA==' }))
-  onUpdateQueue: (payload: unknown) => Promise<RemoteResult<{ accepted: true }>> = () => Promise.resolve(ok({ accepted: true as const }))
-  onCancel: (payload: unknown) => Promise<RemoteResult<{ accepted: true }>> = () => Promise.resolve(ok({ accepted: true as const }))
-  onOpenWorkspacePath: (payload: unknown) => Promise<RemoteResult<{ opened: true }>> =
-    () => Promise.resolve(ok({ opened: true as const }))
+  onPrompt: (payload: unknown) => Promise<RemoteResult<{ accepted: true }>> = () =>
+    Promise.resolve(ok({ accepted: true as const }))
+  onAttachment: (payload: unknown) => Promise<
+    RemoteResult<{
+      attachment: {
+        attachmentId: never
+        mediaType: 'image/png'
+        bytes: number
+        width: number
+        height: number
+      }
+      data: string
+    }>
+  > = () =>
+    Promise.resolve(
+      ok({
+        attachment: {
+          attachmentId: 'a' as never,
+          mediaType: 'image/png',
+          bytes: 1,
+          width: 1,
+          height: 1,
+        },
+        data: 'AA==',
+      }),
+    )
+  onUpdateQueue: (payload: unknown) => Promise<RemoteResult<{ accepted: true }>> = () =>
+    Promise.resolve(ok({ accepted: true as const }))
+  onCancel: (payload: unknown) => Promise<RemoteResult<{ accepted: true }>> = () =>
+    Promise.resolve(ok({ accepted: true as const }))
+  onOpenWorkspacePath: (payload: unknown) => Promise<RemoteResult<{ opened: true }>> = () =>
+    Promise.resolve(ok({ opened: true as const }))
 
   private readonly followConns = new Map<SessionId, ValueStreamConn<SessionFollowFrame>[]>()
   private readonly controlConns: ValueStreamConn<SessionControlFrame>[] = []
@@ -169,110 +209,110 @@ export class FakeApiClient {
   }
   lastSearchSignal: AbortSignal | undefined
 
-  onSubagentList: (payload: unknown) => Promise<RemoteResult<SubagentCatalog>>
-    = () => Promise.resolve(ok({ entries: [], parentAvailable: true }))
-  onSubagentPrompt: (payload: unknown) => Promise<RemoteResult<SubagentPromptReceipt>>
-    = () => Promise.resolve(ok({ messageId: 'fake-message' as MessageId }))
+  onSubagentList: (payload: unknown) => Promise<RemoteResult<SubagentCatalog>> = () =>
+    Promise.resolve(ok({ entries: [], parentAvailable: true }))
+  onSubagentPrompt: (payload: unknown) => Promise<RemoteResult<SubagentPromptReceipt>> = () =>
+    Promise.resolve(ok({ messageId: 'fake-message' as MessageId }))
 
-  onSubagentInterrupt: (payload: unknown) => Promise<RemoteResult<SubagentInterruptReceipt>>
-    = () => Promise.resolve(ok({ accepted: true as const }))
+  onSubagentInterrupt: (payload: unknown) => Promise<RemoteResult<SubagentInterruptReceipt>> = () =>
+    Promise.resolve(ok({ accepted: true as const }))
 
-  onWorkspaceCreate: (payload: unknown) => Promise<RemoteResult<{ workspace: WorkspaceView; created: boolean }>> =
-    () => Promise.resolve(ok({ workspace: fakeWorkspace('fk-ws'), created: true }))
+  onWorkspaceCreate: (
+    payload: unknown,
+  ) => Promise<RemoteResult<{ workspace: WorkspaceView; created: boolean }>> = () =>
+    Promise.resolve(ok({ workspace: fakeWorkspace('fk-ws'), created: true }))
 
   onWorkspaceRename: (payload: unknown) => Promise<RemoteResult<{ workspace: WorkspaceView }>> =
     () => Promise.resolve(ok({ workspace: fakeWorkspace('fk-ws') }))
 
-  onWorkspaceDelete: (payload: unknown) => Promise<RemoteResult<{ deleted: true }>> =
-    () => Promise.resolve(ok({ deleted: true }))
+  onWorkspaceDelete: (payload: unknown) => Promise<RemoteResult<{ deleted: true }>> = () =>
+    Promise.resolve(ok({ deleted: true }))
 
-  onWorkspaceInsertBefore: (payload: unknown) => Promise<RemoteResult<{ workspaceIds: WorkspaceId[] }>> =
-    () => Promise.resolve(ok({ workspaceIds: [] }))
+  onWorkspaceInsertBefore: (
+    payload: unknown,
+  ) => Promise<RemoteResult<{ workspaceIds: WorkspaceId[] }>> = () =>
+    Promise.resolve(ok({ workspaceIds: [] }))
 
-  onWorkspaceInsertSessionBefore: (payload: unknown) => Promise<RemoteResult<{ workspace: WorkspaceView }>> =
-    () => Promise.resolve(ok({ workspace: fakeWorkspace('fk-ws') }))
+  onWorkspaceInsertSessionBefore: (
+    payload: unknown,
+  ) => Promise<RemoteResult<{ workspace: WorkspaceView }>> = () =>
+    Promise.resolve(ok({ workspace: fakeWorkspace('fk-ws') }))
 
-  onWorkspaceArchiveSession: (payload: unknown) => Promise<RemoteResult<{ archivedSessionIds: SessionId[] }>> =
-    payload => Promise.resolve(ok({ archivedSessionIds: [(payload as { sessionId: SessionId }).sessionId] }))
+  onWorkspaceArchiveSession: (
+    payload: unknown,
+  ) => Promise<RemoteResult<{ archivedSessionIds: SessionId[] }>> = payload =>
+    Promise.resolve(ok({ archivedSessionIds: [(payload as { sessionId: SessionId }).sessionId] }))
 
   /** Remote namespaces bound to this fake's programmable unary slots and stream pumps. */
   sessionRemotes(): RuntimeRemotes {
     return {
-      $stream: <Item>(options: RemoteStreamOptions<Item>) => (
-        new RemoteStream(AVAILABLE_STREAM_CONNECTION, options)
-      ),
+      $stream: <Item>(options: RemoteStreamOptions<Item>) =>
+        new RemoteStream(AVAILABLE_STREAM_CONNECTION, options),
       commands: {
         execute: () => Promise.resolve({ ok: true, value: undefined }),
       },
       session: {
         canOpenWorkspacePath: () => Promise.resolve(ok(true)),
         list: payload => this.record('session.list', payload, this.onList(payload)),
-        modelCatalog: () => Promise.resolve({
-          ok: true,
-          value: {
-            default: { provider: 'fixture', model: 'fixture' },
-            routableProviders: [],
-            groups: [],
-            failures: [],
-          },
-        }),
+        modelCatalog: () =>
+          Promise.resolve({
+            ok: true,
+            value: {
+              default: { provider: 'fixture', model: 'fixture' },
+              routableProviders: [],
+              groups: [],
+              failures: [],
+            },
+          }),
         search: (payload, signal) => {
           this.lastSearchSignal = signal
           return this.record('session.search', payload, this.onSearch(payload))
         },
         create: payload => this.record('session.create', payload, this.onCreate(payload)),
-        selectModel: payload => this.record(
-          'session.selectModel',
-          payload,
-          this.onSelectModel(payload),
-        ),
+        selectModel: payload =>
+          this.record('session.selectModel', payload, this.onSelectModel(payload)),
         rename: payload => this.record('session.rename', payload, this.onRename(payload)),
         fork: payload => this.record('session.fork', payload, this.onFork(payload)),
         prompt: payload => this.record('session.prompt', payload, this.onPrompt(payload)),
-        attachment: payload => this.record('session.attachment', payload, this.onAttachment(payload)),
-        updateQueue: payload => this.record('session.updateQueue', payload, this.onUpdateQueue(payload)),
+        attachment: payload =>
+          this.record('session.attachment', payload, this.onAttachment(payload)),
+        updateQueue: payload =>
+          this.record('session.updateQueue', payload, this.onUpdateQueue(payload)),
         cancel: payload => this.record('session.cancel', payload, this.onCancel(payload)),
-        openWorkspacePath: payload => this.record(
-          'session.openWorkspacePath',
-          payload,
-          this.onOpenWorkspacePath(payload),
-        ),
+        openWorkspacePath: payload =>
+          this.record('session.openWorkspacePath', payload, this.onOpenWorkspacePath(payload)),
         page: request => this.page(request),
         follow: (request, signal) => this.openFollow(request, signal),
         control: signal => this.openControl(signal),
       },
       subagents: {
-        list: parentSessionId => this.record(
-          'subagents.list',
-          parentSessionId,
-          this.onSubagentList(parentSessionId),
-        ),
+        list: parentSessionId =>
+          this.record('subagents.list', parentSessionId, this.onSubagentList(parentSessionId)),
         prompt: request => this.record('subagents.prompt', request, this.onSubagentPrompt(request)),
-        interruptByParent: (childSessionId, parentSessionId, mode) => this.record(
-          'subagents.interruptByParent',
-          { childSessionId, parentSessionId, mode },
-          this.onSubagentInterrupt({ childSessionId, parentSessionId, mode }),
-        ),
+        interruptByParent: (childSessionId, parentSessionId, mode) =>
+          this.record(
+            'subagents.interruptByParent',
+            { childSessionId, parentSessionId, mode },
+            this.onSubagentInterrupt({ childSessionId, parentSessionId, mode }),
+          ),
       },
       workspace: {
-        create: payload => this.record('workspace.create', payload, this.onWorkspaceCreate(payload)),
-        rename: payload => this.record('workspace.rename', payload, this.onWorkspaceRename(payload)),
-        delete: payload => this.record('workspace.delete', payload, this.onWorkspaceDelete(payload)),
-        insertBefore: payload => this.record(
-          'workspace.insertBefore',
-          payload,
-          this.onWorkspaceInsertBefore(payload),
-        ),
-        insertSessionBefore: payload => this.record(
-          'workspace.insertSessionBefore',
-          payload,
-          this.onWorkspaceInsertSessionBefore(payload),
-        ),
-        archiveSession: payload => this.record(
-          'workspace.archiveSession',
-          payload,
-          this.onWorkspaceArchiveSession(payload),
-        ),
+        create: payload =>
+          this.record('workspace.create', payload, this.onWorkspaceCreate(payload)),
+        rename: payload =>
+          this.record('workspace.rename', payload, this.onWorkspaceRename(payload)),
+        delete: payload =>
+          this.record('workspace.delete', payload, this.onWorkspaceDelete(payload)),
+        insertBefore: payload =>
+          this.record('workspace.insertBefore', payload, this.onWorkspaceInsertBefore(payload)),
+        insertSessionBefore: payload =>
+          this.record(
+            'workspace.insertSessionBefore',
+            payload,
+            this.onWorkspaceInsertSessionBefore(payload),
+          ),
+        archiveSession: payload =>
+          this.record('workspace.archiveSession', payload, this.onWorkspaceArchiveSession(payload)),
         follow: signal => this.openWorkspace(signal),
       },
     }
@@ -283,9 +323,14 @@ export class FakeApiClient {
     sessionId: SessionId,
     frame: Exclude<SessionFollowFrame, { type: 'snapshot' }>,
   ): Promise<void> {
-    await Promise.all([...(this.followConns.get(sessionId) ?? [])].map(conn => new Promise<void>((resolve) => {
-      conn.feed({ kind: 'frame', value: frame, delivered: resolve })
-    })))
+    await Promise.all(
+      [...(this.followConns.get(sessionId) ?? [])].map(
+        conn =>
+          new Promise<void>((resolve) => {
+            conn.feed({ kind: 'frame', value: frame, delivered: resolve })
+          }),
+      ),
+    )
   }
 
   /** Push one Host-wide control update. */
@@ -338,35 +383,42 @@ export class FakeApiClient {
     response?: Promise<RemoteResult<SessionPage>>,
   ): Promise<RemoteResult<SessionPage>> {
     const sessionId = addressSessionId(request.address)
-    const payload = request.address.kind === 'session'
-      ? {
-        sessionId,
-        throughSeq: request.throughSeq,
-        ...request.beforeSeq === undefined ? {} : { beforeSeq: request.beforeSeq },
-        ...request.maxMessages === undefined ? {} : { maxMessages: request.maxMessages },
-      }
-      : {
-        parentSessionId: request.address.parentSessionId,
-        childSessionId: request.address.childSessionId,
-        mode: request.address.mode,
-        throughSeq: request.throughSeq,
-        ...request.beforeSeq === undefined ? {} : { beforeSeq: request.beforeSeq },
-        ...request.maxMessages === undefined ? {} : { maxMessages: request.maxMessages },
-      }
+    const payload =
+      request.address.kind === 'session'
+        ? {
+          sessionId,
+          throughSeq: request.throughSeq,
+          ...(request.beforeSeq === undefined ? {} : { beforeSeq: request.beforeSeq }),
+          ...(request.maxMessages === undefined ? {} : { maxMessages: request.maxMessages }),
+        }
+        : {
+          parentSessionId: request.address.parentSessionId,
+          childSessionId: request.address.childSessionId,
+          mode: request.address.mode,
+          throughSeq: request.throughSeq,
+          ...(request.beforeSeq === undefined ? {} : { beforeSeq: request.beforeSeq }),
+          ...(request.maxMessages === undefined ? {} : { maxMessages: request.maxMessages }),
+        }
     const method = request.address.kind === 'session' ? 'session.history' : 'subagent.history'
-    const result = await this.record(method, payload, response ?? this.onHistory({
-      sessionId,
-      throughSeq: request.throughSeq,
-      ...request.beforeSeq === undefined ? {} : { beforeSeq: request.beforeSeq },
-      ...request.maxMessages === undefined ? {} : { maxMessages: request.maxMessages },
-    }))
+    const result = await this.record(
+      method,
+      payload,
+      response ??
+        this.onHistory({
+          sessionId,
+          throughSeq: request.throughSeq,
+          ...(request.beforeSeq === undefined ? {} : { beforeSeq: request.beforeSeq }),
+          ...(request.maxMessages === undefined ? {} : { maxMessages: request.maxMessages }),
+        }),
+    )
     if (!result.ok) return result
     return {
       ok: true,
       value: {
         ...result.value,
-        records: result.value.records
-          .filter(record => historyRecordLastSeq(record) <= request.throughSeq),
+        records: result.value.records.filter(
+          record => historyRecordLastSeq(record) <= request.throughSeq,
+        ),
       },
     }
   }
@@ -405,9 +457,9 @@ export class FakeApiClient {
         records: page.records.filter(record => historyRecordLastSeq(record) <= cursor),
         hasMore: page.hasMore,
         projections: page.projections ?? { asOfSeq: cursor, values: {} },
-        ...request.assistantStream === true
+        ...(request.assistantStream === true
           ? { assistantStream: this.assistantStreamBaseline }
-          : {},
+          : {}),
       }
       yield* stream.values
     } finally {
@@ -479,7 +531,13 @@ export class FakeApiClient {
           }
           await new Promise<void>((resolve) => {
             wake = resolve
-            signal.addEventListener('abort', () => { resolve() }, { once: true })
+            signal.addEventListener(
+              'abort',
+              () => {
+                resolve()
+              },
+              { once: true },
+            )
           })
           wake = null
         }
@@ -489,5 +547,4 @@ export class FakeApiClient {
     })()
     return { values, dispose }
   }
-
 }
