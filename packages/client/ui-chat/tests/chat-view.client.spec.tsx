@@ -1269,8 +1269,8 @@ describe('ChatView', () => {
     expect(view.getAllByText('interrupt now')).toHaveLength(1)
     expect(view.container.querySelector('[data-pending-steering]')).toBeNull()
     // Only the durable steering bubble: the turn is still running, so its
-    // assistant narration owns no footer yet, and a steering bubble never
-    // carries a branch action.
+    // assistant narration owns no footer yet. A steering occurrence carries no
+    // durable seq, so it offers no branch point either.
     expect(view.getAllByRole('button', { name: '复制' })).toHaveLength(1)
     const durableBubble = view
       .getByText('interrupt now')
@@ -1600,6 +1600,17 @@ describe('ChatView', () => {
     ])
   })
 
+  it('renders an actionable hint for exhausted context-window overflow instead of the provider dump', () => {
+    const h = makeHarness({
+      nodes: [user(1, 'try'), { ...turnError(3, 'CONTEXT_WINDOW_EXCEEDED'), message: 'Input exceeds context window' }],
+    })
+    const view = render(<h.ChatView {...h.props} />)
+    const statuses = view.getAllByRole('status')
+    expect(statuses.map(status => status.textContent)).toEqual([
+      '本轮运行失败上下文已满，自动压缩后仍超出模型窗口。请发送 /compact、换用上下文更大的模型，或开始新会话CONTEXT_WINDOW_EXCEEDED',
+    ])
+  })
+
   it('renders the max-tokens notice with localized guidance, distinct from turn errors', () => {
     const h = makeHarness({ nodes: [user(1, 'try'), assistant(2, 'truncated'), turnMaxTokens(3)] })
     const view = render(<h.ChatView {...h.props} />)
@@ -1635,11 +1646,14 @@ describe('ChatView', () => {
       ]),
     })
     const view = render(<h.ChatView {...h.props} />)
-    // Branch renders only under assistant answers; user bubbles keep copy alone.
+    // Every durable bubble branches: the two user prompts and the two
+    // turn-closing answers. A mid-turn assistant message still owns no footer.
     expect(view.getAllByRole('button', { name: '复制' })).toHaveLength(4)
     const branchButtons = view.getAllByRole('button', { name: '在新对话中分支' })
-    expect(branchButtons).toHaveLength(2)
-    expect(branchButtons.map(button => button.getAttribute('aria-disabled'))).toEqual([null, null])
+    expect(branchButtons).toHaveLength(4)
+    expect(branchButtons.map(button => button.getAttribute('aria-disabled'))).toEqual([
+      null, null, null, null,
+    ])
   })
 
   it('folds Think and Tool rows before the final answer without unmounting them', () => {
@@ -2416,11 +2430,12 @@ describe('ChatView', () => {
       turnEnds: new Map([[1, 3]]),
     })
     const view = render(<h.ChatView {...h.props} />)
-    // The user bubble offers no branch; the settled answer's is live.
+    // Both durable bubbles branch: the prompt cuts before its own text, the
+    // settled answer cuts through the completed turn.
     const buttons = view.getAllByRole('button', { name: '在新对话中分支' })
-    expect(buttons).toHaveLength(1)
-    expect(buttons[0]!.getAttribute('aria-disabled')).toBeNull()
-    fireEvent.click(buttons[0]!)
+    expect(buttons).toHaveLength(2)
+    expect(buttons.map(button => button.getAttribute('aria-disabled'))).toEqual([null, null])
+    fireEvent.click(buttons[1]!)
     expect(h.forkAt.mock.calls).toEqual([[2]])
   })
 
@@ -2441,9 +2456,11 @@ describe('ChatView', () => {
     }
     const h = makeHarness({}, {}, chat)
     const view = render(<h.ChatView {...h.props} />)
-    const branch = view.getByRole('button', { name: '在新对话中分支' })
-    expect(branch.getAttribute('aria-disabled')).toBe('true')
-    fireEvent.click(branch)
+    const branch = view.getAllByRole('button', { name: '在新对话中分支' })
+    // The prompt's own branch stays live; the answer's tail is disabled because
+    // a later steering Node belongs to the same indexed Turn.
+    expect(branch.map(button => button.getAttribute('aria-disabled'))).toEqual([null, 'true'])
+    fireEvent.click(branch[1]!)
     expect(h.forkAt).not.toHaveBeenCalled()
   })
 
@@ -2464,9 +2481,9 @@ describe('ChatView', () => {
     const view = render(<h.ChatView {...h.props} />)
     expect(view.getAllByRole('button', { name: '复制' })).toHaveLength(2)
     const buttons = view.getAllByRole('button', { name: '在新对话中分支' })
-    expect(buttons).toHaveLength(1)
-    expect(buttons[0]!.getAttribute('aria-disabled')).toBe('true')
-    fireEvent.click(buttons[0]!)
+    expect(buttons).toHaveLength(2)
+    expect(buttons[1]!.getAttribute('aria-disabled')).toBe('true')
+    fireEvent.click(buttons[1]!)
     expect(h.forkAt).not.toHaveBeenCalled()
   })
 

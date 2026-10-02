@@ -47,12 +47,13 @@ const useDetachedChat: ChatNodeViewProps['useChat'] = bindSnapshotSelector({
 interface MessageItemProps {
   readonly node: ConversationNode
   readonly t: ChatNodeViewProps['t']
+  readonly forkAt?: ChatNodeViewProps['forkAt']
   readonly referenceLabels?: readonly string[]
   readonly skillNames?: readonly string[]
 }
 
 /** Legacy-node fixture adapter for the independently registered renderers. */
-function MessageItem({ node, t: translate, referenceLabels, skillNames }: MessageItemProps) {
+function MessageItem({ node, t: translate, forkAt = () => {}, referenceLabels, skillNames }: MessageItemProps) {
   const kind = node.kind === 'assistant' ? 'assistant-step' : node.kind
   const viewNode: ChatConversationViewNode = {
     key: `fixture:${node.kind}:${node.seq}`,
@@ -72,7 +73,7 @@ function MessageItem({ node, t: translate, referenceLabels, skillNames }: Messag
         }
         : node,
   }
-  const props = { node: viewNode, t: translate, renderMessageImages, useChat: useDetachedChat } as ChatNodeViewProps
+  const props = { node: viewNode, t: translate, forkAt, renderMessageImages, useChat: useDetachedChat } as ChatNodeViewProps
   switch (node.kind) {
     case 'user':
     case 'steering':
@@ -162,7 +163,7 @@ describe('MessageItem arms', () => {
     expect(resolved.container.textContent).toContain('/123 then ')
   })
 
-  it('user bubbles expose clock / copy and neither branch nor edit; copy writes the text', () => {
+  it('user bubbles expose clock / copy and branch; copy writes the text', () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
@@ -171,8 +172,9 @@ describe('MessageItem arms', () => {
     // Same-day clock: construct "today at 14:24" so the label stays `HH:mm`.
     const now = new Date()
     const time = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 14, 24).getTime()
+    const forkAt = vi.fn()
     render(
-      <MessageItem t={t} node={{
+      <MessageItem t={t} forkAt={forkAt} node={{
         kind: 'user', seq: 1, time,
         content: [{ type: 'text', text: 'hello bubble' }] as never,
         source: null,
@@ -181,7 +183,9 @@ describe('MessageItem arms', () => {
     )
     expect(screen.getByText('14:24')).toBeTruthy()
     expect(screen.getByRole('button', { name: '复制' })).toBeTruthy()
-    expect(screen.queryByRole('button', { name: '在新对话中分支' })).toBeNull()
+    // The prompt branches before its own text; it still offers no edit.
+    fireEvent.click(screen.getByRole('button', { name: '在新对话中分支' }))
+    expect(forkAt).toHaveBeenCalledWith(1)
     expect(screen.queryByRole('button', { name: '编辑' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: '复制' }))
     expect(writeText).toHaveBeenCalledWith('hello bubble')

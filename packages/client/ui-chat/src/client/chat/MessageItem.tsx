@@ -58,7 +58,11 @@ function failureMessage(
   code: unknown,
   t: ChatViewSlotProps['t'],
 ): string {
-  return code === 'AUTH' ? t('message.failure.auth') : message
+  return code === 'AUTH'
+    ? t('message.failure.auth')
+    : code === 'CONTEXT_WINDOW_EXCEEDED'
+      ? t('message.failure.contextWindow')
+      : message
 }
 
 function ModelRetryItem({ node, active, t }: {
@@ -318,7 +322,7 @@ export function PendingSubmissionBubble({ submission, renderMessageImages, t }: 
 
 /** User and admitted-steering keyed Chat renderer. */
 export const UserMessageNodeView = memo(function UserMessageNodeView({
-  node, renderMessageImages, t,
+  node, forkAt, renderMessageImages, t,
 }: ChatNodeViewProps<'user' | 'steering'>) {
   const data = node.data
   return (
@@ -333,6 +337,9 @@ export const UserMessageNodeView = memo(function UserMessageNodeView({
           text={text}
           time={data.time}
           clock="start"
+          // A steering occurrence carries no durable anchor, so only a user
+          // message offers a branch point.
+          {...node.kind === 'user' ? { onBranch: () => { forkAt(node.anchorSeq) } } : {}}
           className={css.actions}
           t={t}
         />
