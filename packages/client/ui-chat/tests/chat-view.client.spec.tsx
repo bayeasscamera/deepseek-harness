@@ -294,17 +294,20 @@ const compaction = (over: Partial<CompactionSummaryNode> = {}): CompactionSummar
   ...over,
 })
 
-/** Empty sessions-list hook for the global standard-kit seat. */
-function emptySessions() {
-  const store = createSnapshotStore<SessionListState>({
-    ids: [],
-    byId: {},
-    current: undefined,
-    phase: 'ready',
-    subagentsByParent: {},
-    jobsBySession: {},
-    currentAddress: undefined,
-  })
+/** Sessions list with no rows; lineage cases seed their own. */
+const EMPTY_SESSION_LIST: SessionListState = {
+  ids: [],
+  byId: {},
+  current: undefined,
+  phase: 'ready',
+  subagentsByParent: {},
+  jobsBySession: {},
+  currentAddress: undefined,
+}
+
+/** Sessions-list hook for the global standard-kit seat. */
+function emptySessions(state: SessionListState = EMPTY_SESSION_LIST) {
+  const store = createSnapshotStore<SessionListState>(state)
   return bindSnapshotSelector(store)
 }
 
@@ -342,6 +345,7 @@ function makeHarness(
   init: HarnessUpdate = {},
   sessionOverrides: Partial<SessionSnapshot> = {},
   chatSnapshot?: ChatSnapshot,
+  sessionList: SessionListState = EMPTY_SESSION_LIST,
 ) {
   const {
     chat: initialChat,
@@ -509,7 +513,7 @@ function makeHarness(
     useTrajectory: () => {
       throw new Error('unused')
     },
-    useSessions: emptySessions(),
+    useSessions: emptySessions(sessionList),
     useResource,
     useSessionPendingInteraction: bindSnapshotSelector(
       createSnapshotStore<SessionPendingInteractionSnapshot>(new Map()),
@@ -2440,6 +2444,39 @@ describe('ChatView', () => {
     expect(buttons.map(button => button.getAttribute('aria-disabled'))).toEqual([null, null])
     fireEvent.click(buttons[1]!)
     expect(h.forkAt.mock.calls).toEqual([[2]])
+  })
+
+  it('links a branch back to the Session it was cut from', () => {
+    const parentId = 'parent-1' as SessionId
+    const h = makeHarness({}, {}, undefined, {
+      ...EMPTY_SESSION_LIST,
+      ids: [parentId, SID],
+      byId: {
+        [parentId]: {
+          id: parentId,
+          title: 'Source',
+          displayTitle: 'Source, renamed',
+          running: false,
+          blank: false,
+          updatedAt: 1,
+        },
+        [SID]: {
+          id: SID,
+          title: 'Source (branch)',
+          displayTitle: 'Source (branch)',
+          parentId,
+          running: false,
+          blank: false,
+          updatedAt: 2,
+        },
+      },
+      current: SID,
+    })
+    const view = render(<h.ChatView {...h.props} />)
+    // The source is read through the list row, so a renamed source keeps its current title.
+    const link = view.getByRole('button', { name: '分支自 Source, renamed' })
+    fireEvent.click(link)
+    expect(h.openSession).toHaveBeenCalledWith(parentId)
   })
 
   it('disables fork when the indexed Turn has a later steering Node', () => {

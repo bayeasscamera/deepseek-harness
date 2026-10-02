@@ -794,7 +794,7 @@ export function ChatView({
                 type="button"
                 onClick={() => { openSession(branchSource.id) }}
               >
-                {t('branch.of', { title: branchSource.displayTitle ?? branchSource.title })}
+                {t('branch.of', { title: branchSource.displayTitle })}
               </button>
             </div>
           )}
