@@ -27,6 +27,8 @@ export interface MessageIconActionsProps {
   onBranchIsolated?: (() => void) | undefined
   /** The message is not a completed transcript tail, so branch stays visible but unavailable. */
   branchUnavailable?: boolean | undefined
+  /** Branches that left the conversation through this message; absent when none did. */
+  branchCount?: number | undefined
   /** Parent layout class composed onto the actions row. */
   className?: string | undefined
   /**
@@ -49,7 +51,7 @@ export interface MessageIconActionsProps {
  * @returns The actions row element.
  */
 export function MessageIconActions({
-  text, time, clock, onBranch, onBranchIsolated, branchUnavailable = false, className,
+  text, time, clock, onBranch, onBranchIsolated, branchUnavailable = false, branchCount, className,
   extraActions, usageAction, t,
 }: MessageIconActionsProps) {
   const day = useCalendarDay()
@@ -151,6 +153,9 @@ export function MessageIconActions({
       )}
       {onBranch !== undefined && branchUnavailable && (
         <span id={reasonId} className={css.visuallyHidden}>{t('message.branchUnavailable')}</span>
+      )}
+      {branchCount !== undefined && branchCount > 0 && (
+        <span className={css.branchCount}>{t('message.branchCount', { n: branchCount })}</span>
       )}
       {usageAction}
       {clock === 'end' ? clockEl : null}

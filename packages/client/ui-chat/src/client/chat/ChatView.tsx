@@ -11,6 +11,7 @@ import type { ChatViewSlotProps, OpenFileOptions } from '../contract/slots.ts'
 import type { ChatSnapshot } from '../contract/snapshot.ts'
 import { PendingSteeringBubble, PendingSubmissionBubble } from './MessageItem.tsx'
 import { ChatNodeSeat } from './ChatNodeSeat.tsx'
+import { branchAnchorOf, deriveBranchMarks, EMPTY_BRANCH_MARKS, type BranchMarkNode } from './branch-marks.ts'
 import { TurnNavigator } from './TurnNavigator.tsx'
 import { mergeTurnRailItems, type TurnRailItem } from './turn-rail-items.ts'
 import { formatRunDuration } from './message-chrome.ts'
@@ -237,6 +238,28 @@ export function ChatView({
   const inbox = useSession(s => s.queue)
   // Workspace root off the session list row: path summaries display relative to it.
   const cwd = useSessions(s => s.byId[sessionId]?.cwd)
+  // Branch marks: a child records how much history it inherited, so the
+  // message it left through is the last source message below that cut. The
+  // rows arrive from the Session list projection column, never from a read of
+  // the child's own log.
+  const sessionsById = useSessions(s => s.byId)
+  const branchMarks = useMemo(() => {
+    const cuts: number[] = []
+    for (const row of Object.values(sessionsById)) {
+      if (row.parentId !== sessionId || row.origin === 'subagent') continue
+      const cut = row.projectionValues?.forkCut
+      if (typeof cut === 'number') cuts.push(cut)
+    }
+    if (cuts.length === 0) return EMPTY_BRANCH_MARKS
+    const nodes: BranchMarkNode[] = []
+    for (const key of order) {
+      const node = nodeStore.get(key)
+      if (node === undefined) continue
+      const seq = branchAnchorOf(node)
+      if (seq !== undefined) nodes.push({ key, seq })
+    }
+    return deriveBranchMarks(nodes, cuts)
+  }, [sessionsById, order, nodeStore, sessionId])
   // Lineage line: the Session this one was branched from, read through the list
   // row so a renamed source keeps rendering its current title.
   const branchSource = useSessions((s) => {
@@ -800,6 +823,7 @@ export function ChatView({
           )}
           <ChatNodeList
             order={order}
+            branchMarks={branchMarks}
             useChatNode={useChatNode}
             useChatNodeProcess={useChatNodeProcess}
             historyIncomplete={hasMore}

@@ -2462,6 +2462,45 @@ describe('ChatView', () => {
     expect(h.forkAt.mock.calls).toEqual([[1, { isolateFiles: true }]])
   })
 
+  it('marks the message a branch left through, counted from the child fork cut', () => {
+    const childId = 'branch-child-1' as SessionId
+    const h = makeHarness({ nodes: [user(1, 'question'), assistant(2, 'answer')], turnEnds: new Map([[1, 3]]) }, {}, undefined, {
+      ...EMPTY_SESSION_LIST,
+      ids: [SID, childId],
+      byId: {
+        [SID]: {
+          id: SID,
+          title: 'Source',
+          displayTitle: 'Source',
+          running: false,
+          blank: false,
+          updatedAt: 2,
+        },
+        [childId]: {
+          id: childId,
+          title: 'Source (1)',
+          displayTitle: 'Source (1)',
+          parentId: SID,
+          running: false,
+          blank: false,
+          updatedAt: 3,
+          // The child inherited everything up to the completed turn, so the
+          // branch left through its finalized answer.
+          projectionValues: { forkCut: 3 },
+        },
+      },
+      current: SID,
+    })
+    const view = render(<h.ChatView {...h.props} />)
+    expect(view.getByText('1 个分支')).toBeTruthy()
+  })
+
+  it('marks nothing while no child carries a fork cut', () => {
+    const h = makeHarness({ nodes: [user(1, 'question'), assistant(2, 'answer')], turnEnds: new Map([[1, 3]]) })
+    const view = render(<h.ChatView {...h.props} />)
+    expect(view.queryByText(/个分支$/)).toBeNull()
+  })
+
   it('links a branch back to the Session it was cut from', () => {
     const parentId = 'parent-1' as SessionId
     const h = makeHarness({}, {}, undefined, {

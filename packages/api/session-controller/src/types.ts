@@ -20,6 +20,8 @@ declare module '@deepseek-ai/dsh-session-projection/types' {
     imageLimits: null
     /** Durable model selection already used by a request and still pending for a later request. */
     modelSelection: ModelSelectionProjectionState
+    /** Fork cut of a seeded Session, or null when it inherited nothing. */
+    forkCut: ForkCutProjection
   }
   interface SessionProjectionMap {
     /** Persisted facts used to summarize a Session without activating it. */
@@ -28,6 +30,8 @@ declare module '@deepseek-ai/dsh-session-projection/types' {
     imageLimits: ImageAttachmentLimits
     /** Durable model selection already used and selected for the next request. */
     modelSelection: ModelSelectionProjection
+    /** Fork cut of a seeded Session, or null when it inherited nothing. */
+    forkCut: ForkCutProjection
   }
 }
 
@@ -104,6 +108,14 @@ export interface ModelSelectionProjection {
   /** Selection the next request should use, falling back to {@link lastUsed}. */
   readonly next: ModelSelection | null
 }
+
+/**
+ * Fork cut of a seeded Session: the number of leading events it inherited from
+ * its parent, or null when it inherited none. The child's own log carries the
+ * value as its inherited `session/end-seed` marker, so a parent view can place
+ * a branch marker on the last source message the child inherited.
+ */
+export type ForkCutProjection = number | null
 
 /** One adapter-owned reasoning effort for an exact model route. */
 export interface ModelReasoningEffort {

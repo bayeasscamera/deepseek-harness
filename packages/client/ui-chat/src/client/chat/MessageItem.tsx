@@ -322,7 +322,7 @@ export function PendingSubmissionBubble({ submission, renderMessageImages, t }: 
 
 /** User and admitted-steering keyed Chat renderer. */
 export const UserMessageNodeView = memo(function UserMessageNodeView({
-  node, forkAt, renderMessageImages, t,
+  node, forkAt, branchCount, renderMessageImages, t,
 }: ChatNodeViewProps<'user' | 'steering'>) {
   const data = node.data
   return (
@@ -345,6 +345,7 @@ export const UserMessageNodeView = memo(function UserMessageNodeView({
               onBranchIsolated: () => { forkAt(node.anchorSeq, { isolateFiles: true }) },
             }
             : {}}
+          {...branchCount === undefined ? {} : { branchCount }}
           className={css.actions}
           t={t}
         />

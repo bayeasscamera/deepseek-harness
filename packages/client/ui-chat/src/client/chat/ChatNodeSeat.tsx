@@ -8,8 +8,10 @@ import { storedTurnProcessEntry } from '../stores.ts'
 import { useSearchableHidden } from './searchable-hidden.ts'
 import css from './ChatView.module.css'
 
-interface ChatNodeSeatProps extends ChatNodeOwnerProps {
+interface ChatNodeSeatProps extends Omit<ChatNodeOwnerProps, 'branchCount'> {
   readonly nodeKey: string
+  /** Branch counts keyed by node key; the seat reads its own node's entry. */
+  readonly branchMarks: ReadonlyMap<string, number>
   readonly useChatNode: ChatViewSlotProps['useChatNode']
   readonly useChatNodeProcess: ChatViewSlotProps['useChatNodeProcess']
   readonly historyIncomplete: boolean
@@ -37,7 +39,7 @@ function turnOf(node: ChatNode | undefined): number | undefined {
 /** Subscribe, apply Turn-process visibility, and dispatch one stable Context key. */
 export const ChatNodeSeat = memo(function ChatNodeSeat({
   nodeKey, useChatNode, useChatNodeProcess, historyIncomplete, compactTranscript,
-  cwd, openFile, inspectCall, forkAt,
+  cwd, openFile, inspectCall, forkAt, branchMarks,
   loadImage, renderMessageImages, fileMentions, useStore, actions, renderSlot, t,
 }: ChatNodeSeatProps) {
   const node = useChatNode(nodeKey)
@@ -107,12 +109,13 @@ export const ChatNodeSeat = memo(function ChatNodeSeat({
       openFile,
       inspectCall,
       forkAt,
+      ...(branchMarks.get(nodeKey) === undefined ? {} : { branchCount: branchMarks.get(nodeKey) }),
       loadImage,
       renderMessageImages,
       fileMentions,
       turnProcess,
     }, [
-    node, cwd, openFile, inspectCall, forkAt,
+    node, nodeKey, cwd, openFile, inspectCall, forkAt, branchMarks,
     loadImage, renderMessageImages, fileMentions, turnProcess,
   ])
   if (routedNode === undefined || owner === null) return null

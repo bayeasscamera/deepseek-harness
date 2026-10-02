@@ -71,6 +71,7 @@ export const chatFr: Record<string, string> = {
   'message.branch': 'Brancher vers une nouvelle conversation',
   'branch.of': 'Branché depuis {title}',
   'message.branchSharesFiles': 'Brancher (les deux sessions modifient les mêmes fichiers)',
+  'message.branchCount': '{n} branches',
   'message.branchIsolatedCopy': 'Brancher avec une copie isolée des fichiers',
   'message.branchFailed': 'Impossible de créer la branche : aucun tour terminé où couper, ou les fichiers n’ont pas pu être isolés',
   'message.branchUnavailable': 'Disponible uniquement sur le dernier message d’un tour terminé',

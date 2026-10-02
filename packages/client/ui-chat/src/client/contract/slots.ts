@@ -92,6 +92,12 @@ export interface ChatNodeOwnerProps {
   inspectCall: (callId: ToolCallId) => void
   forkAt: (seq: number, options?: ChatBranchOptions) => void
   /**
+   * Branches cut through this message, counted from the Session list rows. A
+   * child records how much history it inherited, so this is the last message
+   * the branch left from; absent when no branch left through it.
+   */
+  branchCount?: number | undefined
+  /**
    * Session-authorized image loader, down-threaded from the Chat view so a
    * chat-node renderer can render the attachment presentation slot directly
    * with only the durable references plus this loader, instead of receiving a

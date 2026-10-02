@@ -17,6 +17,7 @@
     "src/commands.ts",
     "src/control.ts",
     "src/file-references.ts",
+    "src/fork-cut-projection.ts",
     "src/history.ts",
     "src/list.ts",
     "src/model-selection-projection.ts",

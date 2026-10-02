@@ -22,6 +22,7 @@ import type { Session, SessionEvent, SessionHeader, UserMessage } from '@deepsee
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
 import SessionProjectionCache, { projectionCacheDomainSpec } from '@deepseek-ai/dsh-session-projection-cache'
+import { installForkCutProjection } from '../src/fork-cut-projection.ts'
 import Storage from '@deepseek-ai/dsh-storage'
 import * as StorageDomain from '@deepseek-ai/dsh-storage-domain'
 import * as StorageJson from '@deepseek-ai/dsh-storage-json'
@@ -192,6 +193,31 @@ describe('session.history projections block', () => {
       isSeeded: true,
     })
     expect(snapshot.header).not.toHaveProperty('seedLength')
+  })
+
+  it('projects the fork cut of a seeded Session and nothing for its parent', async () => {
+    const ctx = new Context()
+    ownedContexts.add(ctx)
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(AgentRegistry)
+    await ctx.plugin(SessionProjectionRegistry)
+    installForkCutProjection(ctx)
+    const parent = ctx.sessions.create(SessionId('fork-cut-parent'), { meta: { cwd: '/workspace' } })
+    parent.append('turn/start', { turn: 1 })
+    parent.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
+    const inheritedEventCount = parent.seq
+    const child = ctx.sessions.create(SessionId('fork-cut-child'), {
+      seed: parent.snapshotEvents(),
+      inheritedEventCount,
+      meta: { cwd: '/workspace', parentSession: parent.id, isSeeded: true },
+    })
+
+    // The cut is fixed at create, so the fold reads it from the immutable
+    // metadata and no event can change it.
+    expect(ctx.sessionProjections.snapshot(child).values.forkCut).toBe(inheritedEventCount)
+    expect(ctx.sessionProjections.snapshot(parent).values.forkCut).toBeNull()
+    child.append('turn/start', { turn: 1 })
+    expect(ctx.sessionProjections.snapshot(child).values.forkCut).toBe(inheritedEventCount)
   })
 
   it('tracks pending and used model selections across repeated request headers', async () => {
@@ -612,6 +638,45 @@ describe('session.list projections column', () => {
       expect(row?.projections?.values.sessionListMetadata).toMatchObject({ blank: false })
       expect('test/private-prompt' in (row?.projections?.values ?? {})).toBe(false)
       expect(JSON.stringify(row)).not.toContain(secret)
+    } finally {
+      await ctx.fiber.dispose()
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
+  it('serves a seeded child its fork cut on the list row', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-api-forkcut-'))
+    const ctx = new Context()
+    try {
+      await ctx.plugin(Storage)
+      await ctx.plugin(StorageJson, { root })
+      await ctx.plugin(StorageDomain, { backend: 'json' })
+      await ctx.plugin(SessionStore)
+      await ctx.plugin(AgentRegistry)
+      await ctx.plugin(SessionProjectionRegistry)
+      installForkCutProjection(ctx)
+      await ctx.plugin(SessionProjectionCache, { writeEveryEvents: 100, writeIntervalMs: 60_000 })
+      const gateway = remote(ctx)
+      await new Promise(resolve => setTimeout(resolve, 0))
+
+      const parent = ctx.sessions.create(SessionId('fork-cut-list-parent'), { meta: { cwd: '/workspace' } })
+      parent.append('turn/start', { turn: 1 })
+      parent.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
+      const inheritedEventCount = parent.seq
+      const child = ctx.sessions.create(SessionId('fork-cut-list-child'), {
+        seed: parent.snapshotEvents(),
+        inheritedEventCount,
+        meta: { cwd: '/workspace', parentSession: parent.id, isSeeded: true },
+      })
+      await ctx.sessionProjectionCache.write(parent)
+      await ctx.sessionProjectionCache.write(child)
+
+      const response = await gateway.list(request({}))
+      if (!response.ok) throw new Error('unreachable')
+      const rowOf = (id: SessionId) => response.value.items.find(item => item.sessionId === id)
+      // A parent view places its branch markers from this one value.
+      expect(rowOf(child.id)?.projections?.values.forkCut).toBe(inheritedEventCount)
+      expect(rowOf(parent.id)?.projections?.values.forkCut).toBeNull()
     } finally {
       await ctx.fiber.dispose()
       await rm(root, { recursive: true, force: true })
