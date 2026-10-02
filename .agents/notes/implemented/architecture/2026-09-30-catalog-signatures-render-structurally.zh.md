@@ -14,7 +14,7 @@ Status: implemented
 
 目录通过与 emitter 相同的 renderer 渲染事件签名，并以引号包裹的事件名前缀开头，与 emitter 的做法一致：
 
-```ts
+```ts ignore-check
 signature: `${quote(event.name)}${this.renderer.renderSignature(node.signature)}`,
 ```
 

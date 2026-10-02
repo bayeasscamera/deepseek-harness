@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-09-29-skill-import-atomic-install.md
+2026-09-29-skill-import-atomic-install.md: e99bc7b4a123d6c2da372479d1221aaf9e50b6d3
+2026-09-29-skill-import-atomic-install.zh.md: 4a128fc8eef66da318a0cf7c31e215bcb2cec06f

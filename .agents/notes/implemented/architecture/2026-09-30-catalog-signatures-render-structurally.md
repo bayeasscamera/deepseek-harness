@@ -14,7 +14,7 @@ The two agreed only by accident: both were reading whatever layout the source ha
 
 The catalog renders event signatures through the same renderer the emitter uses, prefixed with the quoted event name exactly as the emitter prefixes it:
 
-```ts
+```ts ignore-check
 signature: `${quote(event.name)}${this.renderer.renderSignature(node.signature)}`,
 ```
 

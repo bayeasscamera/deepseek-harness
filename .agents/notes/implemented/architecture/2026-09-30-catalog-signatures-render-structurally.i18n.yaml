@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-09-30-catalog-signatures-render-structurally.md
-2026-09-30-catalog-signatures-render-structurally.md: 9eddcc4f0306d2d7f8ed7a58aa91010caabc9409
-2026-09-30-catalog-signatures-render-structurally.zh.md: cdf39b2de23ea9d09678b0365eb9332d5a1e7d49
+2026-09-30-catalog-signatures-render-structurally.md: ef219b0190145f0f7de578bd062982060f455389
+2026-09-30-catalog-signatures-render-structurally.zh.md: 440fbe3e59b3341868d52ebfb44fefefb6cf9712
