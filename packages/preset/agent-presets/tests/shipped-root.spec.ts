@@ -141,14 +141,20 @@ describe('the shipped preset root', () => {
     }
   })
 
-  it('omits the general workflow tool only from PTC while retaining Ralph infrastructure', async () => {
-    const ptc = await shippedEntries('ptc')
-    expect(findEntry(ptc, 'tool-workflow')?.disabled).toBe(true)
-    expect(findEntry(ptc, 'workflow-worker-thread')?.disabled).not.toBe(true)
-    expect(findEntry(ptc, 'tool-ralph')?.disabled).not.toBe(true)
-
-    for (const id of ['standard', 'cordis']) {
-      expect(findEntry(await shippedEntries(id), 'tool-workflow')?.disabled, id).not.toBe(true)
+  it('omits the general workflow tool from every PTC-presenting preset while retaining Ralph infrastructure', async () => {
+    // PTC mode turns the tool registry into a generated SDK driven through
+    // `run_code`, so the general workflow tool would publish a second
+    // model-authored orchestration surface beside it. `cordis` now presents
+    // through `tool-presentation` too, so it follows the same rule; `standard`
+    // publishes no presentation surface and keeps the tool. The workflow
+    // engine and Ralph stay enabled everywhere that ships them.
+    for (const id of ['cordis', 'ptc']) {
+      const entries = await shippedEntries(id)
+      expect(findEntry(entries, 'tool-presentation')?.disabled, id).not.toBe(true)
+      expect(findEntry(entries, 'tool-workflow')?.disabled, id).toBe(true)
+      expect(findEntry(entries, 'workflow-worker-thread')?.disabled, id).not.toBe(true)
+      expect(findEntry(entries, 'tool-ralph')?.disabled, id).not.toBe(true)
     }
+    expect(findEntry(await shippedEntries('standard'), 'tool-workflow')?.disabled).not.toBe(true)
   })
 })

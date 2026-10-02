@@ -1,5 +1,10 @@
 # The `cordis` agent preset: the standard coding agent, plus the ability to
-# read and write the runtime it is running in.
+# read and write the runtime it is running in, presented in PTC mode.
+#
+# PTC is combined here: the `tool-presentation` row (bottom of this file) turns
+# the tool registry into a generated SDK driven through `run_code`, and the
+# general-purpose `workflow` tool is disabled so `run_code` is the only
+# model-authored orchestration surface. Requires a host `codeRuntime`.
 #
 # It exists so a person can ask an agent to author another agent. Everything in
 # `standard` is here unchanged; what is added is the self-referential Cordis
@@ -32,7 +37,7 @@
 - id: agent-instructions
   name: '@deepseek-ai/dsh-agent-instructions'
   config:
-    maxBytes: 65536
+    maxBytes: 262144
 
 # ── shell ───────────────────────────────────────────────────────────────────
 
@@ -61,7 +66,7 @@
 - id: tool-fs-search
   name: '@deepseek-ai/dsh-tool-fs-search'
   config:
-    sampleOverCapGlobResults: false
+    sampleOverCapGlobResults: true
 
 # ── background jobs ────────────────────────────────────────────────────────
 
@@ -136,12 +141,15 @@
     - id: command-compact
       name: '@deepseek-ai/dsh-command-compact'
 
+    # Widened truncation: a tool result is only cut above 384000 characters;
+    # the first 64000 and the last 64000 characters are kept, so both the
+    # start and the errors at the end stay visible.
     - id: tool-result-pruner
       name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
       config:
-        thresholdChars: 8192
-        headChars: 4096
-        tailChars: 1024
+        thresholdChars: 384000
+        headChars: 64000
+        tailChars: 64000
 
 # ── delegation and workflows ────────────────────────────────────────────────
 
@@ -185,13 +193,11 @@
         toolName: subagent_fork
         backgroundMode: continuable
 
-    # Production dsh does not install these optional providers. Install the
-    # matching Bundle in this Profile and restart the Host, then copy this
-    # preset and remove `disabled` from the matching tool row. Host availability
-    # alone grants no tool.
+    # Optional providers, ENABLED in this preset. They require the matching
+    # Bundle to be installed in this Profile and the Host restarted; without it,
+    # set `disabled: true` on the row. Host availability alone grants no tool.
     - id: tool-subagent-codex
       name: '@deepseek-ai/dsh-tool-subagent'
-      disabled: true
       config:
         provider: codex
         toolName: subagent_codex
@@ -200,7 +206,6 @@
 
     - id: tool-subagent-claude-code
       name: '@deepseek-ai/dsh-tool-subagent'
-      disabled: true
       config:
         provider: claude-code
         toolName: subagent_claude_code
@@ -214,12 +219,15 @@
 
     - id: tool-workflow
       name: '@deepseek-ai/dsh-tool-workflow'
+      # Keep the engine above for `ralph`, but do not publish a second
+      # model-authored orchestration surface beside `run_code` in PTC mode.
+      disabled: true
 
     - id: tool-ralph
       name: '@deepseek-ai/dsh-tool-ralph'
       config:
         subagentProvider: spawn
-        maxRounds: 64
+        maxRounds: 128
 
 # ── remaining model-facing rows ─────────────────────────────────────────────
 
@@ -237,7 +245,7 @@
   name: '@deepseek-ai/dsh-tool-web'
   config:
     fetch: true
-    searchTimeoutMs: 60000
+    searchTimeoutMs: 120000
 
 # ── self-modification ───────────────────────────────────────────────────────
 
@@ -261,3 +269,13 @@
 
 - id: tool-skill
   name: '@deepseek-ai/dsh-tool-skill'
+
+# ── presentation ────────────────────────────────────────────────────────────
+
+# PTC mode for this agent alone. The row waits for the host's `codeRuntime`
+# rather than assuming it: a deployment that composes no TypeScript runtime
+# fails this preset at mount, naming this id, instead of at the first request.
+- id: tool-presentation
+  name: '@deepseek-ai/dsh-agent-tool-presentation'
+  config:
+    mode: ptc
