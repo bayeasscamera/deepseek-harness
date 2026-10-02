@@ -68,6 +68,7 @@ export const chatFr: Record<string, string> = {
   'message.turnProcess.separator': ' · ',
   'message.stopped': 'Arrêté',
   'message.branch': 'Brancher vers une nouvelle conversation',
+  'branch.of': 'Branché depuis {title}',
   'message.branchUnavailable': 'Disponible uniquement sur le dernier message d’un tour terminé',
   'message.retry.active': 'Nouvelle tentative de requête modèle',
   'message.retry.cancelled': 'Tentative de requête modèle annulée',

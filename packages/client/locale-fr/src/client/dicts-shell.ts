@@ -71,6 +71,7 @@ export const sidebarTextpreviewFr: Record<string, string> = {
 
 export const workspaceFr: Record<string, string> = {
   'group.ungrouped': 'Non groupées',
+  'branch.count': '{n} branches',
   'session.new': 'Nouvelle session',
   'section.workspaces': 'Espaces de travail',
   'section.sessions': 'Sessions',
