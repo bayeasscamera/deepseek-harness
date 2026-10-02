@@ -198,10 +198,10 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'bounded results, or a business/transport error.',
       },
       {
-        signature: 'fork(opts: { sessionId: SessionId; atSeq?: number; increaseTitle?: boolean }): Promise<SessionId>',
-        description: 'Fork a session from a completed-turn prefix of the source; on resolution the child is in the list store and `open()` can target it.',
-        parameters: [{ name: 'opts', description: 'source session id, the optional event seq anchoring the cut (the boundary is the first turn/end at or after it; an in-log anchor in an open turn is unavailable rather than clipped backward), and whether to increment an inherited durable title before resolving.' }],
-        returns: 'the child session id.',
+        signature: 'fork(opts: { sessionId: SessionId atSeq?: number increaseTitle?: boolean isolateFiles?: boolean }): Promise<{ sessionId: SessionId; draftText?: string }>',
+        description: 'Branch a session from one of its messages; on resolution the child is in the list store and `open()` can target it.\n\nThe anchor reads as the user\'s intent: an anchor on a user message stops before that message and returns its text as a draft, so a composer can offer it for editing, while any other anchor copies through the end of its turn. A cutoff that would land inside an unfinished turn moves back to the last completed turn, so a copied tool call always keeps its result.',
+        parameters: [{ name: 'opts', description: 'source session id, the optional event seq anchoring the cut, whether to increment an inherited durable title before resolving, and whether the child gets an isolated copy of the working directory instead of sharing the source\'s files.' }],
+        returns: 'the child session id plus any draft text the anchor produced.',
         throws: ['when the fork fails, or when a requested child-title rename fails after creation.'],
       },
       {

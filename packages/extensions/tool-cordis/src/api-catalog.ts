@@ -5153,7 +5153,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'SessionForkRequest',
-    declaration: 'export interface SessionForkRequest {\n    readonly sessionId: SessionId;\n    readonly atSeq?: number;\n}',
+    declaration: 'export interface SessionForkRequest {\n    readonly sessionId: SessionId;\n    readonly atSeq?: number;\n    readonly isolateFiles?: boolean;\n}',
   },
   {
     name: 'SessionForkSource',
@@ -5161,7 +5161,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'SessionForkValue',
-    declaration: 'export interface SessionForkValue {\n    readonly sessionId: SessionId;\n}',
+    declaration: 'export interface SessionForkValue {\n    readonly sessionId: SessionId;\n    readonly draftText?: string;\n}',
   },
   {
     name: 'SessionHandle',
