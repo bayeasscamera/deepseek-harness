@@ -9,6 +9,12 @@ export const MACOS_SIGNING_IDENTITY_ENV = 'DSH_DESKTOP_MACOS_SIGNING_IDENTITY'
 /** Environment variable that supplies the expected Apple Developer Team ID. */
 export const MACOS_TEAM_ID_ENV = 'DSH_DESKTOP_MACOS_TEAM_ID'
 
+/** Environment variable that selects credential-free local packaging. */
+export const DESKTOP_LOCAL_BUILD_ENV = 'DSH_DESKTOP_LOCAL_BUILD'
+
+/** Application identifier used by a local build that declares none. */
+export const LOCAL_DESKTOP_APP_ID = 'com.deepseek.harness.local'
+
 const APPLE_API_KEY_ENV = 'APPLE_API_KEY'
 const APPLE_API_KEY_ID_ENV = 'APPLE_API_KEY_ID'
 const APPLE_API_ISSUER_ENV = 'APPLE_API_ISSUER'
@@ -33,11 +39,27 @@ function requireEnvironmentValue(env, name) {
 }
 
 /**
+ * Resolve whether this packaging run packages a credential-free local build.
+ * @param {NodeJS.ProcessEnv} env - Packaging environment.
+ * @returns {boolean} True when the environment selects local packaging.
+ */
+export function resolveDesktopLocalBuild(env) {
+  const value = env[DESKTOP_LOCAL_BUILD_ENV]?.trim().toLowerCase()
+  if (value === undefined || value === '' || value === '0' || value === 'false') return false
+  if (value === '1' || value === 'true') return true
+  throw new Error(`desktop release environment: ${DESKTOP_LOCAL_BUILD_ENV} must be 1, true, 0, or false`)
+}
+
+/**
  * Resolve and validate the application identifier shared by every platform target.
  * @param {NodeJS.ProcessEnv} env - Packaging environment.
- * @returns {string} Reverse-DNS application identifier.
+ * @returns {string} Reverse-DNS application identifier, defaulted for local packaging.
  */
 export function resolveDesktopAppId(env) {
+  const configured = env[DESKTOP_APP_ID_ENV]?.trim()
+  if ((configured === undefined || configured === '') && resolveDesktopLocalBuild(env)) {
+    return LOCAL_DESKTOP_APP_ID
+  }
   const appId = requireEnvironmentValue(env, DESKTOP_APP_ID_ENV)
   if (!/^[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/u.test(appId)) {
     throw new Error(`desktop release environment: ${DESKTOP_APP_ID_ENV} must be a reverse-DNS identifier`)

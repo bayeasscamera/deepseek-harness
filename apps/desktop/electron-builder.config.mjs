@@ -1,5 +1,6 @@
 import {
   resolveDesktopAppId,
+  resolveDesktopLocalBuild,
   resolveMacOSNotarizationEnvironment,
   resolveMacOSSigningEnvironment,
 } from './scripts/desktop-release-environment.mjs'
@@ -9,7 +10,7 @@ import {
   createWindowsTokenSigner,
   installWindowsNsisBootstrapSigner,
 } from './scripts/windows-sign.mjs'
-import { resolveDesktopAutoUpdateConfig } from './scripts/desktop-auto-update-environment.mjs'
+import { resolveDesktopAutoUpdateConfig, resolveDesktopAutoUpdateTarget } from './scripts/desktop-auto-update-environment.mjs'
 import { desktopTargetBuildPaths } from './scripts/desktop-build-paths.mjs'
 
 /**
@@ -30,9 +31,10 @@ export function createElectronBuilderConfig(
   const resolvedArch = env.DSH_DESKTOP_TARGET_ARCH ?? hostArch
   const packagesMacOS = targetPlatform === 'darwin' || (targetPlatform === undefined && hostPlatform === 'darwin')
   const packagesWindows = targetPlatform === 'win32'
-  const macOSSigning = packagesMacOS ? resolveMacOSSigningEnvironment(env) : undefined
-  if (packagesMacOS) resolveMacOSNotarizationEnvironment(env)
-  const windowsSigner = packagesWindows
+  const localBuild = resolveDesktopLocalBuild(env)
+  const macOSSigning = packagesMacOS && !localBuild ? resolveMacOSSigningEnvironment(env) : undefined
+  if (packagesMacOS && !localBuild) resolveMacOSNotarizationEnvironment(env)
+  const windowsSigner = packagesWindows && !localBuild
     ? createWindowsTokenSigner({
         certificateFile: env.DSH_DESKTOP_WINDOWS_CER_FILE,
         signTool: env.DSH_DESKTOP_WINDOWS_SIGNTOOL,
@@ -43,8 +45,10 @@ export function createElectronBuilderConfig(
   if (windowsSigner !== undefined) {
     installWindowsNsisBootstrapSigner({ sign: windowsSigner })
   }
-  const update = resolveDesktopAutoUpdateConfig(env, resolvedPlatform, resolvedArch)
-  const buildPaths = desktopTargetBuildPaths(update.target)
+  const update = localBuild ? undefined : resolveDesktopAutoUpdateConfig(env, resolvedPlatform, resolvedArch)
+  const buildPaths = desktopTargetBuildPaths(
+    update?.target ?? resolveDesktopAutoUpdateTarget(resolvedPlatform, resolvedArch),
+  )
   return {
     appId,
     productName: 'DeepSeek Harness',
@@ -61,25 +65,35 @@ export function createElectronBuilderConfig(
       { from: buildPaths.runtime, to: 'runtime' },
       { from: buildPaths.seed, to: 'seed' },
     ],
-    mac: {
-      category: 'public.app-category.developer-tools',
-      icon: 'build/icon.icns',
-      identity: macOSSigning?.signingIdentity,
-      forceCodeSigning: true,
-      hardenedRuntime: true,
-      notarize: true,
-      target: ['dmg', 'zip'],
-    },
+    mac: localBuild
+      ? {
+          category: 'public.app-category.developer-tools',
+          icon: 'build/icon.icns',
+          identity: null,
+          forceCodeSigning: false,
+          hardenedRuntime: false,
+          notarize: false,
+          target: ['dir'],
+        }
+      : {
+          category: 'public.app-category.developer-tools',
+          icon: 'build/icon.icns',
+          identity: macOSSigning?.signingIdentity,
+          forceCodeSigning: true,
+          hardenedRuntime: true,
+          notarize: true,
+          target: ['dmg', 'zip'],
+        },
     dmg: {
       sign: true,
       writeUpdateInfo: false,
     },
     afterSign: context => {
-      if (context.electronPlatformName !== 'darwin') return
+      if (context.electronPlatformName !== 'darwin' || localBuild) return
       verifyMacOSSignatureAfterSign(context, macOSSigning ?? resolveMacOSSigningEnvironment(env))
     },
     artifactBuildCompleted: artifact => {
-      if (!artifact.file.endsWith('.dmg')) return
+      if (localBuild || !artifact.file.endsWith('.dmg')) return
       return notarizeMacOSDiskImageArtifact(
         artifact,
         env,
@@ -87,7 +101,7 @@ export function createElectronBuilderConfig(
       )
     },
     win: {
-      forceCodeSigning: true,
+      forceCodeSigning: !localBuild,
       signtoolOptions: {
         sign: windowsSigner,
         signingHashAlgorithms: ['sha256'],
@@ -103,7 +117,7 @@ export function createElectronBuilderConfig(
       allowToChangeInstallationDirectory: true,
       differentialPackage: true,
     },
-    publish: [{ provider: 'generic', url: update.publicUrl }],
+    publish: update === undefined ? null : [{ provider: 'generic', url: update.publicUrl }],
   }
 }
 

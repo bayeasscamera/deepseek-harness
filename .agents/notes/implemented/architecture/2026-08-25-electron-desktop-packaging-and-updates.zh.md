@@ -95,6 +95,8 @@ Electron 更新只使用一个 `electron-updater` 发布流和签名 `electron-b
 
 Electron 产物必须签名；macOS 产物必须公证。发布自动化必须通过明确的环境变量提供应用 ID、macOS Developer ID 限定名、预期 Team ID 与一套完整的 notarytool 凭据。配置加载会拒绝缺失或格式错误的标识符和不完整的公证凭据，macOS 打包还会强制签名，避免证书发现过程静默选择其他已安装身份或生成未签名发布。Seed 准备会验证每个内嵌 Mach-O 文件的精确 Authority 与 Team ID，以及时间戳和 hardened-runtime 标记。签名后钩子会执行 Apple 的深度严格应用验证，并要求同一叶证书 Authority 与 Team ID 完全匹配，验证通过后才继续生成产物。Electron-builder 随后公证应用并钉票、签署 DMG。DMG 的 artifact-completion hook 会单独公证每个 DMG 并钉票，再要求其使用配置的身份、具备有效票据并通过 Gatekeeper；只有该 hook 成功，上传事件才会执行。macOS 更新使用签名 ZIP，因此 DMG 不生成 blockmap；否则钉票会让已经生成的 DMG blockmap 失效。自定义协议提供已安装的前端分发目录和活跃模块图点名的客户端文件，并拒绝路径穿越或访问这些根目录之外的内容。插件安装器 API 只对 Electron 拥有的管理 GUI 可用，不存在于浏览器应用或后端 RPC 中。
 
+本地构建不需要任何发布凭据。`DSH_DESKTOP_LOCAL_BUILD=1` 会把应用标识默认为 `com.deepseek.harness.local`，保留 pnpm 已生成的 Mach-O 签名而不再重签种子 store，只产出未打包的应用程序目录且不写更新源，随后对该应用进行 ad-hoc 签名。seed 验证正是这一区分的来源：它要求 Apple 签发的 Developer ID，而本地创建的自签名证书虽然签名成功，却不携带 Team ID，因此本地构建无法满足该验证。本地产物不是发布：它没有 Developer ID、没有公证、也没有更新元数据，上传仍然要求完整的发布环境。
+
 Windows 发布打包通过 `/f` 向已配置且与 SafeNet 兼容的 SignTool 提供 `DSH_DESKTOP_WINDOWS_CER_FILE` 指定的公开 EV 叶证书，并通过必需的 `DSH_DESKTOP_WINDOWS_KEY_CONTAINER` 标识匹配的私钥。证书文件保留在源码仓库之外，私钥仍留在 USB Token 上。electron-builder hook 把每个产物交给采用 CRLF 的 `windows-sign.cmd`；该 CMD 只调用一次 SignTool，并指定 SafeNet `/kc "[{{PIN}}]=容器"` 值与 CSP、SHA-256 文件摘要和 DigiCert SHA-256 RFC 3161 时间戳。hook 不会改用其他 SignTool，也不会重试失败的请求。打包编排不会把任何 `DSH_DESKTOP_WINDOWS_*` 字段传给构建与 seed 准备子进程，只会把证书路径、SignTool 路径、密钥容器和 PIN 传入 electron-builder。签名器在已清理的 CMD 环境中只提供经过校验的签名字段；CMD 会禁用延迟展开，在 SignTool 启动前清除这些字段，并仅在 SignTool 必需的命令行中保留 PIN。所有对外诊断都会替换 PIN，而且只能允许专用构建账号和管理员检查该 runner。签名器会在企业 Code Integrity 检查 electron-builder 的临时 NSIS bootstrap 前先为该可执行文件签名；对于生成的可执行文件，只有证书表条目指向文件末尾之外时，才会在最终签名前清除该条目。SignTool、证书、容器、PIN、Token 或签名不可用时，打包会在产生未签名产物前失败。自定义协议提供已安装的前端分发目录和活跃模块图点名的客户端文件，并拒绝路径穿越或访问这些根目录之外的内容。插件安装器 API 只对 Electron 持有的管理 GUI 可用，不存在于浏览器应用或后端 RPC 中。
 
 打包应用会忽略开发资源和项目环境变量覆盖。只有未打包的 Electron 进程可以替换 Node.js 可执行文件、pnpm 入口、seed 或活跃项目。
@@ -108,7 +110,7 @@ Windows 发布打包通过 `/f` 向已配置且与 SafeNet 兼容的 SignTool �
 | 壳 | `apps/desktop` 负责 Electron 窗口、受限 preload、自定义协议、子进程生命周期、项目事务、插件 GUI、更新协调和 electron-builder 配置。 |
 | 已安装运行时 | 私有 `@deepseek-ai/dsh-desktop-host` 从活跃项目启动无端口桌面组合，并通过经过验证的分帧字节管道流式传输 API 与资源响应。 |
 | 包状态 | 发布种子和后续每次修改都通过内置 Node.js 与 pnpm 执行，并使用桌面端拥有的 store、config、cache、state 和 home 路径；核心包从发布 tarball 解析，插件从固定 npm registry 解析。 |
-| 资格验证 | macOS 打包要求已配置的公司身份与公证凭据可用，在解包最终归档后验证每个原生 seed 对象，验证完整应用签名，并要求应用和 DMG 都完成公证且通过 Gatekeeper。Windows 打包要求已配置的公开证书、SafeNet 私钥容器、Token Password 与 SignTool，并验证生成的每个签名。更新托管、跨上一版本的已安装产物测试和各平台 GUI 录制仍是发布环境门槛。 |
+| 资格验证 | 发布 macOS 打包要求已配置的公司身份与公证凭据可用，在解包最终归档后验证每个原生 seed 对象，验证完整应用签名，并要求应用和 DMG 都完成公证且通过 Gatekeeper。本地 macOS 打包不需要任何凭据，保留 pnpm 生成的签名，并对未打包应用进行 ad-hoc 签名。Windows 打包要求已配置的公开证书、SafeNet 私钥容器、Token Password 与 SignTool，并验证生成的每个签名。更新托管、跨上一版本的已安装产物测试和各平台 GUI 录制仍是发布环境门槛。 |
 
 `dev:desktop` 会构建当前 workspace，把已构建 CLI 包、私有 Desktop Host 包及其依赖链接投影为一次性项目，使用隔离的 Harness home，打开 Main、Renderer 和 Host 调试器，并在不准备发布资源的情况下启动未打包 Electron。该模式的链接依赖图不是由 pnpm 安装的桌面项目，因此会禁用包修改。固定的 macOS arm64、macOS x64 与 Windows x64 打包命令会把同一目标传给运行时准备、seed 安装和 electron-builder；每条命令还提供未封装安装器的变体，用于在生成安装器前验证发布路径。
 

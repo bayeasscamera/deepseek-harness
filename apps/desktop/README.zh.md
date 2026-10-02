@@ -100,6 +100,17 @@ macOS arm64 命令要求 Apple Silicon。macOS x64 命令可以在 Intel macOS �
 
 每个目标都在 `apps/desktop/.desktop-build/targets/<target>/` 下持有自己的打包输入、已准备运行时、包集合、seed、pnpm 准备状态、未打包应用、更新元数据和最终产物。Node.js 归档缓存继续由 `.desktop-build/downloads` 共享，因为每个归档文件名都包含版本、平台和架构，并且在解包前经过验证。目标构建绝不读取其他目标的可变准备状态。
 
+### 本地 ad-hoc 构建
+
+本地构建不需要任何发布凭据。设置 `DSH_DESKTOP_LOCAL_BUILD=1` 后，应用标识默认使用 `com.deepseek.harness.local`（设置 `DSH_DESKTOP_APP_ID` 时以它为准），seed 保留 pnpm 已生成的 Mach-O 签名，跳过公证，只产出未打包的应用程序，并在其后进行 ad-hoc 签名：
+
+```sh
+export DSH_DESKTOP_LOCAL_BUILD=1
+pnpm run package:desktop:mac:arm64:dir
+```
+
+产物位于 `apps/desktop/.desktop-build/targets/mac-arm64/artifacts/mac-arm64/DeepSeek Harness.app`。本地构建不写入更新元数据，因此 `upload:desktop:mac:arm64` 仍然要求完整的发布环境。签名身份、Team ID、公证凭据与 `DOWNLOAD_TEST_ORIGIN` 只属于发布构建。使用本地构建的应用前请自行审查：其代码不带 Developer ID，Gatekeeper 无法验证来源。
+
 ### 上传更新
 
 `DSH_DESKTOP_AUTO_UPDATE_ENV` 同时选择打包时写入的更新 URL 与后续 COS 上传目标，可取 `test` 或 `production`；未设置时使用 `test`。测试打包必须通过 `DOWNLOAD_TEST_ORIGIN` 提供 HTTPS origin，生产 origin 仍为 `https://download.deepseek.com`。上传还必须通过 `DOWNLOAD_TEST_COS_BUCKET` 或 `DOWNLOAD_PROD_COS_BUCKET` 提供所选环境的 COS bucket。目标路径为 `_/harness/desktop/stable/<target>/`，其中 `target` 为 `mac-arm64`、`mac-x64` 或 `win-x64`。

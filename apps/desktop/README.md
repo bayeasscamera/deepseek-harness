@@ -100,6 +100,17 @@ The macOS arm64 command requires Apple Silicon. The macOS x64 command runs on In
 
 Each target owns its packed package inputs, prepared runtime, package set, seed, pnpm preparation state, unpacked application, update metadata, and final artifacts under `apps/desktop/.desktop-build/targets/<target>/`. The Node.js archive cache remains shared under `.desktop-build/downloads` because every archive name includes its version, platform, and architecture and is verified before extraction. A target build never consumes another target's mutable preparation state.
 
+### Local ad-hoc build
+
+A local build packages an application without any release credential. Setting `DSH_DESKTOP_LOCAL_BUILD=1` defaults the application identifier to `com.deepseek.harness.local` unless `DSH_DESKTOP_APP_ID` is set, keeps the Mach-O signatures pnpm already produced in the seed, skips notarization, emits the unpacked application only, and ad-hoc signs it afterwards:
+
+```sh
+export DSH_DESKTOP_LOCAL_BUILD=1
+pnpm run package:desktop:mac:arm64:dir
+```
+
+The result is `apps/desktop/.desktop-build/targets/mac-arm64/artifacts/mac-arm64/DeepSeek Harness.app`. A local build writes no update metadata, so `upload:desktop:mac:arm64` still requires the release environment. Signing identity, Team ID, notary credentials, and `DOWNLOAD_TEST_ORIGIN` are release-only. Review a locally built application before trusting it: its code carries no Developer ID, so Gatekeeper cannot verify its origin.
+
 ### Upload updates
 
 `DSH_DESKTOP_AUTO_UPDATE_ENV` selects `test` or `production` for both the URL embedded during packaging and the later COS upload; an absent value selects `test`. Test packaging requires its HTTPS origin in `DOWNLOAD_TEST_ORIGIN`, while the production origin remains `https://download.deepseek.com`. Upload additionally requires the selected deployment's COS bucket in `DOWNLOAD_TEST_COS_BUCKET` or `DOWNLOAD_PROD_COS_BUCKET`. The target path is `_/harness/desktop/stable/<target>/`, where `target` is `mac-arm64`, `mac-x64`, or `win-x64`.

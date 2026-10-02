@@ -23,6 +23,7 @@ import {
 } from '../src/seed-store.ts'
 import {
   resolveDesktopAppId,
+  resolveDesktopLocalBuild,
   resolveMacOSSigningEnvironment,
 } from './desktop-release-environment.mjs'
 import {
@@ -160,9 +161,14 @@ async function main(): Promise<void> {
     rmSync(PNPM_BUILD_STATE, { recursive: true, force: true })
     await verifyOfflineInstallation(release)
     const targetPlatform = process.env.DSH_DESKTOP_TARGET_PLATFORM ?? process.platform
+    const localBuild = resolveDesktopLocalBuild(process.env)
     let signedMachOFiles: number | undefined
     let macOSSigning: ReturnType<typeof resolveMacOSSigningEnvironment> | undefined
-    if (targetPlatform === 'darwin') {
+    // Release signing replaces the signatures the toolchain and pnpm already
+    // produced with the company Developer ID, and its verification requires the
+    // Team ID only an Apple-issued certificate carries. A local build keeps the
+    // signatures already on the store objects, which is what makes them loadable.
+    if (targetPlatform === 'darwin' && !localBuild) {
       macOSSigning = resolveMacOSSigningEnvironment(process.env)
       const signing = await signMacOSSeedStore(
         STORE_ROOT,

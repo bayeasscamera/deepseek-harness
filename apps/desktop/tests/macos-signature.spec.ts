@@ -1,7 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import type { NotarizeOptions } from '@electron/notarize'
 import {
+  LOCAL_DESKTOP_APP_ID,
   resolveDesktopAppId,
+  resolveDesktopLocalBuild,
   resolveMacOSNotarizationEnvironment,
   resolveMacOSSigningEnvironment,
 } from '../scripts/desktop-release-environment.mjs'
@@ -71,6 +73,39 @@ describe('desktop macOS release signature', () => {
       DSH_DESKTOP_APP_ID: RELEASE_ENVIRONMENT.DSH_DESKTOP_APP_ID,
       DSH_DESKTOP_TARGET_PLATFORM: 'win32',
     }, 'win32')).toThrow(/DSH_DESKTOP_WINDOWS_CER_FILE/u)
+  })
+
+  it('packages a credential-free local build without release signing', async () => {
+    const { createElectronBuilderConfig } = await import('../electron-builder.config.mjs')
+    const config = createElectronBuilderConfig({
+      DSH_DESKTOP_LOCAL_BUILD: '1',
+      DSH_DESKTOP_TARGET_PLATFORM: 'darwin',
+      DSH_DESKTOP_TARGET_ARCH: 'arm64',
+    }, 'darwin', 'arm64')
+    expect(portablePath(config.extraResources[0]?.from ?? '')).toContain('/.desktop-build/targets/mac-arm64/runtime')
+    expect(portablePath(config.extraResources[1]?.from ?? '')).toContain('/.desktop-build/targets/mac-arm64/seed')
+    expect(config).toMatchObject({
+      appId: LOCAL_DESKTOP_APP_ID,
+      mac: {
+        icon: 'build/icon.icns',
+        identity: null,
+        forceCodeSigning: false,
+        hardenedRuntime: false,
+        notarize: false,
+        target: ['dir'],
+      },
+      publish: null,
+    })
+    expect(typeof config.artifactBuildCompleted).toBe('function')
+  })
+
+  it('requires release identifiers outside local builds and defaults them locally', () => {
+    expect(() => resolveDesktopAppId({})).toThrow(/DSH_DESKTOP_APP_ID/u)
+    expect(() => resolveMacOSSigningEnvironment({})).toThrow(/DSH_DESKTOP_MACOS_SIGNING_IDENTITY/u)
+    expect(resolveDesktopAppId({ DSH_DESKTOP_LOCAL_BUILD: 'true' })).toBe(LOCAL_DESKTOP_APP_ID)
+    expect(resolveDesktopLocalBuild({})).toBe(false)
+    expect(() => resolveDesktopLocalBuild({ DSH_DESKTOP_LOCAL_BUILD: 'unexpected' }))
+      .toThrow(/must be 1, true, 0, or false/u)
   })
 
   it('accepts the configured authority and team', () => {

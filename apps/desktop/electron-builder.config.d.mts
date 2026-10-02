@@ -9,16 +9,19 @@ export interface DesktopElectronBuilderConfig {
     { readonly from: string, readonly to: 'seed' },
   ]
   readonly mac: {
-    readonly identity: string | undefined
+    readonly icon: string
+    readonly identity: string | null | undefined
     readonly forceCodeSigning: boolean
+    readonly hardenedRuntime: boolean
     readonly notarize: boolean
+    readonly target: readonly string[]
   }
   readonly dmg: {
     readonly sign: boolean
     readonly writeUpdateInfo: boolean
   }
   readonly artifactBuildCompleted: (artifact: { readonly file: string }) => Promise<void> | undefined
-  readonly publish: readonly [{ readonly provider: 'generic', readonly url: string }]
+  readonly publish: readonly [{ readonly provider: 'generic', readonly url: string }] | null
 }
 
 /**

@@ -7,6 +7,12 @@ export const MACOS_SIGNING_IDENTITY_ENV: 'DSH_DESKTOP_MACOS_SIGNING_IDENTITY'
 /** Environment variable that supplies the expected Apple Developer Team ID. */
 export const MACOS_TEAM_ID_ENV: 'DSH_DESKTOP_MACOS_TEAM_ID'
 
+/** Environment variable that selects credential-free local packaging. */
+export const DESKTOP_LOCAL_BUILD_ENV: 'DSH_DESKTOP_LOCAL_BUILD'
+
+/** Application identifier used by a local build that declares none. */
+export const LOCAL_DESKTOP_APP_ID: 'com.deepseek.harness.local'
+
 /** Public identity expected on a macOS release. */
 export interface MacOSSigningEnvironment {
   readonly signingIdentity: string
@@ -40,9 +46,16 @@ export type MacOSNotarizationEnvironment =
   | MacOSKeychainNotarizationEnvironment
 
 /**
+ * Resolve whether this packaging run packages a credential-free local build.
+ * @param env - Packaging environment.
+ * @returns True when the environment selects local packaging.
+ */
+export function resolveDesktopLocalBuild(env: NodeJS.ProcessEnv): boolean
+
+/**
  * Resolve and validate the application identifier shared by every platform target.
  * @param env - Packaging environment.
- * @returns Reverse-DNS application identifier.
+ * @returns Reverse-DNS application identifier, defaulted for local packaging.
  */
 export function resolveDesktopAppId(env: NodeJS.ProcessEnv): string
 

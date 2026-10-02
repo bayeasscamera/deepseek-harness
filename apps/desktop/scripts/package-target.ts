@@ -1,7 +1,7 @@
 /** Build one release target with matching Electron, Node.js, and seed architecture. */
 
 import { spawn } from 'node:child_process'
-import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { parseArgs } from 'node:util'
 import { join, resolve } from 'node:path'
 import {
@@ -9,6 +9,8 @@ import {
   resolveDesktopAutoUpdateConfig,
 } from './desktop-auto-update-environment.mjs'
 import { desktopTargetBuildPaths } from './desktop-build-paths.mjs'
+import { resolveDesktopLocalBuild } from './desktop-release-environment.mjs'
+import { adhocSignMacOSApp } from './local-adhoc-sign.mjs'
 
 const APP_ROOT = resolve(import.meta.dirname, '..')
 const REPOSITORY_ROOT = resolve(APP_ROOT, '..', '..')
@@ -212,6 +214,23 @@ export function desktopElectronBuilderArguments(
   ]
 }
 
+/**
+ * Resolve the application directory electron-builder produced for one target.
+ * @param artifactsRoot - Artifact directory of the selected target.
+ * @param target - Validated packaging target.
+ * @returns Absolute path of the packaged application directory.
+ */
+function packagedApplicationPath(artifactsRoot: string, target: DesktopPackageTarget): string {
+  const outputRoot = join(artifactsRoot, `${target.platform === 'darwin' ? 'mac' : 'win'}-${target.arch}`)
+  const applications = readdirSync(outputRoot).filter(entry => entry.endsWith('.app'))
+  if (applications.length !== 1) {
+    throw new Error(
+      `desktop package: expected one application directory in ${outputRoot}, found ${String(applications.length)}`,
+    )
+  }
+  return join(outputRoot, applications[0] as string)
+}
+
 function runPnpm(
   args: readonly string[],
   env: NodeJS.ProcessEnv = process.env,
@@ -238,6 +257,7 @@ function runPnpm(
 async function main(): Promise<void> {
   const invocation = parseDesktopPackageInvocation(process.argv.slice(2))
   const { target } = invocation
+  const localBuild = resolveDesktopLocalBuild(process.env)
   const buildPaths = desktopTargetBuildPaths(target.name)
   const releaseRecordPath = join(buildPaths.artifacts, desktopBuildRecordFilename(target.name))
   if (!invocation.prepareOnly) {
@@ -279,6 +299,14 @@ async function main(): Promise<void> {
   await runPnpm(['run', 'prepare:seed'], targetEnv)
   if (invocation.prepareOnly) return
   await runPnpm(desktopElectronBuilderArguments(target, invocation.directory), electronBuilderEnv)
+  if (localBuild) {
+    // Apple Silicon refuses to execute an application whose code carries no valid
+    // signature, and a local build has no release signature to keep.
+    if (target.platform === 'darwin') {
+      adhocSignMacOSApp(packagedApplicationPath(buildPaths.artifacts, target))
+    }
+    return
+  }
   if (!invocation.directory) writeReleaseRecord(target, electronBuilderEnv, buildPaths.artifacts)
 }
 
