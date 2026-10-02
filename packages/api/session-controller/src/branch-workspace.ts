@@ -47,12 +47,12 @@ export type IsolationCommandRunner = (
  */
 function runProcess(command: string, args: readonly string[], cwd: string): IsolationCommandOutcome {
   const result = spawnSync(command, [...args], { cwd, encoding: 'utf8' })
-  return {
-    status: result.status,
-    stdout: result.stdout ?? '',
-    stderr: result.stderr ?? '',
-    ...(result.error === undefined ? {} : { error: result.error }),
+  // A spawn that never started (absent binary, EACCES) answers null streams;
+  // the string arms below hold only for a process that actually ran.
+  if (result.error !== undefined) {
+    return { status: result.status, stdout: '', stderr: '', error: result.error }
   }
+  return { status: result.status, stdout: result.stdout, stderr: result.stderr }
 }
 
 /**
