@@ -465,6 +465,10 @@ export function SessionNodeItem({
         </span>
       )}
       <span className={css.title}>{title}</span>
+      {/* A branch count marks the session other branches were cut from. */}
+      {(row.branchCount ?? 0) > 0 && (
+        <span className={css.slot}>{t('branch.count', { n: row.branchCount ?? 0 })}</span>
+      )}
       {row.hasActiveSchedule && <ActiveScheduleIndicator t={t} />}
       {/* A blank New Session row is a provisional placeholder: nothing has
           happened in it yet, so a "now" timestamp and the row verbs

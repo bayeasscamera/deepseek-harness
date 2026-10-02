@@ -44,3 +44,23 @@ export function indexSubagentDescendants(
   return indexed
 }
 /* jscpd:ignore-end */
+
+/**
+ * Index the branch children under each parent Session.
+ *
+ * A branch is a child that records a parent without the subagent origin: a fork
+ * or a branch cut from another conversation. Direct children only — a branch of
+ * a branch is counted under its own parent by the same rule.
+ * @param summaries - Session summaries keyed by id.
+ * @returns branch totals keyed by parent id.
+ */
+export function indexBranchDescendants(
+  summaries: Readonly<Record<SessionId, LineageEntry>>,
+): ReadonlyMap<SessionId, number> {
+  const indexed = new Map<SessionId, number>()
+  for (const child of Object.values(summaries)) {
+    if (child.origin === 'subagent' || child.parentId === undefined) continue
+    indexed.set(child.parentId, (indexed.get(child.parentId) ?? 0) + 1)
+  }
+  return indexed
+}
