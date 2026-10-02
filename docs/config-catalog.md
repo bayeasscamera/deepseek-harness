@@ -220,14 +220,20 @@ Source: [`packages/api/session-controller/src/index.ts:69`](../packages/api/sess
 ## `@deepseek-ai/dsh-api-settings-controller`
 
 ```ts config-catalog
-/** Native document-opening policy. */
+/** Native document-opening policy and skills-listing roots. */
 export interface Config {
   /** Override platform desktop-opener detection. */
   readonly nativeOpen?: boolean
+  /** DeepSeek Harness config root; defaults to `$DSH_HOME` or `~/.dsh`. */
+  readonly dshHome?: string
+  /** Shared agent config root; defaults to `$DSH_AGENTS_HOME` or `~/.agents`. */
+  readonly agentsHome?: string
+  /** Additional skill roots scanned after project roots and before user roots. */
+  readonly customSkillDirs?: string[]
 }
 ```
 
-Source: [`packages/api/settings-controller/src/index.ts:36`](../packages/api/settings-controller/src/index.ts)
+Source: [`packages/api/settings-controller/src/index.ts:69`](../packages/api/settings-controller/src/index.ts)
 
 <a id="deepseek-aidsh-api-workspace-files"></a>
 
@@ -1094,15 +1100,18 @@ export interface DeepSeekCatalogModel {
   /** Per-request output cap for this model; omission falls back to the profile's {@link DeepSeekConnectionOptions.maxTokens}. */
   maxTokens?: number
   /** Accepted request modalities; omission is text-only. */
-  inputModalities?: ModelModality[]
+  inputModalities?: DeepSeekModelModality[]
   /** Total-pixel budget for one deterministic request preview, or the 512-by-512 `low` preset. */
   imagePixelBudget?: number | 'low'
   /** Encoded-byte target for one deterministic request preview; the smallest quality-ladder output is used when no quality fits. */
   imageMaxBytes?: number
 }
+
+/** Input modalities a DeepSeek catalog model accepts: DeepSeek serves text and vision. */
+export type DeepSeekModelModality = 'text' | 'image'
 ```
 
-Depends on: [`ModelModality`](../packages/llm/llm/src/index.ts) · [`RetryPolicyConfig`](../packages/llm/llm/src/index.ts)
+Depends on: [`RetryPolicyConfig`](../packages/llm/llm/src/index.ts)
 
 Source: [`packages/llm/llm-deepseek/src/index.ts:125`](../packages/llm/llm-deepseek/src/index.ts)
 
@@ -3324,7 +3333,7 @@ export interface Config {
 }
 ```
 
-Source: [`packages/web/web-search-brave/src/index.ts:31`](../packages/web/web-search-brave/src/index.ts)
+Source: [`packages/web/web-search-brave/src/index.ts:24`](../packages/web/web-search-brave/src/index.ts)
 
 <a id="deepseek-aidsh-web-search-deepseek"></a>
 
