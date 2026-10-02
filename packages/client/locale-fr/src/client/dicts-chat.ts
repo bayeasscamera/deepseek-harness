@@ -79,6 +79,8 @@ export const chatFr: Record<string, string> = {
   'message.retry.delay': 'Délai avant réessai : ',
   'message.retry.failure': 'Motif de l’échec : ',
   'message.failure.auth': 'Clé API invalide',
+  'message.failure.contextWindow':
+    'Contexte saturé, toujours au-delà de la fenêtre du modèle après la compaction automatique. Envoyez /compact, passez à un modèle à fenêtre plus large ou ouvrez une nouvelle session',
   'message.turnError': 'Ce tour a échoué',
   'message.maxTokens': 'Limite de tokens en sortie atteinte',
   'message.maxTokens.hint':
@@ -434,6 +436,7 @@ export const trajectoryFr: Record<string, string> = {
   'details.subtoolCalls': 'Appels de sous-outil',
   'details.error': 'Erreur',
   'details.failure.auth': 'Clé API invalide',
+  'details.failure.contextWindow': 'Contexte saturé, toujours au-delà de la fenêtre du modèle après la compaction automatique',
   'details.retry': 'Réessayer',
   'details.scheduled': 'Planifié',
   'details.retryDelay': 'Délai avant réessai',

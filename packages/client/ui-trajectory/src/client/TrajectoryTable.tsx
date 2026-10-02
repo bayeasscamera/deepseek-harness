@@ -731,6 +731,7 @@ function requestErrorMessage(
   t: TrajectoryTranslate,
 ): string | undefined {
   if (request.errorCode === 'AUTH') return t('details.failure.auth')
+  if (request.errorCode === 'CONTEXT_WINDOW_EXCEEDED') return t('details.failure.contextWindow')
   if (request.error === COMPACTION_INTERRUPTED_ERROR) return t('layout.compactionInterrupted')
   return request.error
 }
