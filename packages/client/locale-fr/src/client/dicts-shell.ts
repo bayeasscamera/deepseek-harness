@@ -6,6 +6,7 @@
  * language.
  */
 
+/** French rows for the `sidebar` namespace. */
 export const sidebarFr: Record<string, string> = {
   'session.new': 'Nouvelle session',
   'session.new.label': 'Nouvelle session',
@@ -13,6 +14,7 @@ export const sidebarFr: Record<string, string> = {
   'toggle.collapse': 'Réduire la barre latérale',
 }
 
+/** French rows for the `sidebarFiles` namespace. */
 export const sidebarFilesFr: Record<string, string> = {
   'type.label': 'Fichiers',
   'guide.title': 'Fichiers',
@@ -31,6 +33,7 @@ export const sidebarFilesFr: Record<string, string> = {
   'error.unavailable': 'Échec de lecture : {message}',
 }
 
+/** French rows for the `sidebarRight` namespace. */
 export const sidebarRightFr: Record<string, string> = {
   'chrome.expand': 'Ouvrir la barre latérale',
   'chrome.collapse': 'Fermer la barre latérale',
@@ -51,6 +54,7 @@ export const sidebarRightFr: Record<string, string> = {
     'Les fichiers et productions de la conversation s’ouvrent dans cette colonne ; les entrées ci-dessous en ouvrent d’autres.',
 }
 
+/** French rows for the `sidebarTextpreview` namespace. */
 export const sidebarTextpreviewFr: Record<string, string> = {
   loading: 'Lecture en cours…',
   loadMore: 'Charger plus',
@@ -69,6 +73,7 @@ export const sidebarTextpreviewFr: Record<string, string> = {
   retry: 'Réessayer',
 }
 
+/** French rows for the `workspace` namespace. */
 export const workspaceFr: Record<string, string> = {
   'group.ungrouped': 'Non groupées',
   'branch.count': '{n} branches',
@@ -138,6 +143,7 @@ export const workspaceFr: Record<string, string> = {
   'time.ago': 'il y a {t}',
 }
 
+/** French rows for the `reference` namespace. */
 export const referenceFr: Record<string, string> = {
   'section.files': 'Fichiers et dossiers',
   'section.sessions': 'Conversations',
@@ -151,6 +157,7 @@ export const referenceFr: Record<string, string> = {
   'time.years': '{n} an(s)',
 }
 
+/** French rows for the `directory-browser` namespace. */
 export const directoryBrowserFr: Record<string, string> = {
   'browser.title': 'Choisir le répertoire de l’espace de travail',
   'browser.home': 'Dossier personnel',
@@ -167,6 +174,7 @@ export const directoryBrowserFr: Record<string, string> = {
   'browser.showHidden': 'Afficher les fichiers cachés',
 }
 
+/** French rows for the `open-in-app` namespace. */
 export const openInAppFr: Record<string, string> = {
   'open.title': 'Ouvrir l’espace de travail dans {app}',
   'open.tooltip': 'Ouvrir en local',
@@ -214,6 +222,7 @@ export const openInAppFr: Record<string, string> = {
   'app.terminal': 'Terminal',
 }
 
+/** French rows for the `approval` namespace. */
 export const approvalFr: Record<string, string> = {
   waiting: 'En attente d’approbation',
   'detail.aria': 'Détails de l’approbation',
@@ -222,6 +231,7 @@ export const approvalFr: Record<string, string> = {
   allowOnce: 'Autoriser une fois',
 }
 
+/** French rows for the `plan` namespace. */
 export const planFr: Record<string, string> = {
   'chip.label': 'Plan',
   'chip.on.aria': 'Mode plan activé, appuyez pour désactiver',
@@ -231,6 +241,7 @@ export const planFr: Record<string, string> = {
   'chip.exitFailed': 'Échec de la sortie du mode plan',
 }
 
+/** French rows for the `goal` namespace. */
 export const goalFr: Record<string, string> = {
   'phase.active': 'Objectif en cours',
   'phase.paused': 'Objectif en pause',
@@ -245,6 +256,7 @@ export const goalFr: Record<string, string> = {
   'action.clear': 'Effacer l’objectif',
 }
 
+/** French rows for the `job` namespace. */
 export const jobFr: Record<string, string> = {
   'count.live.one': '{count} tâche de fond en cours',
   'count.live.other': '{count} tâches de fond en cours',
@@ -263,6 +275,7 @@ export const jobFr: Record<string, string> = {
   'duration.title.done': 'Durée {duration}',
 }
 
+/** French rows for the `schedule.catalog` namespace. */
 export const scheduleCatalogFr: Record<string, string> = {
   'trigger.one': '{count} rappel',
   'trigger.other': '{count} rappels',
@@ -284,6 +297,7 @@ export const scheduleCatalogFr: Record<string, string> = {
   'relative.overdue': 'en retard de {value} {unit}',
 }
 
+/** French rows for the `workflowRun` namespace. */
 export const workflowRunFr: Record<string, string> = {
   'run.title': '{name}',
   'run.members.one': '{count} membre',
@@ -305,6 +319,7 @@ export const workflowRunFr: Record<string, string> = {
   'status.interrupted': 'Interrompu',
 }
 
+/** French rows for the `deliverables` namespace. */
 export const deliverablesFr: Record<string, string> = {
   'produced.label': 'Productions',
   'produced.moreOne': '+ 1 fichier',
@@ -312,6 +327,7 @@ export const deliverablesFr: Record<string, string> = {
   'produced.open': 'Ouvrir {name}',
 }
 
+/** French rows for the `command` namespace. */
 export const commandFr: Record<string, string> = {
   'search.placeholder': 'Rechercher…',
   'search.aria': 'Filtrer les options',
@@ -324,6 +340,7 @@ export const commandFr: Record<string, string> = {
     '/{command} n’accepte pas les pièces jointes ; retirez-les d’abord',
 }
 
+/** French rows for the `slash.menu` namespace. */
 export const slashMenuFr: Record<string, string> = {
   command: 'Commandes',
   skill: 'Skills',

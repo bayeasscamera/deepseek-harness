@@ -5,6 +5,7 @@
  * never to another language.
  */
 
+/** French rows for the `common` namespace. */
 export const commonFr: Record<string, string> = {
   ok: 'OK',
   cancel: 'Annuler',
@@ -47,6 +48,7 @@ export const commonFr: Record<string, string> = {
   'number.million': '{value} M',
 }
 
+/** French rows for the `settings` namespace. */
 export const settingsFr: Record<string, string> = {
   trigger: 'Paramètres',
   title: 'Paramètres',
@@ -62,10 +64,12 @@ export const settingsFr: Record<string, string> = {
   'connection.restart': 'Reconnexion automatique en cours, reconnecter',
 }
 
+/** French rows for the `settings.locale` namespace. */
 export const settingsLocaleFr: Record<string, string> = {
   'language.title': 'Langue',
 }
 
+/** French rows for the `settings.theme` namespace. */
 export const settingsThemeFr: Record<string, string> = {
   'appearance.title': 'Apparence',
   'appearance.light': 'Clair',
@@ -78,6 +82,7 @@ export const settingsThemeFr: Record<string, string> = {
   'fontSize.decrease': 'Réduire la taille du texte',
 }
 
+/** French rows for the `settings.models` namespace. */
 export const settingsModelsFr: Record<string, string> = {
   nav: 'Modèles',
   title: 'Modèles',
@@ -194,6 +199,7 @@ export const settingsModelsFr: Record<string, string> = {
   keyRequired: 'Saisissez une clé API pour continuer.',
 }
 
+/** French rows for the `settings.plugins` namespace. */
 export const settingsPluginsFr: Record<string, string> = {
   nav: 'Plugins',
   title: 'Plugins',
@@ -283,6 +289,7 @@ export const settingsPluginsFr: Record<string, string> = {
   skillsDescription: 'Description',
 }
 
+/** French rows for the `settings.pluginInventory` namespace. */
 export const pluginInventoryFr: Record<string, string> = {
   tab: 'Liste des plugins',
   loading: 'Lecture des plugins…',
@@ -322,6 +329,7 @@ export const pluginInventoryFr: Record<string, string> = {
   unloading: 'Déchargement en cours',
 }
 
+/** French rows for the `settings.agentPreset` namespace. */
 export const agentPresetFr: Record<string, string> = {
   error: 'Impossible de charger les presets d’agent.',
   userTrust: 'Personnalisé',
@@ -386,6 +394,7 @@ export const agentPresetFr: Record<string, string> = {
   deleting: 'Suppression en cours…',
 }
 
+/** French rows for the `settings.permission` namespace. */
 export const permissionSettingsFr: Record<string, string> = {
   title: 'Autorisations',
   description: 'Choisir le mode d’autorisation par défaut des nouvelles sessions',
@@ -402,6 +411,7 @@ export const permissionSettingsFr: Record<string, string> = {
   'confirm.enable': 'Activer l’accès complet',
 }
 
+/** French rows for the `permission.access` namespace. */
 export const permissionAccessFr: Record<string, string> = {
   'preset.readOnly': 'Lecture seule',
   'preset.workspaceWrite': 'Écriture dans l’espace de travail',

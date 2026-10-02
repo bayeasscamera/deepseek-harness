@@ -57,10 +57,10 @@ import { parseSse } from './sse.ts'
 import { translate } from './translate.ts'
 import type { WireError, WireRequest } from './types.ts'
 
-/** One optional model entry advertised by the direct-fetch adapter. */
 /** Input modalities a DeepSeek catalog model accepts: DeepSeek serves text and vision. */
 export type DeepSeekModelModality = 'text' | 'image'
 
+/** One optional model entry advertised by the direct-fetch adapter. */
 export interface DeepSeekCatalogModel {
   /** Wire model id accepted by the configured endpoint. */
   id: string

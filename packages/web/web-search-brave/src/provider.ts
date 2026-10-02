@@ -81,7 +81,14 @@ export function mapBraveResponse(response: BraveSearchResponse): WebSearchResult
   return { sources, truncated: false }
 }
 
-/** Build the `GET /web/search` URL for one query. */
+/**
+ * Build the `GET /web/search` URL for one query.
+ * @param baseURL - Endpoint base; `/web/search` is appended.
+ * @param query - Search query text.
+ * @param options - Provider options carrying the optional country and language parameters.
+ * @param numResults - Requested result count, or undefined to send no `count`.
+ * @returns the absolute search URL with its query parameters.
+ */
 export function braveSearchUrl(
   baseURL: string,
   query: string,

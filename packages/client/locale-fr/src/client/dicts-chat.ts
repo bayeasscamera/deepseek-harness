@@ -5,6 +5,7 @@
  * English at lookup time, never to another language.
  */
 
+/** French rows for the `chat` namespace. */
 export const chatFr: Record<string, string> = {
   'view.chat': 'Chat',
   'number.groupSeparator': ' ',
@@ -111,6 +112,7 @@ export const chatFr: Record<string, string> = {
   'clock.ymd': '{d}/{m}/{y}',
 }
 
+/** French rows for the `conversation` namespace. */
 export const conversationFr: Record<string, string> = {
   'hint.plan': 'décrivez votre tâche pour générer un plan',
   'hint.goal': 'décrivez l’objectif d’une tâche longue',
@@ -281,6 +283,7 @@ export const conversationFr: Record<string, string> = {
   'terminal.session': 'Terminal {sessionId}',
 }
 
+/** French rows for the `trajectory` namespace. */
 export const trajectoryFr: Record<string, string> = {
   'view.trajectory': 'Trajectoire',
   'toolbar.aria': 'Barre d’outils de la trajectoire',
@@ -460,6 +463,7 @@ export const trajectoryFr: Record<string, string> = {
   'layout.compactionInterrupted': 'La compaction a été interrompue avant la fin.',
 }
 
+/** French rows for the `skill` namespace. */
 export const skillFr: Record<string, string> = {
   'row.title': 'Skill',
   'row.running': 'Chargement du skill',
@@ -470,6 +474,7 @@ export const skillFr: Record<string, string> = {
   'menu.userOnly': 'utilisateur uniquement',
 }
 
+/** French rows for the `subagent` namespace. */
 export const subagentFr: Record<string, string> = {
   'diagnostic.corrupt': 'historique de session corrompu',
   'diagnostic.unsupported': 'version d’historique de sous-agent non prise en charge',
@@ -512,6 +517,7 @@ export const subagentFr: Record<string, string> = {
     'La session parente est hors ligne ; rouvrez-la pour continuer à envoyer des messages.',
 }
 
+/** French rows for the `model` namespace. */
 export const modelFr: Record<string, string> = {
   'command.description': 'Sélectionner le modèle de cette conversation',
   'option.loadError': 'Échec du chargement du catalogue : {message}',
@@ -533,6 +539,7 @@ export const modelFr: Record<string, string> = {
   'empty.efforts': 'Ce modèle ne propose aucun niveau de raisonnement.',
 }
 
+/** French rows for the `question` namespace. */
 export const questionFr: Record<string, string> = {
   'error.incomplete': 'Veuillez d’abord terminer cette question.',
   'error.unanswered': 'Veuillez choisir une option ou saisir une réponse personnalisée.',
@@ -551,6 +558,7 @@ export const questionFr: Record<string, string> = {
   'plan.discuss': 'En discuter dans le chat',
 }
 
+/** French rows for the `feedback` namespace. */
 export const feedbackFr: Record<string, string> = {
   'action.like': 'Bonne réponse',
   'action.likeActive': 'Retirer la note',
