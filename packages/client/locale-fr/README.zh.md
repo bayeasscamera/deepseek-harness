@@ -101,6 +101,7 @@ web-app bundle 已在 `dsh-client-locale` 旁边挂载本包，无需配置。�
 - **Agent 回复是另一个层面**——本包翻译界面；模型写什么遵循 agent preset 的人设。请配合[法语 preset 指南](../../../docs/user/guide/french.zh.md)使用。
 - **没有法语复数规则或双向布局**——注册表提供选择、持久化、浏览器匹配、键回退与 `<html lang>`；词典之外的语言行为属于更丰富的包。
 
+<a id="dev-note"></a>
 ### 开发备注
 
 <details>

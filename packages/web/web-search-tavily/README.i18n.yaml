@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/web/web-search-tavily/README.md
-README.md: 03cd22b87beeda70e8f411e49b2c860e1039d37d
-README.zh.md: a5e0a6106c3447c9f4a041535af8c7f2faa96799
+README.md: 8ae350802d684590bd44782e35eebda91eeeb2cd
+README.zh.md: 3b9a72af279d593a807b1e1accd74fb593ef96d1

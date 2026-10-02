@@ -129,6 +129,7 @@ These limits define when the provider is a poor fit. They are current package co
 - **Only `numResults`/`country`/`searchLang` are exposed** — Brave's other controls (freshness, safesearch, extra snippets flag, spellcheck, result filters) wait on provider-neutral service fields ([seam Agent Note](../../../.agents/notes/implemented/architecture/2026-06-24-web-capability-seam.md)).
 - **Abort classification is error-shape-based** — only a `DOMException` named `AbortError` maps to `WEB_ABORTED`; an abort carrying a custom reason (such as `dsh-timeout`'s `TimeoutReason`) surfaces as `WEB_PROVIDER_ERROR`.
 
+<a id="dev-note"></a>
 ### Dev Note
 
 <details>

@@ -101,6 +101,7 @@ These limits define where the French pack is incomplete. They are current packag
 - **Agent replies are a separate plane** — this pack translates the interface; what the model writes follows the agent preset's persona. Pair it with the [French preset guide](../../../docs/user/guide/french.md).
 - **No French plural rules or bidirectional layout** — the registry supplies selection, persistence, browser matching, key fallback, and `<html lang>`; language-specific behavior beyond dictionaries belongs to a richer pack.
 
+<a id="dev-note"></a>
 ### Dev Note
 
 <details>

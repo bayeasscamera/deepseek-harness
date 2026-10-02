@@ -129,6 +129,7 @@ kind: "package-reference"
 - **只公开 `numResults`／`searchDepth`／`topic`／`includeAnswer`**——Tavily 的其他控制项（时间范围、日期界限、域名包含／排除、全文内容、图片、favicon）等待提供方无关的服务字段（见 [seam Agent Note](../../../.agents/notes/implemented/architecture/2026-06-24-web-capability-seam.zh.md)）。
 - **按错误形状分类中止**——只有名为 `AbortError` 的 `DOMException` 才映射为 `WEB_ABORTED`；携带自定义原因的中止（例如 `dsh-timeout` 的 `TimeoutReason`）呈现为 `WEB_PROVIDER_ERROR`。
 
+<a id="dev-note"></a>
 ### 开发备注
 
 <details>
