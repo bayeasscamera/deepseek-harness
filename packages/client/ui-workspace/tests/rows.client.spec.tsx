@@ -579,6 +579,16 @@ describe('workspace browser rows', () => {
     }
   })
 
+  it('marks a session with the number of branches cut from it', () => {
+    const node: SessionNode = {
+      id: sid('s1'), title: 'Source', blank: false, running: false,
+      runningSubagentCount: 0, branchCount: 2, completed: false, hasActiveSchedule: false, updatedAt: 0,
+    }
+    render(<SessionNodeItem node={node} currentId={undefined} now={0} onOpen={vi.fn()}
+      onRename={vi.fn()} onFork={vi.fn()} onArchive={vi.fn()} t={t} />)
+    expect(screen.getByText('2 个分支')).toBeTruthy()
+  })
+
   it('draggable row wires start/end and gates hover/drop on an active same-group drag', () => {
     const node: SessionNode = {
       id: sid('s1'), title: 'Drag me', blank: false, running: false,
