@@ -45,4 +45,5 @@ worktrees/
 .typert-*/
 apps/electron/dist/
 apps/electron/release/
-apps/desktop/build/
+apps/desktop/build/*
+!apps/desktop/build/icon.icns
