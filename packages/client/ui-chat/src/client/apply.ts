@@ -149,8 +149,13 @@ export function apply(ctx: Context): void {
             },
             read: () => chatScrollPositions.get(sessionId) ?? null,
           },
-          forkAt: (seq) => {
-            ctx.sessions.fork({ sessionId, atSeq: seq, increaseTitle: true })
+          forkAt: (seq, options) => {
+            ctx.sessions.fork({
+              sessionId,
+              atSeq: seq,
+              increaseTitle: true,
+              ...(options?.isolateFiles === true ? { isolateFiles: true } : {}),
+            })
               .then(({ sessionId: childId, draftText }) => {
                 // A user-message anchor stays out of the child's copied history
                 // and comes back as a draft, seeded before open() so the
@@ -165,7 +170,14 @@ export function apply(ctx: Context): void {
                 ctx.sessions.open(childId)
               })
               .catch(() => {
-                // Fork or child-title failure leaves the source view unchanged.
+                // The branch did not happen — an unavailable cut, a refused
+                // isolation, or a failed child title. The source view stays
+                // unchanged, so the composer carries the only signal the user
+                // gets for the click they just made.
+                const sourceScope = ctx.sessions.scope(sessionId)
+                if (sourceScope !== undefined) {
+                  ctx.conversation.input.for(sourceScope).notify('error', t('message.branchFailed'))
+                }
               })
           },
           openSession: (target) => { ctx.sessions.open(target) },

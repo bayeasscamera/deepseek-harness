@@ -47,7 +47,7 @@ Reading the repository before designing anything showed that most of the primiti
 
 **Lineage.** A child renders "Branched from `<source title>`" above its transcript, reading the source through the session list row so a renamed source keeps its current title (`packages/client/ui-chat/src/client/chat/ChatView.tsx`). The source's row in the workspace list carries a localized branch count: `indexBranchDescendants` counts direct children that record a parent without the subagent origin, and a branch of a branch counts under its own parent (`packages/client/ui-workspace/src/client/subagent-lineage.ts`).
 
-**File isolation.** `fork({ isolateFiles: true })` gives the child its own working tree instead of sharing the source's: a Git worktree on a branch named for the child when the source directory sits inside one, otherwise a copy that skips dependencies, history, and build residue. Isolation fails closed before any child exists, and a copy created before a later failure is removed (`packages/api/session-controller/src/branch-workspace.ts`).
+**File isolation.** `fork({ isolateFiles: true })` gives the child its own working tree instead of sharing the source's: a Git worktree on a branch named for the child when the source directory sits inside one, otherwise a copy that skips dependencies, history, and build residue. Isolation fails closed before any child exists, and a copy created before a later failure is removed (`packages/api/session-controller/src/branch-workspace.ts`). The message actions state the choice: the branch control opens a two-entry menu naming the file policy — the shared directory or the isolated copy — so isolation is an explicit pick rather than a hidden flag (`packages/client/ui-chat/src/client/chat/MessageIconActions.tsx`). A branch the host refuses, isolation included, reports on the source session's composer instead of leaving the click silent (`packages/client/ui-chat/src/client/apply.ts`).
 
 **No new schema and no migration.** The branch point is the child's inherited prefix length; `parentSession` + `isSeeded` already carry lineage in the header and on the client wire (`packages/api/session-controller/src/types.ts:411`); attachments travel as durable references admitted through `ctx.attachments`, so a copied prefix copies no bytes and deleting a branch cannot delete the source's files.
 
@@ -55,12 +55,11 @@ Reading the repository before designing anything showed that most of the primiti
 
 - **A per-message branch marker on the source message.** The cut is not on the client wire — the header carries `parentSession`/`isSeeded`, not the fork point — so the marker would need either a new per-session branch-point projection, which the session list's no-per-session-stat policy rejects, or a lazy read of every child's header. The source row's branch count already answers how many branches a conversation produced.
 - **Parent grouping in the session list.** Branches list as their own rows with the branch-count badge; nesting is not built.
-- **A UI opt-in for `isolateFiles`.** The flag is on the client fork contract and covered by tests, but no surface offers it yet, so a branch shares the source's working directory by default.
 
 ## Testing
 
 - Host: `packages/api/session-controller/tests/session-fork.host.spec.ts` pins the cutoff rules and the draft answer; `tests/branch-workspace.spec.ts` proves the worktree/copy isolation, the fail-closed path, and that the source directory is never moved or modified.
-- Client: `packages/client/ui-chat/tests/apply-inject.client.spec.tsx` proves the draft seeding (and the empty composer for a non-user anchor), `tests/chat-view.client.spec.tsx` proves the fork target and the lineage line, and `tests/chat-branch-tails.client.spec.tsx` proves the action's availability rules; `packages/client/ui-workspace/tests/subagent-lineage.client.spec.ts` and `tests/rows.client.spec.tsx` prove the branch count.
+- Client: `packages/client/ui-chat/tests/apply-inject.client.spec.tsx` proves the draft seeding (and the empty composer for a non-user anchor), `tests/chat-view.client.spec.tsx` proves the fork target and the lineage line, `tests/chat-branch-tails.client.spec.tsx` proves the action's availability rules, and the same two suites prove the file-policy menu reaches `fork({ isolateFiles: true })` and that a refusal reports on the composer; `packages/client/ui-workspace/tests/subagent-lineage.client.spec.ts` and `tests/rows.client.spec.tsx` prove the branch count.
 
 ## Alternatives considered
 

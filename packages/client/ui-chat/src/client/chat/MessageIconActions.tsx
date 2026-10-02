@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import {
-  IconBranchOutline16, IconCheckOutline16, IconCopyOutline16, Tooltip, writeClipboard,
+  IconBranchOutline16, IconCheckOutline16, IconCopyOutline16, Menu, Tooltip, writeClipboard,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ChatViewSlotProps } from '../contract/slots.ts'
 import { formatMessageClock } from './message-chrome.ts'
@@ -19,6 +19,12 @@ export interface MessageIconActionsProps {
   clock: 'start' | 'end'
   /** Fork the session at this message; omission hides the branch action. */
   onBranch?: (() => void) | undefined
+  /**
+   * Fork at this message into a child with its own working copy. Supplying it
+   * turns the branch control into a two-choice menu, so the file policy is an
+   * explicit pick; omitting it keeps the single direct branch control.
+   */
+  onBranchIsolated?: (() => void) | undefined
   /** The message is not a completed transcript tail, so branch stays visible but unavailable. */
   branchUnavailable?: boolean | undefined
   /** Parent layout class composed onto the actions row. */
@@ -39,15 +45,16 @@ export interface MessageIconActionsProps {
 
 /**
  * Copy / branch (/ clock) IconActions row shared by user and assistant chrome.
- * @param props - Copy text, event time, clock side, branch callback, className.
+ * @param props - Copy text, event time, clock side, branch callbacks, className.
  * @returns The actions row element.
  */
 export function MessageIconActions({
-  text, time, clock, onBranch, branchUnavailable = false, className,
+  text, time, clock, onBranch, onBranchIsolated, branchUnavailable = false, className,
   extraActions, usageAction, t,
 }: MessageIconActionsProps) {
   const day = useCalendarDay()
   const reasonId = useId()
+  const [branchMenuOpen, setBranchMenuOpen] = useState(false)
   // Same success chrome as CodeBlock: a short check swap after the write,
   // gated so re-clicks during the window neither re-copy nor stack timers.
   const [copied, setCopied] = useState(false)
@@ -89,20 +96,58 @@ export function MessageIconActions({
       </Tooltip>
       {extraActions}
       {onBranch !== undefined && (
-        <Tooltip label={branchUnavailable ? t('message.branchUnavailable') : t('message.branch')} side="bottom">
-          {/* Native disabled buttons do not deliver the hover/focus events Tooltip needs. */}
-          <button
-            type="button"
-            className={css.action}
-            aria-label={t('message.branch')}
-            aria-disabled={branchUnavailable || undefined}
-            aria-describedby={branchUnavailable ? reasonId : undefined}
-            data-unavailable={branchUnavailable || undefined}
-            onClick={branchUnavailable ? undefined : onBranch}
-          >
-            <IconBranchOutline16 />
-          </button>
-        </Tooltip>
+        onBranchIsolated === undefined
+          ? (
+            <Tooltip label={branchUnavailable ? t('message.branchUnavailable') : t('message.branch')} side="bottom">
+              {/* Native disabled buttons do not deliver the hover/focus events Tooltip needs. */}
+              <button
+                type="button"
+                className={css.action}
+                aria-label={t('message.branch')}
+                aria-disabled={branchUnavailable || undefined}
+                aria-describedby={branchUnavailable ? reasonId : undefined}
+                data-unavailable={branchUnavailable || undefined}
+                onClick={branchUnavailable ? undefined : onBranch}
+              >
+                <IconBranchOutline16 />
+              </button>
+            </Tooltip>
+          )
+          : (
+            <Menu
+              open={branchMenuOpen && !branchUnavailable}
+              anchor={(
+                <Tooltip label={branchUnavailable ? t('message.branchUnavailable') : t('message.branch')} side="bottom">
+                  <button
+                    type="button"
+                    className={css.action}
+                    aria-label={t('message.branch')}
+                    aria-haspopup="menu"
+                    aria-expanded={branchMenuOpen || undefined}
+                    aria-disabled={branchUnavailable || undefined}
+                    aria-describedby={branchUnavailable ? reasonId : undefined}
+                    data-unavailable={branchUnavailable || undefined}
+                    onClick={branchUnavailable
+                      ? undefined
+                      : () => { setBranchMenuOpen(open => !open) }}
+                  >
+                    <IconBranchOutline16 />
+                  </button>
+                </Tooltip>
+              )}
+              items={[
+                { id: 'share', label: t('message.branchSharesFiles') },
+                { id: 'isolate', label: t('message.branchIsolatedCopy') },
+              ]}
+              onSelect={(id) => {
+                setBranchMenuOpen(false)
+                if (id === 'isolate') onBranchIsolated()
+                else onBranch()
+              }}
+              onClose={() => { setBranchMenuOpen(false) }}
+              side="top"
+            />
+          )
       )}
       {onBranch !== undefined && branchUnavailable && (
         <span id={reasonId} className={css.visuallyHidden}>{t('message.branchUnavailable')}</span>

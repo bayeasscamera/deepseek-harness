@@ -1294,6 +1294,7 @@ describe('ChatView', () => {
     expect(branchButtons).toHaveLength(1)
     expect(branchButtons[0]!.getAttribute('aria-disabled')).toBeNull()
     fireEvent.click(branchButtons[0]!)
+    fireEvent.click(view.getByRole('menuitem', { name: '分支（共享同一目录的文件）' }))
     expect(h.forkAt).toHaveBeenCalledWith(1)
   })
 
@@ -2443,7 +2444,22 @@ describe('ChatView', () => {
     expect(buttons).toHaveLength(2)
     expect(buttons.map(button => button.getAttribute('aria-disabled'))).toEqual([null, null])
     fireEvent.click(buttons[1]!)
+    fireEvent.click(view.getByRole('menuitem', { name: '分支（共享同一目录的文件）' }))
     expect(h.forkAt.mock.calls).toEqual([[2]])
+  })
+
+  it('offers the isolated copy as an explicit branch choice', () => {
+    const h = makeHarness({
+      nodes: [user(1, 'question'), assistant(2, 'answer')],
+      turnEnds: new Map([[1, 3]]),
+    })
+    const view = render(<h.ChatView {...h.props} />)
+    fireEvent.click(view.getAllByRole('button', { name: '在新对话中分支' })[0]!)
+    // The menu states the file policy of both entries: the shared directory is
+    // the consequence the plain branch hides.
+    expect(view.getByRole('menuitem', { name: '分支（共享同一目录的文件）' })).toBeTruthy()
+    fireEvent.click(view.getByRole('menuitem', { name: '分支并复制一份独立的工作目录' }))
+    expect(h.forkAt.mock.calls).toEqual([[1, { isolateFiles: true }]])
   })
 
   it('links a branch back to the Session it was cut from', () => {

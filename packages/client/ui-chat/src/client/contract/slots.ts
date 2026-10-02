@@ -75,12 +75,22 @@ export interface ChatNodeTurnDataInjected {
   hooks: { turnData: SlotHookFactory<'conversation.chat.node', UseChatNodeTurnData> }
 }
 
+/** One branch request from a Chat surface: the anchor plus the file policy. */
+export interface ChatBranchOptions {
+  /**
+   * Give the child its own working copy instead of sharing the source's
+   * directory. The host creates a Git worktree or a filtered copy and refuses
+   * the branch when neither is possible.
+   */
+  isolateFiles?: boolean
+}
+
 /** Stable owner currency delivered to a keyed Chat renderer. */
 export interface ChatNodeOwnerProps {
   cwd?: string | undefined
   openFile: (path: string, options?: OpenFileOptions) => void
   inspectCall: (callId: ToolCallId) => void
-  forkAt: (seq: number) => void
+  forkAt: (seq: number, options?: ChatBranchOptions) => void
   /**
    * Session-authorized image loader, down-threaded from the Chat view so a
    * chat-node renderer can render the attachment presentation slot directly
@@ -146,7 +156,7 @@ export interface ChatViewInjected {
     save: (position: ChatScrollPosition | null) => void
     read: () => ChatScrollPosition | null
   }
-  forkAt: (seq: number) => void
+  forkAt: (seq: number, options?: ChatBranchOptions) => void
   /** Open another Session; the lineage line uses it to return to the source. */
   openSession: (sessionId: SessionId) => void
   fileMentions: (owner: TurnTailOwnerProps) => MarkdownFileMentions | undefined

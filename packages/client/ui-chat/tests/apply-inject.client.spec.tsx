@@ -113,6 +113,41 @@ describe('Chat inject API', () => {
     await b.runtime.dispose()
   })
 
+  it('asks the host for an isolated copy and reports a refused branch', async () => {
+    const b = await bench()
+    const CHILD = 'branch-isolated' as SessionId
+    await b.runtime.sessions.add({
+      id: CHILD,
+      summary: { title: 'R (branch)', displayTitle: 'R (branch)' },
+      session: sessionFakeFor(),
+    }, { current: false })
+    const { injected } = b.chatViewApi(ROOT)
+    const sourceScope = b.runtime.sessions.scope(ROOT)
+    expect(sourceScope).toBeDefined()
+    const notify = vi.spyOn(b.runtime.ctx.conversation.input.for(sourceScope!), 'notify')
+
+    const fork = vi.spyOn(b.runtime.sessions, 'fork').mockResolvedValueOnce({ sessionId: CHILD })
+    injected.forkAt(17, { isolateFiles: true })
+    await vi.waitFor(() => {
+      expect(b.runtime.sessions.calls).toContainEqual({ method: 'open', args: [CHILD] })
+    })
+    expect(fork).toHaveBeenCalledWith({
+      sessionId: ROOT, atSeq: 17, increaseTitle: true, isolateFiles: true,
+    })
+    expect(notify).not.toHaveBeenCalled()
+
+    // Isolation fails closed on the host: the click must not vanish silently.
+    fork.mockRejectedValueOnce(new Error('isolation failed'))
+    injected.forkAt(17, { isolateFiles: true })
+    await vi.waitFor(() => {
+      expect(notify).toHaveBeenCalledWith(
+        'error',
+        '无法创建分支：未找到可分叉的已完成轮次，或无法隔离文件',
+      )
+    })
+    await b.runtime.dispose()
+  })
+
   it('seeds the branch child with the anchored user message as an editable draft', async () => {
     const b = await bench()
     const CHILD = 'branch-1' as SessionId

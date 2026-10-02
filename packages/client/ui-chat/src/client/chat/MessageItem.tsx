@@ -339,7 +339,12 @@ export const UserMessageNodeView = memo(function UserMessageNodeView({
           clock="start"
           // A steering occurrence carries no durable anchor, so only a user
           // message offers a branch point.
-          {...node.kind === 'user' ? { onBranch: () => { forkAt(node.anchorSeq) } } : {}}
+          {...node.kind === 'user'
+            ? {
+              onBranch: () => { forkAt(node.anchorSeq) },
+              onBranchIsolated: () => { forkAt(node.anchorSeq, { isolateFiles: true }) },
+            }
+            : {}}
           className={css.actions}
           t={t}
         />

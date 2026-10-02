@@ -47,7 +47,7 @@ Status: implemented
 
 **血脉。** 子会话在转写内容上方渲染 "Branched from `<源标题>`"，并通过会话列表行读取源会话，因此源会话改名后显示的是当前标题（`packages/client/ui-chat/src/client/chat/ChatView.tsx`）。工作区列表中源会话行带本地化的分支计数：`indexBranchDescendants` 统计记录了父会话且 origin 不是 subagent 的直接子会话，分支的分支计入它自己的父会话（`packages/client/ui-workspace/src/client/subagent-lineage.ts`）。
 
-**文件隔离。** `fork({ isolateFiles: true })` 给子会话独立的工作副本，而不是共享源目录：源目录位于 Git 仓库内时创建以子会话命名的 Git worktree，否则创建跳过依赖、历史与构建残留的复制。隔离在任何子会话存在之前**失败关闭**，后续步骤失败时会删除已创建的复制（`packages/api/session-controller/src/branch-workspace.ts`）。
+**文件隔离。** `fork({ isolateFiles: true })` 给子会话独立的工作副本，而不是共享源目录：源目录位于 Git 仓库内时创建以子会话命名的 Git worktree，否则创建跳过依赖、历史与构建残留的复制。隔离在任何子会话存在之前**失败关闭**，后续步骤失败时会删除已创建的复制（`packages/api/session-controller/src/branch-workspace.ts`）。消息操作把这一选择摆明：分支控件打开一个两项菜单，写明各自的文件策略——共享同一目录，或独立副本——因此隔离是显式选择而非隐藏开关（`packages/client/ui-chat/src/client/chat/MessageIconActions.tsx`）。被宿主拒绝的分支（包括隔离失败）会在源会话的输入框上报告，而不是让这次点击悄无声息（`packages/client/ui-chat/src/client/apply.ts`）。
 
 **没有新 schema，也没有迁移。** 分支点就是子会话继承的前缀长度；`parentSession` + `isSeeded` 已经在头部与客户端线上数据中承载血脉（`packages/api/session-controller/src/types.ts:411`）；附件是以持久引用形式经 `ctx.attachments` 接纳的，因此复制前缀不复制任何字节，删除分支也不可能删除源会话的文件。
 
@@ -55,12 +55,11 @@ Status: implemented
 
 - **源消息上的逐消息分支标记。** 裁切点不在客户端线上数据里——头部携带的是 `parentSession`/`isSeeded`，而不是分支点——因此该标记要么需要新增按会话的分支点投影（会话列表"不携带逐会话统计"的策略拒绝这种做法），要么需要惰性读取每个子会话的头部。源会话行的分支计数已经回答了"这段对话产生了多少分支"。
 - **会话列表中的父级分组。** 分支以独立行加分支计数徽标呈现；嵌套未实现。
-- **`isolateFiles` 的界面入口。** 该标志已在客户端 fork 契约上并由测试覆盖，但还没有任何界面提供它，因此默认的分支与源会话编辑同一目录。
 
 ## 测试
 
 - Host 侧：`packages/api/session-controller/tests/session-fork.host.spec.ts` 固定裁切规则与草稿返回；`tests/branch-workspace.spec.ts` 证明 worktree/复制两种隔离、失败关闭路径，以及源目录从未被移动或修改。
-- 客户端：`packages/client/ui-chat/tests/apply-inject.client.spec.tsx` 证明草稿注入（以及非用户锚点时输入框为空），`tests/chat-view.client.spec.tsx` 证明 fork 目标与血脉行，`tests/chat-branch-tails.client.spec.tsx` 证明动作的可用性规则；`packages/client/ui-workspace/tests/subagent-lineage.client.spec.ts` 与 `tests/rows.client.spec.tsx` 证明分支计数。
+- 客户端：`packages/client/ui-chat/tests/apply-inject.client.spec.tsx` 证明草稿注入（以及非用户锚点时输入框为空），`tests/chat-view.client.spec.tsx` 证明 fork 目标与血脉行，`tests/chat-branch-tails.client.spec.tsx` 证明动作的可用性规则，同样这两个套件还证明文件策略菜单会把 `fork({ isolateFiles: true })` 送到宿主、以及被拒绝时会在输入框上报告；`packages/client/ui-workspace/tests/subagent-lineage.client.spec.ts` 与 `tests/rows.client.spec.tsx` 证明分支计数。
 
 ## 考虑过的替代方案
 

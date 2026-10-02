@@ -46,6 +46,7 @@ export const TurnTailNodeView = memo(function TurnTailNodeView({
         time={closing.time}
         clock="end"
         onBranch={() => { forkAt(closing.finalNode.seq) }}
+        onBranchIsolated={() => { forkAt(closing.finalNode.seq, { isolateFiles: true }) }}
         branchUnavailable={data.branchUnavailable || hasLaterChatNode}
         className={css.actions}
         extraActions={assistantActions}

@@ -183,8 +183,11 @@ describe('MessageItem arms', () => {
     )
     expect(screen.getByText('14:24')).toBeTruthy()
     expect(screen.getByRole('button', { name: '复制' })).toBeTruthy()
-    // The prompt branches before its own text; it still offers no edit.
+    // The prompt branches before its own text; it still offers no edit. The
+    // branch control opens the file-policy menu, where the shared directory is
+    // the first choice.
     fireEvent.click(screen.getByRole('button', { name: '在新对话中分支' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: '分支（共享同一目录的文件）' }))
     expect(forkAt).toHaveBeenCalledWith(1)
     expect(screen.queryByRole('button', { name: '编辑' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: '复制' }))
