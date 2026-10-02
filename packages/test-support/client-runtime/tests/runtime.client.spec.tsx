@@ -177,9 +177,11 @@ describe('sessions', () => {
     runtime.sessions.clear()
     await runtime.flush()
     expect(runtime.sessions.list.getSnapshot().current).toBeUndefined()
+    // The fork contract answers the child id and any draft text; this face
+    // materializes no child, so it echoes the source id and hands back no draft.
     await expect(runtime.sessions.fork({
       sessionId: 's1' as SessionId, atSeq: 7, increaseTitle: true,
-    })).resolves.toBe('s1')
+    })).resolves.toEqual({ sessionId: 's1' })
     expect(runtime.sessions.calls).toEqual([
       { method: 'openSubagent', args: [address] },
       { method: 'setSubagentCatalogOpen', args: ['s2', true] },
