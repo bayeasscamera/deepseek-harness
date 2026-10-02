@@ -67,6 +67,7 @@ export const zh = {
   'message.turnProcess.separator': ' · ',
   'message.stopped': '已停止',
   'message.branch': '在新对话中分支',
+  'branch.of': '分支自 {title}',
   'message.branchUnavailable': '仅可从已完成轮次的最后一条消息分支',
   'message.retry.active': '正在重试模型请求',
   'message.retry.cancelled': '模型请求重试已取消',
@@ -76,6 +77,8 @@ export const zh = {
   'message.retry.delay': '重试延迟：',
   'message.retry.failure': '失败原因：',
   'message.failure.auth': 'API 密钥无效',
+  'message.failure.contextWindow':
+    '上下文已满，自动压缩后仍超出模型窗口。请发送 /compact、换用上下文更大的模型，或开始新会话',
   'message.turnError': '本轮运行失败',
   'message.maxTokens': '已达到输出 token 上限',
   'message.maxTokens.hint':
@@ -176,6 +179,7 @@ export const en = {
   'message.turnProcess.separator': ' · ',
   'message.stopped': 'Stopped',
   'message.branch': 'Branch into a new conversation',
+  'branch.of': 'Branched from {title}',
   'message.branchUnavailable': 'Available only on the last message of a completed turn',
   'message.retry.active': 'Retrying model request',
   'message.retry.cancelled': 'Model request retry cancelled',
@@ -185,6 +189,8 @@ export const en = {
   'message.retry.delay': 'Retry delay: ',
   'message.retry.failure': 'Failure reason: ',
   'message.failure.auth': 'API key is invalid',
+  'message.failure.contextWindow':
+    'Context is full and still exceeds the model window after automatic compaction. Send /compact, switch to a larger-window model, or start a new session',
   'message.turnError': 'This turn failed',
   'message.maxTokens': 'Output token limit reached',
   'message.maxTokens.hint':

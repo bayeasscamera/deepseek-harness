@@ -156,6 +156,7 @@ export function apply(ctx: Context): void {
                 // Fork or child-title failure leaves the source view unchanged.
               })
           },
+          openSession: (target) => { ctx.sessions.open(target) },
         }
       },
     }, ChatView)

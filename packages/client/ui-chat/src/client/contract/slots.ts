@@ -1,6 +1,6 @@
 /** Chat-owned Slot declarations and composed component props. */
 import type { MessageId } from '@deepseek-ai/dsh-llm/brand'
-import type { SessionSeq } from '@deepseek-ai/dsh-session/types'
+import type { SessionId, SessionSeq } from '@deepseek-ai/dsh-session/types'
 import type {
   CommandNode, CompactionSummaryNode, ConversationLocationDataStore, ConversationTurnDataMap,
   MessageImageLoader, MessageImagesOwnerProps, RenderMessageImages, TurnLocation,
@@ -147,6 +147,8 @@ export interface ChatViewInjected {
     read: () => ChatScrollPosition | null
   }
   forkAt: (seq: number) => void
+  /** Open another Session; the lineage line uses it to return to the source. */
+  openSession: (sessionId: SessionId) => void
   fileMentions: (owner: TurnTailOwnerProps) => MarkdownFileMentions | undefined
 }
 

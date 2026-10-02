@@ -216,7 +216,8 @@ const ChatNodeList = memo(function ChatNodeList({ order, ...seatProps }: ChatNod
  */
 export function ChatView({
   useSession, useChat, useChatNode, useChatNodeProcess, useSessions, useStore, actions, renderSlot,
-  sessionId, openFile, loadOlder, loadThrough, loadImage, openView, chatScroll, forkAt, fileMentions,
+  sessionId, openFile, loadOlder, loadThrough, loadImage, openView, chatScroll, forkAt, openSession,
+  fileMentions,
   useTranscriptView, useProjection, t,
 }: ChatViewSlotProps) {
   const order = useChat(s => s.order)
@@ -236,6 +237,12 @@ export function ChatView({
   const inbox = useSession(s => s.queue)
   // Workspace root off the session list row: path summaries display relative to it.
   const cwd = useSessions(s => s.byId[sessionId]?.cwd)
+  // Lineage line: the Session this one was branched from, read through the list
+  // row so a renamed source keeps rendering its current title.
+  const branchSource = useSessions((s) => {
+    const parentId = s.byId[sessionId]?.parentId
+    return parentId === undefined ? undefined : s.byId[parentId]
+  })
   const running = useSession(s => s.running)
   const openState = useSession(s => s.openState)
   const openError = useSession(s => s.openError)
@@ -778,6 +785,16 @@ export function ChatView({
             <div className={css.older}>
               <button type="button" disabled={loadingOlder} onClick={loadOlderAnchored}>
                 {loadingOlder ? t('loading') : t('chat.loadOlder')}
+              </button>
+            </div>
+          )}
+          {branchSource !== undefined && (
+            <div className={css.branchSource}>
+              <button
+                type="button"
+                onClick={() => { openSession(branchSource.id) }}
+              >
+                {t('branch.of', { title: branchSource.displayTitle ?? branchSource.title })}
               </button>
             </div>
           )}

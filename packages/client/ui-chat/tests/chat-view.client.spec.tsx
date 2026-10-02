@@ -384,6 +384,7 @@ function makeHarness(
     read: () => savedScroll,
   }
   const forkAt = vi.fn()
+  const openSession = vi.fn()
   // Rows and the harness must observe the same chat-store instance.
   const chat = createChatStore().create()
   const transcriptView = createSnapshotStore<TranscriptViewMode>('compact')
@@ -539,6 +540,7 @@ function makeHarness(
     loadImage: vi.fn(() => Promise.reject(new Error('not used'))),
     chatScroll,
     forkAt,
+    openSession,
     // Absent-service default; mention tests override with a real resolver.
     fileMentions: () => undefined,
     t,
@@ -586,6 +588,7 @@ function makeHarness(
     },
     chatScroll,
     forkAt,
+    openSession,
     toolOwners,
     setTranscriptView: (mode: TranscriptViewMode) => {
       transcriptView.set(mode)
