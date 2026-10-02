@@ -18,6 +18,7 @@ import { SessionLogOffset, SessionSeq } from '@deepseek-ai/dsh-session'
 import type { SessionEvent, SessionHeader, SessionId, UserMessage } from '@deepseek-ai/dsh-session'
 import { SessionQueryError, type SessionObservation } from '@deepseek-ai/dsh-session-query'
 import { SessionTitleInvalidError } from '@deepseek-ai/dsh-session-title'
+import { planBranchCutoff } from './branch-cutoff.ts'
 import { canonicalClientTimeZone } from '@deepseek-ai/dsh-util-time'
 import { assertNever } from '@deepseek-ai/dsh-util-values'
 import { RemoteError, remoteErrorOf } from '@deepseek-ai/dsh-typert-protocol'
@@ -187,9 +188,15 @@ export class SessionCommandController {
   }
 
   /**
-   * Create a new ordinary Session from one completed-turn prefix.
+   * Create a new ordinary Session from a prefix of an existing Session.
+   *
+   * The anchor reads as the user's intent: an anchor on a user message stops
+   * before that message and returns its text as a draft, while any other anchor
+   * copies through the end of its turn. An unfinished turn never enters the
+   * child — the cutoff moves back to the last completed turn, because a copied
+   * tool call without its result is rejected by model providers.
    * @param request - source Session and optional event anchor.
-   * @returns the new Session identity.
+   * @returns the new Session identity plus any draft text.
    */
   async fork(request: SessionForkRequest): Promise<SessionForkValue> {
     let atSeq: ReturnType<typeof SessionSeq> | undefined
@@ -215,27 +222,15 @@ export class SessionCommandController {
       )
     }
     using source = observed
-    const lastSeq = source.events.at(-1)?.seq ?? -1
-    const anchoredBoundary = atSeq === undefined
-      ? undefined
-      : source.events.find(event => event.type === 'turn/end' && event.seq >= atSeq)
-    const boundary = anchoredBoundary
-      ?? (atSeq === undefined || atSeq > lastSeq
-        ? source.events.findLast(event => event.type === 'turn/end')
-        : undefined)
-    if (boundary === undefined) {
+    const plan = planBranchCutoff(source.events, atSeq)
+    if (plan.kind === 'refused') {
       throw new RemoteError(
         'session/fork-unavailable',
-        atSeq !== undefined && atSeq <= lastSeq
-          ? `session "${request.sessionId}" has not completed the turn containing event ${String(atSeq)}`
-          : `session "${request.sessionId}" has no completed turn to fork from`,
+        `session "${request.sessionId}" has no completed turn to fork from`,
         { sessionId: request.sessionId },
       )
     }
-    let cut = SessionLogOffset(boundary.seq + 1)
-    while (cut < source.events.length && source.events[cut]?.type !== 'turn/start') {
-      cut = SessionLogOffset(cut + 1)
-    }
+    const cut = SessionLogOffset(plan.cutoff.cut)
     let workspace: Workspace | undefined
     try {
       workspace = await this.forkWorkspace(source.header)
@@ -283,7 +278,10 @@ export class SessionCommandController {
         )
       }
     }
-    return { sessionId: childId }
+    return {
+      sessionId: childId,
+      ...(plan.cutoff.draftText === undefined ? {} : { draftText: plan.cutoff.draftText }),
+    }
   }
 
   /**

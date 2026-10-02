@@ -91,7 +91,9 @@ describe('sessions.fork', () => {
   it('cuts at the anchored completed turn and records lineage and cwd', async () => {
     const ctx = await composed()
     const source = liveAgent(ctx, 'session-source', 2)
-    const response = await remote(ctx).fork(request({ sessionId: source.id, atSeq: 1 }))
+    // A non-user anchor (here the turn's own end) copies through that turn. A
+    // user-message anchor reads differently: see the branch tests below.
+    const response = await remote(ctx).fork(request({ sessionId: source.id, atSeq: 2 }))
     expect(response.ok ? null : response.error).toBeNull()
     if (!response.ok) return
     const child = ctx.sessions.get(response.value.sessionId)
@@ -100,6 +102,54 @@ describe('sessions.fork', () => {
     ])
     expect(child?.header.parentSession).toBe(source.id)
     expect(child?.header.cwd).toBe('/proj')
+    await ctx.fiber.dispose()
+  })
+
+  it('branches before a user message and returns its text as a draft', async () => {
+    const ctx = await composed()
+    const source = liveAgent(ctx, 'session-source', 2)
+    const before = source.snapshotEvents()
+    const response = await remote(ctx).fork(request({ sessionId: source.id, atSeq: 4 }))
+    expect(response.ok ? null : response.error).toBeNull()
+    if (!response.ok) return
+    expect(response.value.draftText).toBe('prompt 2')
+    const child = ctx.sessions.get(response.value.sessionId)
+    expect(child?.snapshotEvents().map(event => event.type)).toEqual([
+      'turn/start', 'user/message', 'turn/end', 'session/end-seed',
+    ])
+    expect(source.snapshotEvents()).toEqual(before)
+    await ctx.fiber.dispose()
+  })
+
+  it('branches an unfinished turn back to the last completed turn', async () => {
+    const ctx = await composed()
+    const source = liveAgent(ctx, 'session-source', 2, 'open')
+    const response = await remote(ctx).fork(request({ sessionId: source.id, atSeq: 7 }))
+    expect(response.ok ? null : response.error).toBeNull()
+    if (!response.ok) return
+    expect(response.value.draftText).toBe('open prompt')
+    const child = ctx.sessions.get(response.value.sessionId)
+    expect(child?.snapshotEvents().map(event => event.type)).toEqual([
+      'turn/start', 'user/message', 'turn/end',
+      'turn/start', 'user/message', 'turn/end',
+      'session/end-seed',
+    ])
+    await ctx.fiber.dispose()
+  })
+
+  it('clips a non-user anchor inside an unfinished turn to the completed prefix', async () => {
+    const ctx = await composed()
+    const source = liveAgent(ctx, 'session-source', 2, 'open')
+    const response = await remote(ctx).fork(request({ sessionId: source.id, atSeq: 6 }))
+    expect(response.ok ? null : response.error).toBeNull()
+    if (!response.ok) return
+    expect(response.value.draftText).toBeUndefined()
+    const child = ctx.sessions.get(response.value.sessionId)
+    expect(child?.snapshotEvents().map(event => event.type)).toEqual([
+      'turn/start', 'user/message', 'turn/end',
+      'turn/start', 'user/message', 'turn/end',
+      'session/end-seed',
+    ])
     await ctx.fiber.dispose()
   })
 
@@ -238,33 +288,37 @@ describe('sessions.fork', () => {
     await ctx.fiber.dispose()
   })
 
-  it('cuts through an aborted turn: stopped is closed, not open', async () => {
+  it('branches before a stopped turn and returns its prompt as a draft', async () => {
     const ctx = await composed()
     const source = liveAgent(ctx, 'session-aborted', 1, 'aborted')
     // What a stopped message's fork button anchors on: the frozen node sits
-    // one event before its turn/end, floored client-side to that event's seq.
+    // one event before its turn/end, floored client-side to that event's seq —
+    // the stopped turn's own prompt, which a branch keeps out and hands back
+    // for editing instead of copying the stopped turn.
     const anchor = (source.snapshotEvents().at(-1)?.seq ?? 0) - 1
     const response = await remote(ctx).fork(request({ sessionId: source.id, atSeq: anchor }))
     expect(response.ok).toBe(true)
     if (!response.ok) return
+    expect(response.value.draftText).toBe('open prompt')
     expect(ctx.sessions.get(response.value.sessionId)?.snapshotEvents().map(event => event.type)).toEqual([
-      'turn/start', 'user/message', 'turn/end',
       'turn/start', 'user/message', 'turn/end',
       'session/end-seed',
     ])
     await ctx.fiber.dispose()
   })
 
-  it('rejects an in-log anchor whose turn is still open', async () => {
+  it('keeps an open turn out of a branch anchored inside it', async () => {
     const ctx = await composed()
     const source = liveAgent(ctx, 'session-open', 1, 'open')
     const anchor = source.snapshotEvents().at(-1)?.seq ?? 0
     const response = await remote(ctx).fork(request({ sessionId: source.id, atSeq: anchor }))
-    expect(response).toMatchObject({
-      ok: false,
-      error: { code: 'session/fork-unavailable', details: { sessionId: source.id } },
-    })
-    if (!response.ok) expect(response.error.message).toMatch(/has not completed/)
+    expect(response.ok).toBe(true)
+    if (!response.ok) return
+    expect(response.value.draftText).toBe('open prompt')
+    expect(ctx.sessions.get(response.value.sessionId)?.snapshotEvents().map(event => event.type)).toEqual([
+      'turn/start', 'user/message', 'turn/end',
+      'session/end-seed',
+    ])
     await ctx.fiber.dispose()
   })
 

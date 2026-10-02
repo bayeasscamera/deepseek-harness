@@ -85,16 +85,24 @@ export interface ISessions {
     signal: AbortSignal,
   ): Promise<RemoteResult<{ items: SessionSearchResultItem[]; hasMore: boolean }>>
   /**
-   * Fork a session from a completed-turn prefix of the source; on resolution
-   * the child is in the list store and `open()` can target it.
-   * @param opts - source session id, the optional event seq anchoring the
-   *   cut (the boundary is the first turn/end at or after it; an in-log
-   *   anchor in an open turn is unavailable rather than clipped backward),
+   * Branch a session from one of its messages; on resolution the child is in the
+   * list store and `open()` can target it.
+   *
+   * The anchor reads as the user's intent: an anchor on a user message stops
+   * before that message and returns its text as a draft, so a composer can offer
+   * it for editing, while any other anchor copies through the end of its turn. A
+   * cutoff that would land inside an unfinished turn moves back to the last
+   * completed turn, so a copied tool call always keeps its result.
+   * @param opts - source session id, the optional event seq anchoring the cut,
    *   and whether to increment an inherited durable title before resolving.
-   * @returns the child session id.
+   * @returns the child session id plus any draft text the anchor produced.
    * @throws when the fork fails, or when a requested child-title rename fails after creation.
    */
-  fork(opts: { sessionId: SessionId; atSeq?: number; increaseTitle?: boolean }): Promise<SessionId>
+  fork(opts: {
+    sessionId: SessionId
+    atSeq?: number
+    increaseTitle?: boolean
+  }): Promise<{ sessionId: SessionId; draftText?: string }>
   /**
    * Resolve an Agent-scoped context view (use-and-discard).
    * @param id - session id.

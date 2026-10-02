@@ -421,7 +421,7 @@ export class ClientSessions implements ISessions {
    *   A fractional anchor floors to a real event seq: the frozen nodes of an
    *   interrupted turn carry flow-ordering seqs between two events, and the
    *   wire takes integers only.
-   * @returns the child session id.
+   * @returns the child session id and any draft text its anchor produced.
    * @throws {SessionForkError} with the source id.
    * @throws {Error} when a requested child-title rename fails after creation.
    */
@@ -429,15 +429,16 @@ export class ClientSessions implements ISessions {
     sessionId: SessionId
     atSeq?: number
     increaseTitle?: boolean
-  }): Promise<SessionId> {
+  }): Promise<{ sessionId: SessionId; draftText?: string }> {
     const sourceTitle = opts.increaseTitle
       ? this.list.getSnapshot().byId[opts.sessionId]?.title
       : undefined
     const result = await this.manager.fork({
       sessionId: opts.sessionId,
       // Flooring lands inside the anchor's own turn (every turn opens with a
-      // turn/start), so the host's first-turn/end-at-or-after cut still ends
-      // on that turn — never clipped back to the previous one.
+      // turn/start), so a completed turn keeps the host's first-turn/end-at-or-
+      // after cut on that turn; only an unfinished turn is clipped back, and
+      // then to its own start rather than into the open tool call.
       ...(opts.atSeq === undefined ? {} : { atSeq: SessionSeq(Math.floor(opts.atSeq)) }),
     })
     if (!result.ok) throw new SessionForkError(result.error, opts.sessionId)
@@ -449,7 +450,10 @@ export class ClientSessions implements ISessions {
       const renamed = await child.rename(increasedForkTitle(sourceTitle))
       if (!renamed.ok) throw new Error(`fork child rename failed: ${renamed.error.code}: ${renamed.error.message}`)
     }
-    return childId
+    return {
+      sessionId: childId,
+      ...(result.value.draftText === undefined ? {} : { draftText: result.value.draftText }),
+    }
   }
 
   /**

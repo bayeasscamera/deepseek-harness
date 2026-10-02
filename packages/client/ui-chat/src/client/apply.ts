@@ -151,7 +151,7 @@ export function apply(ctx: Context): void {
           },
           forkAt: (seq) => {
             ctx.sessions.fork({ sessionId, atSeq: seq, increaseTitle: true })
-              .then((childId) => { ctx.sessions.open(childId) })
+              .then(({ sessionId: childId }) => { ctx.sessions.open(childId) })
               .catch(() => {
                 // Fork or child-title failure leaves the source view unchanged.
               })

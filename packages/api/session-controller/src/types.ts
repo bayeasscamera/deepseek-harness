@@ -300,6 +300,12 @@ export interface SessionForkRequest {
 /** Identity of a newly forked Session. */
 export interface SessionForkValue {
   readonly sessionId: SessionId
+  /**
+   * Text of the anchor user message when the cutoff stopped before it. The
+   * message stays out of the child, so the caller can rephrase it in the
+   * composer instead of re-typing it.
+   */
+  readonly draftText?: string
 }
 
 /** Session prompt request. */

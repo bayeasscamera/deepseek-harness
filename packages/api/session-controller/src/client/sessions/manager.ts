@@ -591,11 +591,11 @@ export class SessionManager {
    * parentSessionId so the list nests it under its source. A child published
    * before Workspace attachment fails is also reconciled into the list.
    * @param opts - source session and the optional seq anchoring the cut.
-   * @returns the fork result (the child session id).
+   * @returns the fork result (the child session id plus any draft text).
    */
   async fork(
     opts: { sessionId: SessionId; atSeq?: SessionSeq },
-  ): Promise<RemoteResult<{ sessionId: SessionId }>> {
+  ): Promise<RemoteResult<{ sessionId: SessionId; draftText?: string }>> {
     const source = this.summaries.find(s => s.sessionId === opts.sessionId)
     const result = await this.remote.session.fork({
       sessionId: opts.sessionId,
