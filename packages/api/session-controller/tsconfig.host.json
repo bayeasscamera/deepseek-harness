@@ -12,6 +12,7 @@
     "src/agent.ts",
     "src/assistant-stream.ts",
     "src/branch-cutoff.ts",
+    "src/branch-workspace.ts",
     "src/catalog.ts",
     "src/commands.ts",
     "src/control.ts",

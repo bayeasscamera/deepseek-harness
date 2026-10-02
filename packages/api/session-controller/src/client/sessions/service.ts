@@ -429,6 +429,7 @@ export class ClientSessions implements ISessions {
     sessionId: SessionId
     atSeq?: number
     increaseTitle?: boolean
+    isolateFiles?: boolean
   }): Promise<{ sessionId: SessionId; draftText?: string }> {
     const sourceTitle = opts.increaseTitle
       ? this.list.getSnapshot().byId[opts.sessionId]?.title
@@ -440,6 +441,7 @@ export class ClientSessions implements ISessions {
       // after cut on that turn; only an unfinished turn is clipped back, and
       // then to its own start rather than into the open tool call.
       ...(opts.atSeq === undefined ? {} : { atSeq: SessionSeq(Math.floor(opts.atSeq)) }),
+      ...(opts.isolateFiles === true ? { isolateFiles: true } : {}),
     })
     if (!result.ok) throw new SessionForkError(result.error, opts.sessionId)
     this.projectList()

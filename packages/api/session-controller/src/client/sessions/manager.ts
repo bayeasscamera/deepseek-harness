@@ -594,12 +594,13 @@ export class SessionManager {
    * @returns the fork result (the child session id plus any draft text).
    */
   async fork(
-    opts: { sessionId: SessionId; atSeq?: SessionSeq },
+    opts: { sessionId: SessionId; atSeq?: SessionSeq; isolateFiles?: boolean },
   ): Promise<RemoteResult<{ sessionId: SessionId; draftText?: string }>> {
     const source = this.summaries.find(s => s.sessionId === opts.sessionId)
     const result = await this.remote.session.fork({
       sessionId: opts.sessionId,
       ...opts.atSeq === undefined ? {} : { atSeq: opts.atSeq },
+      ...opts.isolateFiles === true ? { isolateFiles: true } : {},
     })
     const childId = result.ok
       ? result.value.sessionId

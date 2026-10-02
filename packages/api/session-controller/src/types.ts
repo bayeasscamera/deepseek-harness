@@ -200,6 +200,7 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'session/steer-unavailable': { readonly itemId: MessageId }
     'session/title-invalid': { readonly sessionId: SessionId }
     'session/fork-unavailable': { readonly sessionId: SessionId }
+    'session/isolation-failed': { readonly sessionId: SessionId }
     'subagent/not-found': {
       readonly parentSessionId: SessionId
       readonly childSessionId: SessionId
@@ -295,6 +296,13 @@ export interface SessionRenameValue {
 export interface SessionForkRequest {
   readonly sessionId: SessionId
   readonly atSeq?: number
+  /**
+   * Copy the session's working directory into a branch-owned tree — a Git
+   * worktree when the directory is inside one, otherwise a filtered copy — and
+   * run the child there. Omitted or false shares the source directory, so both
+   * sessions edit the same files.
+   */
+  readonly isolateFiles?: boolean
 }
 
 /** Identity of a newly forked Session. */

@@ -94,7 +94,9 @@ export interface ISessions {
    * cutoff that would land inside an unfinished turn moves back to the last
    * completed turn, so a copied tool call always keeps its result.
    * @param opts - source session id, the optional event seq anchoring the cut,
-   *   and whether to increment an inherited durable title before resolving.
+   *   whether to increment an inherited durable title before resolving, and
+   *   whether the child gets an isolated copy of the working directory instead
+   *   of sharing the source's files.
    * @returns the child session id plus any draft text the anchor produced.
    * @throws when the fork fails, or when a requested child-title rename fails after creation.
    */
@@ -102,6 +104,7 @@ export interface ISessions {
     sessionId: SessionId
     atSeq?: number
     increaseTitle?: boolean
+    isolateFiles?: boolean
   }): Promise<{ sessionId: SessionId; draftText?: string }>
   /**
    * Resolve an Agent-scoped context view (use-and-discard).

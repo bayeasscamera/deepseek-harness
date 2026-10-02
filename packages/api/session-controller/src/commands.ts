@@ -19,6 +19,9 @@ import type { SessionEvent, SessionHeader, SessionId, UserMessage } from '@deeps
 import { SessionQueryError, type SessionObservation } from '@deepseek-ai/dsh-session-query'
 import { SessionTitleInvalidError } from '@deepseek-ai/dsh-session-title'
 import { planBranchCutoff } from './branch-cutoff.ts'
+import {
+  createIsolatedWorkspace, removeIsolatedWorkspace, type IsolatedWorkspace,
+} from './branch-workspace.ts'
 import { canonicalClientTimeZone } from '@deepseek-ai/dsh-util-time'
 import { assertNever } from '@deepseek-ai/dsh-util-values'
 import { RemoteError, remoteErrorOf } from '@deepseek-ai/dsh-typert-protocol'
@@ -243,6 +246,27 @@ export class SessionCommandController {
     }
     const childId = brandString<SessionId>(`session-${randomUUID()}`)
     const composition = await this.agents.composeAgent(this.agents.presetForObservation(source))
+    let isolated: IsolatedWorkspace | undefined
+    if (request.isolateFiles === true) {
+      const sourceCwd = source.header.cwd
+      if (sourceCwd === undefined) {
+        throw new RemoteError(
+          'gateway/bad-request',
+          `session "${request.sessionId}" has no working directory to isolate`,
+          {},
+        )
+      }
+      try {
+        isolated = createIsolatedWorkspace(sourceCwd, childId)
+      } catch (error) {
+        throw new RemoteError(
+          'session/isolation-failed',
+          `could not isolate files for session "${request.sessionId}": ${String(error)}`,
+          { sessionId: request.sessionId },
+        )
+      }
+    }
+    const childCwd = isolated?.path ?? source.header.cwd
     try {
       const { provider, model } = this.ctx.agentDefaultModel.currentSelection()
       await this.ctx.agents.create({
@@ -250,7 +274,7 @@ export class SessionCommandController {
         seed: source.events.slice(0, cut),
         inheritedEventCount: cut,
         meta: {
-          ...(source.header.cwd === undefined ? {} : { cwd: source.header.cwd }),
+          ...(childCwd === undefined ? {} : { cwd: childCwd }),
           parentSession: source.header.id,
           isSeeded: true,
           ...(composition.agentPreset === undefined
@@ -261,6 +285,7 @@ export class SessionCommandController {
         setup: composition.setup,
       })
     } catch (error) {
+      if (isolated !== undefined) removeIsolatedWorkspace(isolated)
       throw new RemoteError(
         'gateway/internal',
         `failed to fork session "${request.sessionId}": ${String(error)}`,
@@ -271,6 +296,7 @@ export class SessionCommandController {
       try {
         await workspace.attachSession(childId)
       } catch (error) {
+        if (isolated !== undefined) removeIsolatedWorkspace(isolated)
         throw new RemoteError(
           'session/workspace-attach-failed',
           `session "${childId}" was forked but could not attach to workspace "${workspace.id}": ${String(error)}`,
