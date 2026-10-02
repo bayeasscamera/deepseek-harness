@@ -45,7 +45,7 @@ const CHAT_NODE_INJECT: ChatNodeTurnDataInjected = {
 
 /** Services required by the Chat target and its presentation registrations. */
 export const inject = [
-  'slots', 'sessions', 'uiSession', 'uiConversation', 'locale',
+  'slots', 'sessions', 'uiSession', 'uiConversation', 'conversation', 'locale',
   'settingsScope', 'remote', 'remote.session', 'sidebarRight',
 ]
 
@@ -151,7 +151,19 @@ export function apply(ctx: Context): void {
           },
           forkAt: (seq) => {
             ctx.sessions.fork({ sessionId, atSeq: seq, increaseTitle: true })
-              .then(({ sessionId: childId }) => { ctx.sessions.open(childId) })
+              .then(({ sessionId: childId, draftText }) => {
+                // A user-message anchor stays out of the child's copied history
+                // and comes back as a draft, seeded before open() so the
+                // composer the user lands on already holds the text to rephrase.
+                if (draftText !== undefined) {
+                  const childScope = ctx.sessions.scope(childId)
+                  if (childScope === undefined) {
+                    throw new Error(`ui-chat: branch "${childId}" resolved no scope`)
+                  }
+                  ctx.conversation.input.for(childScope).setDraft(draftText)
+                }
+                ctx.sessions.open(childId)
+              })
               .catch(() => {
                 // Fork or child-title failure leaves the source view unchanged.
               })

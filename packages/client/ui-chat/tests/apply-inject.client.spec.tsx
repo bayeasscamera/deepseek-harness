@@ -113,6 +113,68 @@ describe('Chat inject API', () => {
     await b.runtime.dispose()
   })
 
+  it('seeds the branch child with the anchored user message as an editable draft', async () => {
+    const b = await bench()
+    const CHILD = 'branch-1' as SessionId
+    await b.runtime.sessions.add({
+      id: CHILD,
+      summary: { title: 'R (branch)', displayTitle: 'R (branch)' },
+      session: sessionFakeFor(),
+    }, { current: false })
+    vi.spyOn(b.runtime.sessions, 'fork').mockResolvedValueOnce({
+      sessionId: CHILD,
+      // The user-message anchor stays out of the child's copied history.
+      draftText: 'rephrase me',
+    })
+    const { injected } = b.chatViewApi(ROOT)
+    injected.forkAt(17)
+    await vi.waitFor(() => {
+      expect(b.runtime.sessions.calls).toContainEqual({ method: 'open', args: [CHILD] })
+    })
+    const childScope = b.runtime.sessions.scope(CHILD)
+    expect(childScope).toBeDefined()
+    expect(b.runtime.ctx.conversation.input.for(childScope!).state.getSnapshot().draft)
+      .toBe('rephrase me')
+    await b.runtime.dispose()
+  })
+
+  it('leaves the branch composer empty when the anchor hands back no draft', async () => {
+    const b = await bench()
+    const CHILD = 'branch-2' as SessionId
+    await b.runtime.sessions.add({
+      id: CHILD,
+      summary: { title: 'R (branch)', displayTitle: 'R (branch)' },
+      session: sessionFakeFor(),
+    }, { current: false })
+    // A non-user anchor copies through the end of its turn and returns no text.
+    vi.spyOn(b.runtime.sessions, 'fork').mockResolvedValueOnce({ sessionId: CHILD })
+    const { injected } = b.chatViewApi(ROOT)
+    injected.forkAt(17)
+    await vi.waitFor(() => {
+      expect(b.runtime.sessions.calls).toContainEqual({ method: 'open', args: [CHILD] })
+    })
+    const childScope = b.runtime.sessions.scope(CHILD)
+    expect(childScope).toBeDefined()
+    expect(b.runtime.ctx.conversation.input.for(childScope!).state.getSnapshot().draft).toBe('')
+    await b.runtime.dispose()
+  })
+
+  it('refuses a branch whose child resolves no scope instead of opening it', async () => {
+    const b = await bench()
+    const GHOST = 'branch-ghost' as SessionId
+    const fork = vi.spyOn(b.runtime.sessions, 'fork').mockResolvedValueOnce({
+      sessionId: GHOST,
+      draftText: 'nowhere to land',
+    })
+    const { injected } = b.chatViewApi(ROOT)
+    injected.forkAt(17)
+    await b.runtime.flush()
+    expect(fork).toHaveBeenCalledWith({ sessionId: ROOT, atSeq: 17, increaseTitle: true })
+    expect(b.runtime.sessions.scope(GHOST)).toBeUndefined()
+    expect(b.runtime.sessions.calls).not.toContainEqual({ method: 'open', args: [GHOST] })
+    await b.runtime.dispose()
+  })
+
   it('addresses file paths under the Session\'s scope and opens them in the right Sidebar', async () => {
     const b = await bench()
     const { injected } = b.chatViewApi(ROOT)
