@@ -469,7 +469,9 @@ export function SessionNodeItem({
       <span className={css.title}>{title}</span>
       {/* A branch count marks the session other branches were cut from. */}
       {branchCount > 0 && (
-        <span className={css.slot}>{t('branch.count', { n: branchCount })}</span>
+        <span className={css.slot}>
+          {t(branchCount === 1 ? 'branch.count.one' : 'branch.count.other', { n: branchCount })}
+        </span>
       )}
       {row.hasActiveSchedule && <ActiveScheduleIndicator t={t} />}
       {/* A blank New Session row is a provisional placeholder: nothing has

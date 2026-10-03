@@ -8,11 +8,12 @@ import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts
 import type { RowDragProps } from '../src/client/rows/Rows.tsx'
 import { ProjectRowItem, SearchResultItem, SessionNodeItem } from '../src/client/rows/Rows.tsx'
 import type { GroupNode, SearchResultNode, SessionNode } from '../src/client/tree.ts'
-import { zh } from '../src/client/locales.ts'
+import { en, zh } from '../src/client/locales.ts'
 
 afterEach(cleanup)
 
 const t = makeTranslate(zh, commonZh) as never
+const tEn = makeTranslate(en, commonZh) as never
 
 const sid = (id: string) => id as SessionId
 const wid = (id: string) => id as WorkspaceId
@@ -613,6 +614,16 @@ describe('workspace browser rows', () => {
     render(<SessionNodeItem node={node} currentId={undefined} now={0} onOpen={vi.fn()}
       onRename={vi.fn()} onFork={vi.fn()} onArchive={vi.fn()} t={t} />)
     expect(screen.getByText('2 个分支')).toBeTruthy()
+  })
+
+  it('reads one branch in the singular, where the language distinguishes it', () => {
+    const node: SessionNode = {
+      id: sid('s1'), title: 'Source', blank: false, running: false,
+      runningSubagentCount: 0, branchCount: 1, completed: false, hasActiveSchedule: false, updatedAt: 0,
+    }
+    render(<SessionNodeItem node={node} currentId={undefined} now={0} onOpen={vi.fn()}
+      onRename={vi.fn()} onFork={vi.fn()} onArchive={vi.fn()} t={tEn} />)
+    expect(screen.getByText('1 branch')).toBeTruthy()
   })
 
   it('draggable row wires start/end and gates hover/drop on an active same-group drag', () => {

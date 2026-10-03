@@ -98,7 +98,8 @@ export const sidebarFilepreviewFr: Record<string, string> = {
 /** French rows for the `workspace` namespace. */
 export const workspaceFr: Record<string, string> = {
   'group.ungrouped': 'Non groupées',
-  'branch.count': '{n} branches',
+  'branch.count.one': '{n} branche',
+  'branch.count.other': '{n} branches',
   'session.new': 'Nouvelle session',
   'section.workspaces': 'Espaces de travail',
   'section.sessions': 'Sessions',

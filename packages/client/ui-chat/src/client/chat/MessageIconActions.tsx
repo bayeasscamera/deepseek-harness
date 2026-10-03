@@ -155,7 +155,9 @@ export function MessageIconActions({
         <span id={reasonId} className={css.visuallyHidden}>{t('message.branchUnavailable')}</span>
       )}
       {branchCount !== undefined && branchCount > 0 && (
-        <span className={css.branchCount}>{t('message.branchCount', { n: branchCount })}</span>
+        <span className={css.branchCount}>
+          {t(branchCount === 1 ? 'message.branchCount.one' : 'message.branchCount.other', { n: branchCount })}
+        </span>
       )}
       {usageAction}
       {clock === 'end' ? clockEl : null}
