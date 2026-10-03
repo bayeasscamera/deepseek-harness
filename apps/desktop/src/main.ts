@@ -108,6 +108,9 @@ function createWindow(preload: string): BrowserWindow {
       contextIsolation: true,
       sandbox: true,
       webSecurity: true,
+      // The right Sidebar's PDF preview draws through Chromium's built-in PDF
+      // viewer, which only loads when plugins are enabled.
+      plugins: true,
     },
   })
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))

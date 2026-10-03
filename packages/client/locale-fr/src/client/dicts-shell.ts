@@ -73,6 +73,28 @@ export const sidebarTextpreviewFr: Record<string, string> = {
   retry: 'Réessayer',
 }
 
+/** French rows for the `sidebarFilepreview` namespace. */
+export const sidebarFilepreviewFr: Record<string, string> = {
+  loading: 'Chargement…',
+  reload: 'Recharger le fichier',
+  retry: 'Réessayer',
+  slide: 'Diapositive {n}',
+  'table.truncated': 'Le fichier dépasse ce que l’aperçu dessine ; seul son début est affiché.',
+  'document.empty': 'Ce document ne contient aucun texte affichable.',
+  'error.notFound': 'Ce fichier n’existe plus. Il a peut-être été déplacé ou supprimé.',
+  'error.outsideWorkspace':
+    'Ce fichier est hors de l’espace de travail, la barre latérale ne le lira pas.',
+  'error.notRegularFile': 'Ce n’est pas un fichier ordinaire, il n’y a rien à prévisualiser.',
+  'error.tooLargeWindow':
+    'Cette page est trop grande ; la barre latérale ne lit pas les pages au-delà de {limit}.',
+  'error.tooLargePreview':
+    'Ce fichier dépasse la limite d’aperçu de {limit} : impossible de l’ouvrir ici.',
+  'error.unsupported': 'Ce type de fichier n’a pas d’aperçu intégré.',
+  'error.unreadable': 'La lecture s’est arrêtée en cours de route ; le fichier est peut-être en cours d’écriture.',
+  'error.malformed': 'Ce fichier n’a pas pu être lu selon son extension ; il est peut-être endommagé.',
+  'error.unavailable': 'Échec de lecture : {message}',
+}
+
 /** French rows for the `workspace` namespace. */
 export const workspaceFr: Record<string, string> = {
   'group.ungrouped': 'Non groupées',

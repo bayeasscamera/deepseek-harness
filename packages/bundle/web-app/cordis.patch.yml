@@ -237,6 +237,11 @@
     - id: ui-sidebar-textpreview
       name: '@deepseek-ai/dsh-client-ui-sidebar-textpreview'
 
+    # The right Sidebar's rich previews: pictures, PDFs, and HTML pages, from
+    # byte windows of the same workspace file service.
+    - id: ui-sidebar-filepreview
+      name: '@deepseek-ai/dsh-client-ui-sidebar-filepreview'
+
     # The right Sidebar's workspace file tree tab type.
     - id: ui-sidebar-files
       name: '@deepseek-ai/dsh-client-ui-sidebar-files'
@@ -471,6 +476,9 @@
   disabled: true
 
 - id: tool-todo
+  disabled: true
+
+- id: tool-slides
   disabled: true
 
 - id: tool-web

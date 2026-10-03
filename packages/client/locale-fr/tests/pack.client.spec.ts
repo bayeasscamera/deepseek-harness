@@ -30,6 +30,7 @@ const SPOT_CHECKS: ReadonlyArray<readonly [ns: string, key: string, expected: st
   ['sidebarFiles', 'guide.title', 'Fichiers'],
   ['sidebarRight', 'dock.addTab', 'Nouvel onglet'],
   ['sidebarTextpreview', 'wrap', 'Retour à la ligne automatique'],
+  ['sidebarFilepreview', 'retry', 'Réessayer'],
   ['workspace', 'section.workspaces', 'Espaces de travail'],
   ['reference', 'crumb.root', 'Espace de travail'],
   ['directory-browser', 'browser.create', 'Créer'],

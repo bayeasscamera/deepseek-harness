@@ -1,0 +1,164 @@
+/* The pane body is a block scroller with a definite height, not a flex
+   container, so the preview takes that height outright: the header row stays
+   put and the drawn file below fills the rest. */
+.preview {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+/* One row: the path, then the type's controls at its end. */
+.header {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 2px;
+  align-items: center;
+  padding: 3px 6px 3px 10px;
+  border-bottom: 0.5px solid var(--dsw-alias-border-l1);
+}
+
+.path {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Pictures are letterboxed inside the pane instead of cropped or scrolled. */
+.bodyMedia {
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  overflow: auto;
+}
+
+/* Tables scroll inside the pane, which stays the frame around them. */
+.bodyTable {
+  display: block;
+  padding: 8px 10px;
+  overflow: auto;
+}
+
+.sheet + .sheet {
+  margin-top: 16px;
+}
+
+.sheetName {
+  position: sticky;
+  left: 0;
+  margin-bottom: 4px;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+}
+
+.tableScroll {
+  overflow: auto;
+}
+
+.table {
+  border-collapse: collapse;
+  font-size: var(--dsh-content-font-size-secondary, 13px);
+}
+
+.table th,
+.table td {
+  max-width: 320px;
+  padding: 3px 8px;
+  overflow: hidden;
+  color: var(--dsw-alias-label-primary);
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 0.5px solid var(--dsw-alias-border-l1);
+}
+
+.table th {
+  color: var(--dsw-alias-label-secondary);
+  font-weight: 600;
+  background: var(--dsw-alias-bg-layer-2);
+}
+
+.media {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+/* Frames take the whole body: the PDF viewer and an HTML page own their own
+   scrolling and chrome. */
+.frame {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  border: 0;
+}
+
+.statusLine {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  align-self: flex-start;
+  margin: 0;
+  padding: 6px 10px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: var(--dsh-content-font-size-secondary, 13px);
+  line-height: 1.6;
+  white-space: normal;
+}
+
+.status {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 12px 10px;
+}
+
+.action {
+  padding: 4px 10px;
+  color: var(--dsw-alias-label-primary);
+  font-size: var(--dsh-content-font-size-secondary, 13px);
+  font-family: var(--dsw-font, inherit);
+  white-space: normal;
+  background: var(--dsw-alias-bg-layer-2);
+  border: 0.5px solid var(--dsw-alias-border-l2);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.action:hover {
+  background: var(--dsw-alias-bg-layer-3);
+}
+
+/* Controls in the header row, sized like the docking kit's own pane controls. */
+.tool {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--dsw-alias-label-secondary);
+  line-height: 1;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.tool:hover {
+  color: var(--dsw-alias-label-primary);
+  background: var(--dsw-alias-interactive-bg-hover);
+}
