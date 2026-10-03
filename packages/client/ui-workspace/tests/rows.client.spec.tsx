@@ -169,6 +169,32 @@ describe('workspace browser rows', () => {
     expect(onOpen).toHaveBeenCalledWith(node.id)
   })
 
+  it('indents a branch row and leaves its parent row top-level', () => {
+    const parent: SessionNode = {
+      id: sid('parent'), title: 'Parent', blank: false, running: false,
+      runningSubagentCount: 0, branchCount: 1, completed: false, hasActiveSchedule: false, updatedAt: 0,
+    }
+    const branch: SessionNode = {
+      id: sid('branch'), title: 'Branch', blank: false, running: false,
+      runningSubagentCount: 0, completed: false, hasActiveSchedule: false, updatedAt: 0,
+      branchOf: parent.id, nested: true,
+    }
+    const rows = render(
+      <>
+        <SessionNodeItem node={parent} currentId={undefined} now={0} onOpen={vi.fn()}
+          onRename={vi.fn()} onFork={vi.fn()} onArchive={vi.fn()} t={t} />
+        <SessionNodeItem node={branch} currentId={undefined} now={0} onOpen={vi.fn()}
+          onRename={vi.fn()} onFork={vi.fn()} onArchive={vi.fn()} t={t} />
+      </>,
+    )
+    const [parentRow, branchRow] = Array.from(rows.container.querySelectorAll('[role="treeitem"]'))
+    // The nested class is the only difference between the two rows.
+    expect(parentRow?.className).not.toContain('nestedSessionRow')
+    expect(branchRow?.className).toContain('nestedSessionRow')
+    // Lineage is visual: the parent still names how many branches it has.
+    expect(parentRow?.textContent).toContain('1')
+  })
+
   it('keeps the active-Schedule marker between the title and time in grouped and flat rows', () => {
     const onOpen = vi.fn()
     const node: SessionNode = {

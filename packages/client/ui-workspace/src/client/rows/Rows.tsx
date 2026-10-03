@@ -400,6 +400,7 @@ export function SessionNodeItem({
   const row = node
   const title = displayTitle(node, t)
   const selected = node.id === currentId
+  const branchCount = row.branchCount ?? 0
   const statuses = sessionStatuses(node, t)
   const primaryStatus = statuses[0]
   const showStatus = primaryStatus.state !== 'done' || row.completed
@@ -425,6 +426,7 @@ export function SessionNodeItem({
       ref={rowRef}
       className={clsx(
         css.sessionRow, selected && css.selected, menuOpen && css.menuOpen,
+        row.nested === true && css.nestedSessionRow,
         flat && !showStatus && css.flatSessionRowWithoutStatus,
         drag?.marker === 'before' && css.dropBefore, drag?.marker === 'after' && css.dropAfter,
       )}
@@ -466,8 +468,8 @@ export function SessionNodeItem({
       )}
       <span className={css.title}>{title}</span>
       {/* A branch count marks the session other branches were cut from. */}
-      {(row.branchCount ?? 0) > 0 && (
-        <span className={css.slot}>{t('branch.count', { n: row.branchCount ?? 0 })}</span>
+      {branchCount > 0 && (
+        <span className={css.slot}>{t('branch.count', { n: branchCount })}</span>
       )}
       {row.hasActiveSchedule && <ActiveScheduleIndicator t={t} />}
       {/* A blank New Session row is a provisional placeholder: nothing has

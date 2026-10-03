@@ -219,7 +219,7 @@ describe('deriveGroups', () => {
     ).items[0]).toMatchObject({ id: parent.id, runningSubagentCount: 2 })
   })
 
-  it('ignores fork lineage and sorts every ungrouped session as a top-level row', () => {
+  it('nests each branch under its parent and keeps a looping lineage top-level', () => {
     const parent = summary('parent', 1)
     const oldChild = { ...summary('old-child', 10), parentId: parent.id }
     const newChild = { ...summary('new-child', 20), parentId: parent.id }
@@ -238,9 +238,22 @@ describe('deriveGroups', () => {
     )
 
     expect(groups).toHaveLength(1)
-    expect(groups[0]!.sessions.map(node => node.id)).toEqual([
-      newChild.id, tieA.id, tieB.id, oldChild.id,
-      cycleB.id, cycleA.id, orphan.id, self.id, parent.id,
+    // The group's own order supplies the roots; every branch follows the parent
+    // it was cut from, one level deeper, and its siblings keep their order.
+    expect(groups[0]!.sessions.map(node => [node.id, node.nested ?? false, node.branchOf ?? null])).toEqual([
+      [orphan.id, false, null],
+      [parent.id, false, null],
+      [newChild.id, true, parent.id],
+      [tieA.id, true, parent.id],
+      [tieB.id, true, parent.id],
+      [oldChild.id, true, parent.id],
+      // A cycle has no root to hang from: the first row the walk reaches is
+      // top-level and the other nests under it, once.
+      [cycleB.id, false, null],
+      [cycleA.id, true, cycleB.id],
+      // A self-parented session is its own parent, so it cannot nest under
+      // itself; it stays a top-level row.
+      [self.id, false, null],
     ])
 
     // Equal timestamps use ids as a deterministic tiebreak in either input order.

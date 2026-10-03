@@ -10,6 +10,15 @@
   color: var(--dsw-alias-label-primary);
 }
 
+/* A branch sits one level under the session it was cut from: the indent and the
+   rule read as lineage without a second row of chrome. */
+.nestedSessionRow {
+  margin-left: 14px;
+  border-left: 1.5px solid var(--dsw-alias-border-l1);
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
 .projectRow:hover,
 .sessionRow:hover {
   background: var(--dsw-alias-interactive-bg-hover);

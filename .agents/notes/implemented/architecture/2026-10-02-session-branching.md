@@ -45,7 +45,7 @@ Reading the repository before designing anything showed that most of the primiti
 
 **Draft handoff.** The child's composer receives the anchor's text before the child opens, so a message kept out of the copied history becomes the second path's first editable turn (`packages/client/ui-chat/src/client/apply.ts`). An anchor that is not a user message returns no draft and the composer stays empty.
 
-**Lineage.** A child renders "Branched from `<source title>`" above its transcript, reading the source through the session list row so a renamed source keeps its current title (`packages/client/ui-chat/src/client/chat/ChatView.tsx`). The source's row in the workspace list carries a localized branch count: `indexBranchDescendants` counts direct children that record a parent without the subagent origin, and a branch of a branch counts under its own parent (`packages/client/ui-workspace/src/client/subagent-lineage.ts`).
+**Lineage.** A child renders "Branched from `<source title>`" above its transcript, reading the source through the session list row so a renamed source keeps its current title (`packages/client/ui-chat/src/client/chat/ChatView.tsx`). The source's row in the workspace list carries a localized branch count: `indexBranchDescendants` counts direct children that record a parent without the subagent origin, and a branch of a branch counts under its own parent (`packages/client/ui-workspace/src/client/subagent-lineage.ts`). In the grouped list the branch also nests: `nestedRows` emits every visible branch directly after its parent, one level deeper, with its own branches after it, and the row draws the indent and the lineage rule. The flat "In one list" mode stays newest-first with no parent/child adjacency, by its own documented contract.
 
 **File isolation.** `fork({ isolateFiles: true })` gives the child its own working tree instead of sharing the source's: a Git worktree on a branch named for the child when the source directory sits inside one, otherwise a copy that skips dependencies, history, and build residue. Isolation fails closed before any child exists, and a copy created before a later failure is removed (`packages/api/session-controller/src/branch-workspace.ts`). The message actions state the choice: the branch control opens a two-entry menu naming the file policy — the shared directory or the isolated copy — so isolation is an explicit pick rather than a hidden flag (`packages/client/ui-chat/src/client/chat/MessageIconActions.tsx`). A branch the host refuses, isolation included, reports on the source session's composer instead of leaving the click silent (`packages/client/ui-chat/src/client/apply.ts`).
 
@@ -55,7 +55,7 @@ Reading the repository before designing anything showed that most of the primiti
 
 ## Deferred
 
-- **Parent grouping in the session list.** Branches list as their own rows with the branch-count badge; nesting is not built.
+- **Parent grouping in the session list** — built for the grouped list: a branch nests under the session it was cut from, one level per generation, and a lineage that loops (a session naming itself, or two naming each other) renders each row once at the top level instead of nesting. The flat list remains adjacency-free.
 
 ## Testing
 

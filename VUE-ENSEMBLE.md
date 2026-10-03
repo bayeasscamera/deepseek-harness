@@ -137,7 +137,7 @@ Les six axes voulus pour cette version, avec l'état réel dans le dépôt au 20
 
 ### En cours
 
-- Regroupement parent/enfant des sessions dans la liste (seul élément déferé de la feature branching).
+- Rien de déferé sur le branching : le regroupement parent/enfant est livré (une branche se niche sous sa session d'origine dans la liste groupée ; la liste plate reste sans adjacence).
 
 ### Prévu (pour cette version)
 
@@ -202,7 +202,7 @@ Les six axes voulus pour cette version, avec l'état réel dans le dépôt au 20
 ### Les 3 prochaines choses (cible version)
 
 1. **Phone Access** — seul axe de la liste encore totalement absent ; s'appuyer sur le tunnel esquissé dans `experimental/webworker-runtime`.
-2. **Regroupement parent/enfant des sessions** — la liste plate a une décision enregistrée qui l'exclut ; la changer demande de la superséder proprement.
+2. **Récurrence hebdomadaire de `schedule`** (« tous les lundis à 9h ») — touche l'union de records durables, donc une migration de format de session à assumer.
 3. **Gabarits appelant et fidélité** — accepter un gabarit PPT fourni, et éventuellement mammoth/SheetJS pour la mise en page Office (décision de poids de bundle à assumer).
 
 En parallèle, restent ouverts : la sortie de l'expérimental (Agent Teams, Creator Mode), le regroupement parent/enfant des sessions, et le gate de seed desktop.

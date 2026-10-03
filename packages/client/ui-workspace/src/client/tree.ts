@@ -52,6 +52,10 @@ export interface SessionNode {
   runningSubagentCount: number
   /** Direct branch children cut from this Session, absent when there are none. */
   branchCount?: number
+  /** The Session this row was branched from, when that Session is visible in the same group. */
+  branchOf?: SessionId
+  /** Whether the row is drawn one level under its parent branch. */
+  nested?: boolean
   /** Finished running while not selected and not yet opened (the green "done" reminder dot). */
   completed: boolean
   /** The current list projection contains at least one active Schedule record. */
@@ -262,6 +266,8 @@ function sessionNode(
   descendants: ReadonlyMap<SessionId, SubagentDescendantSummary>,
   branches: ReadonlyMap<SessionId, number>,
   pendingInteractions: SessionPendingInteractions,
+  nested = false,
+  branchOf?: SessionId,
 ): SessionNode {
   const pendingInteraction = visiblePendingKind(pendingInteractions.get(s.id)?.kind)
   return {
@@ -271,6 +277,8 @@ function sessionNode(
     running: s.running,
     runningSubagentCount: descendants.get(s.id)?.runningCount ?? 0,
     branchCount: branches.get(s.id) ?? 0,
+    ...branchOf === undefined ? {} : { branchOf },
+    ...nested ? { nested: true } : {},
     completed: s.completed === true,
     hasActiveSchedule: hasActiveSchedule(s),
     updatedAt: s.updatedAt,
@@ -320,11 +328,71 @@ export function deriveGroups(
       expanded,
       containsCurrent: g.key === currentGroup,
       sessions: expanded
-        ? g.sessions.map(session => sessionNode(session, descendants, branches, pendingInteractions))
+        ? nestedRows(g.sessions).map(row => sessionNode(
+          row.session, descendants, branches, pendingInteractions, row.nested, row.branchOf,
+        ))
         : [],
     })
   }
   return groups
+}
+
+/**
+ * The parent one branch nests under, when that parent is visible in this group.
+ *
+ * A branch whose parent is archived, hidden, or in another group has no visible
+ * parent here and keeps its place in the group's own order. Subagent-origin
+ * children never reach this derivation: the list excludes them, because they
+ * belong to their parent's subagent catalog.
+ * @param session - the candidate child.
+ * @param visible - the ids visible in the same group.
+ * @returns the parent id, or undefined when the row stays top-level.
+ */
+function visibleBranchParent(session: SessionSummary, visible: ReadonlySet<SessionId>): SessionId | undefined {
+  const parent = session.parentId
+  return parent !== undefined && visible.has(parent) ? parent : undefined
+}
+
+/** One ordered row: the session, and where it sits in the branch hierarchy. */
+interface NestedRow {
+  readonly session: SessionSummary
+  readonly nested: boolean
+  readonly branchOf: SessionId | undefined
+}
+
+/**
+ * Order one group's visible sessions so every branch follows its parent.
+ *
+ * Each branch is emitted directly after the session it was cut from, one level
+ * deeper, and its own branches after it; siblings keep the group's incoming
+ * order. A row already emitted is never emitted again, so a log whose lineage
+ * loops still renders every session once.
+ * @param sessions - the group's visible sessions, in the group's own order.
+ * @returns the rows in render order.
+ */
+function nestedRows(sessions: readonly SessionSummary[]): NestedRow[] {
+  const visible = new Set(sessions.map(session => session.id))
+  const children = new Map<SessionId, SessionSummary[]>()
+  const roots: SessionSummary[] = []
+  for (const session of sessions) {
+    const parent = visibleBranchParent(session, visible)
+    if (parent === undefined) roots.push(session)
+    else children.set(parent, [...children.get(parent) ?? [], session])
+  }
+  const rows: NestedRow[] = []
+  const emitted = new Set<SessionId>()
+  const emit = (session: SessionSummary, nested: boolean, branchOf: SessionId | undefined): void => {
+    if (emitted.has(session.id)) return
+    emitted.add(session.id)
+    rows.push({ session, nested, branchOf })
+    for (const child of children.get(session.id) ?? []) emit(child, true, session.id)
+  }
+  for (const root of roots) emit(root, false, undefined)
+  // A lineage that loops — a session naming itself, or two naming each other —
+  // leaves rows unreachable from any root. They keep the group's own order as
+  // top-level rows instead of vanishing from the list.
+  for (const session of sessions) emit(session, false, undefined)
+  return rows
 }
 
 /**
