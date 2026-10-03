@@ -816,8 +816,8 @@ describe('ModelsSection', () => {
 
     // Input types are visible on the row itself: configuring a model must not
     // require discovering the capacities disclosure first.
-    const textCheckbox = screen.getByLabelText(`${en.inputTypeText} 1`) as HTMLInputElement
-    const imageCheckbox = screen.getByLabelText(`${en.inputTypeImage} 1`) as HTMLInputElement
+    const textCheckbox = screen.getByLabelText(`${en['inputType.text']} 1`) as HTMLInputElement
+    const imageCheckbox = screen.getByLabelText(`${en['inputType.image']} 1`) as HTMLInputElement
 
     expect(textCheckbox.checked).toBe(true)
     expect(imageCheckbox.checked).toBe(false)

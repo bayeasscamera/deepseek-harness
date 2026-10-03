@@ -60,8 +60,8 @@ export function inputTypeOf(model: DeepSeekModelDraft): ModelInputType {
 
 /** Copy key naming each input type. */
 const INPUT_TYPE_LABEL = {
-  text: 'inputTypeText',
-  image: 'inputTypeImage',
+  text: 'inputType.text',
+  image: 'inputType.image',
 } as const satisfies Record<ModelInputType, keyof typeof en>
 
 /** Props of {@link ModelInputTypesField}. */

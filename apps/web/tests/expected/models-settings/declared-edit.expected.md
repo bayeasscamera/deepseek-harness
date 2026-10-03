@@ -57,6 +57,12 @@
             - /placeholder: 显示名称
           - button "容量 1"
           - button "删除模型 1"
+          - text: 输入类型（文本/图像）
+          - group "输入类型（文本/图像） 1":
+            - checkbox "文本 1" [checked]
+            - text: 文本
+            - checkbox "图像 1"
+            - text: 图像
           - button "添加模型"
       - button "取消"
       - button "保存"
