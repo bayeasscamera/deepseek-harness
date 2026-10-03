@@ -1392,6 +1392,41 @@ function tokenUsageOf(log: readonly SessionEvent[]): FixtureTokenUsageProjection
   return totals
 }
 
+/** Step currently accumulating wall-time and time-to-first-token facts. */
+interface OpenStep {
+  turn: number
+  step: number
+  startTime: number
+  firstTokenTime: number | null
+}
+
+/** The step identity and recorded stream every assistant event carries. */
+type AssistantStepEvent = {
+  readonly data: {
+    readonly turn: number
+    readonly step: number
+    readonly stream: readonly AssistantStreamRecord[]
+  }
+}
+
+/**
+ * Attribute one assistant event to the open step and keep that step's first
+ * token time.
+ * @param openStep - step currently accumulating, when one is open.
+ * @param event - assistant event carrying a step identity and its stream.
+ * @returns the open step when the event belongs to it, otherwise null.
+ */
+function assistantStepOf(openStep: OpenStep | null, event: AssistantStepEvent): OpenStep | null {
+  if (openStep === null || openStep.turn !== event.data.turn || openStep.step !== event.data.step) {
+    return null
+  }
+  const first = expandAssistantStream(event.data.stream).find(member =>
+    isFixtureTokenDelta(member.chunk),
+  )?.time
+  if (openStep.firstTokenTime === null && first !== undefined) openStep.firstTokenTime = first
+  return openStep
+}
+
 /** Fixture parallel of session-stats' whole-log counting and wall-time fold. */
 function sessionStatsOf(log: readonly SessionEvent[]): {
   turns: number
@@ -1414,12 +1449,7 @@ function sessionStatsOf(log: readonly SessionEvent[]): {
     decodeTokens: 0,
   }
   let lastTurn: number | null = null
-  let openStep: {
-    turn: number
-    step: number
-    startTime: number
-    firstTokenTime: number | null
-  } | null = null
+  let openStep: OpenStep | null = null
   const pendingCalls = new Map<string, number>()
   for (const event of log) {
     switch (event.type) {
@@ -1431,33 +1461,16 @@ function sessionStatsOf(log: readonly SessionEvent[]): {
           firstTokenTime: null,
         }
         break
-      case 'assistant/attempt': {
-        if (
-          openStep === null ||
-          openStep.turn !== event.data.turn ||
-          openStep.step !== event.data.step
-        )
-          break
-        const first = expandAssistantStream(event.data.stream).find(member =>
-          isFixtureTokenDelta(member.chunk),
-        )?.time
-        if (openStep.firstTokenTime === null && first !== undefined) openStep.firstTokenTime = first
+      case 'assistant/attempt':
+        // An attempt contributes its first token time and nothing else.
+        assistantStepOf(openStep, event)
         break
-      }
       case 'assistant/message': {
-        if (
-          openStep === null ||
-          openStep.turn !== event.data.turn ||
-          openStep.step !== event.data.step
-        )
-          break
-        const first = expandAssistantStream(event.data.stream).find(member =>
-          isFixtureTokenDelta(member.chunk),
-        )?.time
-        if (openStep.firstTokenTime === null && first !== undefined) openStep.firstTokenTime = first
-        value.llmMs += Math.max(0, event.time - openStep.startTime)
-        if (openStep.firstTokenTime !== null) {
-          value.ttftMs += Math.max(0, openStep.firstTokenTime - openStep.startTime)
+        const step = assistantStepOf(openStep, event)
+        if (step === null) break
+        value.llmMs += Math.max(0, event.time - step.startTime)
+        if (step.firstTokenTime !== null) {
+          value.ttftMs += Math.max(0, step.firstTokenTime - step.startTime)
           value.ttftSteps += 1
           const outputTokens = event.data.usage?.outputTokens
           if (
@@ -1465,7 +1478,7 @@ function sessionStatsOf(log: readonly SessionEvent[]): {
             Number.isFinite(outputTokens) &&
             outputTokens >= 0
           ) {
-            value.decodeMs += Math.max(0, event.time - openStep.firstTokenTime)
+            value.decodeMs += Math.max(0, event.time - step.firstTokenTime)
             value.decodeTokens += outputTokens
           }
         }
