@@ -22,6 +22,8 @@ type TimeUnit = 'day' | 'hour' | 'minute' | 'second'
 
 const EMPTY_RECORDS: readonly ScheduleRecord[] = []
 const SECOND_MS = 1_000
+/** A Monday, so adding ISO weekday minus one lands on the requested weekday. */
+const ISO_WEEK_ANCHOR = Date.UTC(2024, 0, 1)
 const SECOND_UNIT = { unit: 'second', seconds: 1 } as const
 const MEASURE_STYLE: CSSProperties = { visibility: 'hidden', left: 0, top: 0 }
 const UNIT_SECONDS: readonly { unit: TimeUnit; seconds: number }[] = [
@@ -43,11 +45,21 @@ function unitLabel(unit: TimeUnit, value: number, t: TranslateNS<typeof NS>): st
   return t(value === 1 ? pair[0] : pair[1], { count: value })
 }
 
+/** Localized weekday name for an ISO weekday number, independent of the host's zone. */
+function weekdayLabel(weekday: number, locale?: string): string {
+  return new Intl.DateTimeFormat(locale, { weekday: 'long', timeZone: 'UTC' })
+    .format(ISO_WEEK_ANCHOR + (weekday - 1) * 86_400_000)
+}
+
 /** Pick the largest exact whole unit without rounding the durable interval. */
 export function formatScheduleFrequency(
   record: ScheduleRecord,
   t: TranslateNS<typeof NS>,
+  locale?: string,
 ): string {
+  if (record.kind === 'weekly') {
+    return t('frequency.weekly', { weekday: weekdayLabel(record.weekday, locale), time: record.time })
+  }
   if (record.kind !== 'every') return t('frequency.once')
   let selected: { unit: TimeUnit; seconds: number } = SECOND_UNIT
   for (const candidate of UNIT_SECONDS) {
@@ -185,7 +197,7 @@ export function ScheduleCatalogAction({ useSession, useProjection, t }: Schedule
               </span>
               <span className={css.prompt}>{record.prompt}</span>
               <span className={css.metadata}>
-                <span>{formatScheduleFrequency(record, t)}</span>
+                <span>{formatScheduleFrequency(record, t, document.documentElement.lang)}</span>
                 <span aria-hidden="true">·</span>
                 <span>{formatScheduleLocalTime(record.scheduledAt, document.documentElement.lang)}</span>
                 <span aria-hidden="true">·</span>

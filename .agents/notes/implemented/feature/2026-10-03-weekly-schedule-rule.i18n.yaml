@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-10-03-weekly-schedule-rule.md
-2026-10-03-weekly-schedule-rule.md: 020f0300640c7729de4130633401de25081c2612
-2026-10-03-weekly-schedule-rule.zh.md: 270d68544895a9cdfb3d786f646398932bd86062
+2026-10-03-weekly-schedule-rule.md: 2c0e6cba1dea66eacbaf2a01ff92be9f1476b2b5
+2026-10-03-weekly-schedule-rule.zh.md: ec4744f5612f502a0efaa3a4ae488e79e4c67af2

@@ -306,6 +306,7 @@ export const scheduleCatalogFr: Record<string, string> = {
   'status.overdue': 'En retard',
   'frequency.once': 'Une fois',
   'frequency.every': 'Tous les {value} {unit}',
+  'frequency.weekly': 'Chaque {weekday} à {time}',
   'unit.day.one': 'jour',
   'unit.day.other': 'jours',
   'unit.hour.one': 'heure',

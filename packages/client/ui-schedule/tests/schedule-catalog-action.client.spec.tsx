@@ -35,7 +35,7 @@ function record(
   id: string,
   kind: ScheduleRecord['kind'],
   scheduledAt: number,
-  options: { prompt?: string; everySeconds?: number } = {},
+  options: { prompt?: string; everySeconds?: number; weekday?: number } = {},
 ): ScheduleRecord {
   const common = {
     id: ScheduleId(id),
@@ -45,6 +45,9 @@ function record(
   }
   if (kind === 'after') return { ...common, kind, afterSeconds: 30 }
   if (kind === 'every') return { ...common, kind, everySeconds: options.everySeconds ?? 300 }
+  if (kind === 'weekly') {
+    return { ...common, kind, weekday: options.weekday ?? 1, time: '09:00', timeZone: 'UTC' }
+  }
   return { ...common, kind }
 }
 
@@ -201,6 +204,20 @@ describe('ScheduleCatalogAction rows', () => {
     expect(formatScheduleFrequency(record('once', 'at', START + 1_000), tZh)).toBe('单次')
     expect(tZh('status.scheduled')).toBe('等待中')
     expect(tZh('status.overdue')).toBe('已逾期')
+  })
+
+  it('names the weekly weekday in the document locale and keeps the configured wall clock', () => {
+    const tEn = makeTranslate(en)
+    const tZh = makeTranslate(zh)
+    const monday = record('monday', 'weekly', START + 1_000)
+    const sunday = record('sunday', 'weekly', START + 1_000, { weekday: 7 })
+    expect(formatScheduleFrequency(monday, tEn, 'en')).toBe('Every Monday at 09:00')
+    expect(formatScheduleFrequency(sunday, tEn, 'en')).toBe('Every Sunday at 09:00')
+    expect(formatScheduleFrequency(monday, tZh, 'zh')).toBe('每周星期一 09:00')
+    expect(formatScheduleFrequency(sunday, tZh, 'zh')).toBe('每周星期日 09:00')
+    render(<ScheduleCatalogAction {...props([monday])} />)
+    fireEvent.click(screen.getByRole('button'))
+    expect(screen.getByRole('listitem').textContent).toContain('Every Monday at 09:00')
   })
 
   it('formats absolute time with the active document locale instead of the runtime default', () => {
