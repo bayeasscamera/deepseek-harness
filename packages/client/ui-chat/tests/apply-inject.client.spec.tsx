@@ -210,6 +210,41 @@ describe('Chat inject API', () => {
     await b.runtime.dispose()
   })
 
+  it('opens a Session from the injected hook and reads keyed node sources', async () => {
+    const b = await bench()
+    const OTHER = 'branch-other' as SessionId
+    await b.runtime.sessions.add({
+      id: OTHER,
+      summary: { title: 'O', displayTitle: 'O' },
+      session: sessionFakeFor(),
+    }, { current: false })
+    const { injected } = b.chatViewApi(ROOT)
+
+    injected.openSession(OTHER)
+    expect(b.runtime.sessions.calls).toContainEqual({ method: 'open', args: [OTHER] })
+
+    // The keyed hooks read the live Chat store: a key this Session never
+    // materialized still answers with a readable source, not undefined.
+    const node = injected.keyedHooks.chatNode('absent')
+    const process = injected.keyedHooks.chatNodeProcess('absent')
+    expect(node.getSnapshot()).toBe(injected.keyedHooks.chatNode('absent').getSnapshot())
+    expect(process.getSnapshot()).toBe(injected.keyedHooks.chatNodeProcess('absent').getSnapshot())
+    await b.runtime.dispose()
+  })
+
+  it('drops the branch failure notice when the source Session is already gone', async () => {
+    const b = await bench()
+    const { injected } = b.chatViewApi(ROOT)
+    const fork = vi.spyOn(b.runtime.sessions, 'fork').mockRejectedValueOnce(new Error('fork failed'))
+    await b.runtime.sessions.remove(ROOT)
+    expect(b.runtime.sessions.scope(ROOT)).toBeUndefined()
+
+    injected.forkAt(17)
+    await vi.waitFor(() => { expect(fork).toHaveBeenCalledOnce() })
+    await b.runtime.flush()
+    await b.runtime.dispose()
+  })
+
   it('addresses file paths under the Session\'s scope and opens them in the right Sidebar', async () => {
     const b = await bench()
     const { injected } = b.chatViewApi(ROOT)

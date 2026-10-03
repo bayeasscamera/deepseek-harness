@@ -187,18 +187,19 @@ describe('web e2e: message IconActions and clocks on settled history', () => {
     ).toBe(1)
 
     // Focus-reveal the footers (hover:hover keeps them opacity-hidden until
-    // hover/focus-within). Branch renders only under assistant answers — user
-    // bubbles carry none — and only a completed transcript tail enables it.
+    // hover/focus-within). Every message carries a branch control — a user
+    // bubble forks at its own prompt — while only the completed transcript
+    // tail enables the assistant one.
     const copyButtons = page.getByRole('button', { name: 'Copy' })
     await expect.poll(() => copyButtons.count(), { timeout: 10_000 }).toBeGreaterThanOrEqual(4)
     await copyButtons.first().focus()
     const branchButtons = page.getByRole('button', { name: 'Branch into a new conversation' })
-    await expect.poll(() => branchButtons.count(), { timeout: 5_000 }).toBe(2)
+    await expect.poll(() => branchButtons.count(), { timeout: 5_000 }).toBe(4)
     await expect.poll(
       () => branchButtons.evaluateAll(buttons => buttons.map(button => button.getAttribute('aria-disabled'))),
       { timeout: 5_000 },
-    ).toEqual(['true', null])
-    await branchButtons.first().focus()
+    ).toEqual([null, 'true', null, null])
+    await branchButtons.nth(1).focus()
     await expect.poll(() => page.getByRole('tooltip').textContent(), { timeout: 5_000 })
       .toBe('Available only on the last message of a completed turn')
     await expect.poll(() => page.getByRole('button', { name: 'Edit' }).count(), { timeout: 5_000 }).toBe(0)
@@ -219,8 +220,11 @@ describe('web e2e: message IconActions and clocks on settled history', () => {
 
   it.skipIf(MODE === 'record')('forks through the settled-message and session-row actions', async () => {
     onTestFailed(() => saveFailureShot(page, 'web-e2e-message-fork'))
-    // The last message action belongs to the completed second-turn assistant.
+    // The last message action belongs to the completed second-turn assistant;
+    // its control opens the file-policy menu, so the fork is the shared-files
+    // choice rather than the click itself.
     await page.getByRole('button', { name: 'Branch into a new conversation' }).last().click()
+    await page.getByRole('menuitem', { name: 'Branch (both sessions edit the same files)' }).click()
     await expect.poll(
       () => scaffold.ctx.agents.list().find(agent => agent.session.header.parentSession === SessionId(SEED_ID)),
       { timeout: 15_000 },
