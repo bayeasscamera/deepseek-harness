@@ -182,6 +182,10 @@ const packageFileExtras: Readonly<Record<string, readonly string[]>> = {
   // through a hashed chunk. The committed bin.js is the link target pnpm can
   // resolve at install time, before the build produces lib/bin.js.
   '@deepseek-ai/dsh-experimental-webworker-packer': ['bin.js', 'lib/repository-*.js'],
+  // The domain barrel and the invariant companion both parse presentation
+  // meta, so tsdown hoists the parser into a hashed chunk beside the two
+  // entries instead of duplicating it into each.
+  '@deepseek-ai/dsh-task-surface': ['lib/parser-*.js'],
 }
 
 function sameStringList(actual: readonly string[] | undefined, expected: readonly string[]): boolean {
