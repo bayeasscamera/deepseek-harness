@@ -13,7 +13,7 @@ import {
   decodeScheduleChange,
   foldScheduleEvents,
   MIN_EVERY_INTERVAL_SECONDS,
-  renderEveryReminderBatchFraming,
+  renderRecurringReminderBatchFraming,
   renderReminderFraming,
   resolveEveryOccurrence,
   scheduleView,
@@ -322,7 +322,7 @@ describe('fixed-rate records and durable progression', () => {
 
     const first = createEveryScheduleRecord(ScheduleId('schedule-one'), 'line\n"quoted"', 300, start)
     const second = createEveryScheduleRecord(ScheduleId('schedule-two'), 'check metrics', 600, start)
-    expect(renderEveryReminderBatchFraming([
+    expect(renderRecurringReminderBatchFraming([
       { record: first, occurrenceAt: '2026-08-05T12:15:00.000Z' },
       { record: second, occurrenceAt: '2026-08-05T12:10:00.000Z' },
     ])).toBe([

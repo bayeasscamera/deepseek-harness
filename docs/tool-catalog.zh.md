@@ -1188,7 +1188,7 @@ create、edit、pause 和 resume 要求直接来自人类的根权限；complete
 
 ### `schedule_create`
 
-在当前会话中创建一条提醒。请提供非空 prompt 和恰好一个 selector：正的安全整数 after_seconds 延时；作为严格带偏移日期时间或本地日期／时间对象的 at；或不小于 300 的安全整数 every_seconds。固定速率提醒始终与创建时刻对齐，会跳过错过的发生时点，并把每条逾期规则的最新一个发生时点合并到一个批次中。交付模式是 session-local：只有此会话处于 live 状态时，提醒才会准时运行；否则提醒会进入 overdue 状态，直至会话恢复。
+在当前会话中创建一条提醒。提供非空 prompt 以及恰好一个选择器：正的 safe-integer after_seconds 延迟；at，严格带偏移的日期时间或带显式 IANA 时区的本地日期/时间对象；至少 300 的 safe-integer every_seconds；或 weekly——ISO 星期几（1 为周一，7 为周日）、本地 HH:MM 时间与 IANA time_zone（例如每周一 09:00，Europe/Paris）。循环提醒跳过错过的发生时刻，并按过期规则各批量一条最新发生时刻；固定间隔保持创建时刻对齐，而每周规则在夏令时切换前后保持其星期几与本地时间。投递是会话本地的：仅当该会话存活时提醒才会准时运行，否则进入过期状态直到会话恢复。
 
 ```json
 {
@@ -1205,6 +1205,30 @@ create、edit、pause 和 resume 要求直接来自人类的根权限；complete
     "every_seconds": {
       "type": "number",
       "description": "Fixed-rate safe-integer interval in seconds, at least 300."
+    },
+    "weekly": {
+      "type": "object",
+      "description": "Weekly target as an ISO weekday, a local HH:MM time, and an explicit IANA zone.",
+      "additionalProperties": false,
+      "properties": {
+        "weekday": {
+          "type": "integer",
+          "description": "ISO weekday: 1 is Monday and 7 is Sunday."
+        },
+        "time": {
+          "type": "string",
+          "description": "Local wall-clock time, HH:MM, 24-hour."
+        },
+        "time_zone": {
+          "type": "string",
+          "description": "IANA Area/Location zone, e.g. Europe/Paris."
+        }
+      },
+      "required": [
+        "weekday",
+        "time",
+        "time_zone"
+      ]
     },
     "at": {
       "oneOf": [
@@ -1241,11 +1265,11 @@ create、edit、pause 和 resume 要求直接来自人类的根权限；complete
 }
 ```
 
-来源：[`packages/schedule/schedule/src/tools.ts`](../packages/schedule/schedule/src/tools.ts)
+Source: [`packages/schedule/schedule/src/tools.ts`](../packages/schedule/schedule/src/tools.ts)
 
 ### `schedule_delete`
 
-使用 schedule_create 或 schedule_list 返回的确切 id，删除当前会话中的一条活动提醒。未知或已经结束的 id 会返回 deleted false。
+Delete one active reminder in the current session by the exact id returned by schedule_create or schedule_list. Unknown or already-finished ids return deleted false.
 
 ```json
 {
@@ -1262,7 +1286,7 @@ create、edit、pause 和 resume 要求直接来自人类的根权限；complete
 }
 ```
 
-来源：[`packages/schedule/schedule/src/tools.ts`](../packages/schedule/schedule/src/tools.ts)
+Source: [`packages/schedule/schedule/src/tools.ts`](../packages/schedule/schedule/src/tools.ts)
 
 ### `schedule_list`
 

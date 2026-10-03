@@ -12,10 +12,13 @@ import type {
   EveryScheduleRecord,
   LocalAtInput,
   OneShotScheduleRecord,
+  RecurringScheduleRecord,
   ScheduleChange,
   ScheduleId as ScheduleIdType,
   ScheduleRecord,
   ScheduleView,
+  WeeklyInput,
+  WeeklyScheduleRecord,
 } from './types.ts'
 
 /** Durable Schedule protocol version implemented by this package. */
@@ -23,6 +26,12 @@ export const SCHEDULE_CHANGE_VERSION = 1 as const
 
 /** Fixed v1 lower bound for a fixed-rate reminder. */
 export const MIN_EVERY_INTERVAL_SECONDS = 300
+
+/** Milliseconds in one local calendar day; local-epoch space has no DST. */
+const LOCAL_DAY_MS = 86_400_000
+
+/** The one local time-of-day a weekly rule accepts: `HH:MM`, 24-hour, no seconds. */
+const WEEKLY_TIME = /^(?<hour>[01]\d|2[0-3]):(?<minute>[0-5]\d)$/
 
 const MIN_FOUR_DIGIT_YEAR_MS = Date.parse('0001-01-01T00:00:00.000Z')
 const MAX_FOUR_DIGIT_YEAR_MS = Date.parse('9999-12-31T23:59:59.999Z')
@@ -96,7 +105,7 @@ export interface FoldedSchedules {
 }
 
 /** One latest-only fixed-rate decision derived without enumerating a backlog. */
-export interface EveryOccurrence {
+export interface EveryOccurrence extends ScheduleOccurrence {
   /** Latest anchor-aligned occurrence due at the decision time. */
   readonly occurrenceAt: string
   /** First anchor-aligned target after the decision, or exhaustion. */
@@ -382,6 +391,91 @@ function resolveLocalInstant(parts: CalendarParts, timeZone: string): number {
   return first
 }
 
+/** The formatter one zone resolution needs: wall-clock fields plus the exact offset. */
+function zoneFormatter(timeZone: string): Intl.DateTimeFormat {
+  return new Intl.DateTimeFormat('en-US-u-ca-iso8601-nu-latn', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    fractionalSecondDigits: 3,
+    hourCycle: 'h23',
+    timeZoneName: 'longOffset',
+  })
+}
+
+/**
+ * The ISO weekday of one local calendar date.
+ * @param localDayEpoch - midnight of a local calendar date, in local-epoch space.
+ * @returns 1 for Monday through 7 for Sunday.
+ */
+function isoWeekdayOf(localDayEpoch: number): number {
+  return ((new Date(localDayEpoch).getUTCDay() + 6) % 7) + 1
+}
+
+/**
+ * Midnight of the local calendar date one projection names, in local-epoch space.
+ * @param local - a wall-clock projection.
+ * @returns the local date's midnight as a local epoch.
+ */
+function localDayStart(local: CalendarParts): number {
+  return calendarEpoch({ ...local, hour: 0, minute: 0, second: 0, millisecond: 0 })
+}
+
+/**
+ * The milliseconds after local midnight one `HH:MM` names.
+ * @param time - the rule's local time of day.
+ * @returns milliseconds after midnight.
+ */
+function weeklyRuleMillis(time: string): number {
+  const groups = WEEKLY_TIME.exec(time)?.groups
+  if (groups === undefined) {
+    throw new ScheduleInputError('invalid_rule', 'weekday time must be HH:MM with a 24-hour clock.')
+  }
+  return (groupNumber(groups, 'hour') * 60 + groupNumber(groups, 'minute')) * 60_000
+}
+
+/**
+ * The instant one weekly occurrence resolves to on one local date.
+ *
+ * The answer is the first instant whose local wall clock is at or past the rule
+ * time on that date. An overlap therefore takes the earlier of the two instants
+ * and a spring-forward gap — a rule time the zone skips — takes the first
+ * instant after it: a reminder that fires when the clock passes its target is
+ * better than one that never fires at all.
+ * @param localDayEpoch - midnight of the local date, in local-epoch space.
+ * @param ruleMillis - milliseconds after local midnight the rule names.
+ * @param timeZone - the IANA zone the rule is read in.
+ * @returns the epoch instant, or `undefined` when the local date sits so close
+ *   to the calendar's end that no representable instant answers for it.
+ */
+function weeklyOccurrenceInstant(localDayEpoch: number, ruleMillis: number, timeZone: string): number | undefined {
+  const formatter = zoneFormatter(timeZone)
+  const target = localDayEpoch + ruleMillis
+  const offsets = new Set<number>()
+  for (const delta of [-LOCAL_DAY_MS, 0, LOCAL_DAY_MS]) {
+    const sample = Math.min(MAX_FOUR_DIGIT_YEAR_MS, Math.max(MIN_FOUR_DIGIT_YEAR_MS, target - delta))
+    offsets.add(localProjection(formatter, sample).offset)
+  }
+  const candidates = [...offsets].map(offset => target - offset).sort((left, right) => left - right)
+  const date = new Date(localDayEpoch)
+  for (const candidate of candidates) {
+    // Only the calendar's last days can push every candidate out of range, and
+    // only one sampled offset can miss the target date; both fall through to the
+    // next candidate rather than refusing the rule.
+    if (candidate < MIN_FOUR_DIGIT_YEAR_MS || candidate > MAX_FOUR_DIGIT_YEAR_MS) continue
+    const projected = localProjection(formatter, candidate)
+    if (projected.year !== date.getUTCFullYear()
+      || projected.month !== date.getUTCMonth() + 1
+      || projected.day !== date.getUTCDate()) continue
+    if (calendarEpoch(projected) >= target) return candidate
+  }
+  return undefined
+}
+
 /** Decode the exact v1 after record shape. */
 function decodeAfterRecord(value: unknown): AfterScheduleRecord {
   if (!isRecord(value) || !hasExactKeys(value, ['id', 'kind', 'prompt', 'afterSeconds', 'scheduledAt'])) {
@@ -447,6 +541,47 @@ function decodeEveryRecord(value: unknown): EveryScheduleRecord {
   })
 }
 
+/**
+ * Decode the exact v1 weekly record shape.
+ * @param value - Untrusted durable JSON value.
+ * @returns Frozen weekly record.
+ */
+function decodeWeeklyRecord(value: unknown): WeeklyScheduleRecord {
+  if (!isRecord(value) || !hasExactKeys(value, ['id', 'kind', 'prompt', 'weekday', 'time', 'timeZone', 'scheduledAt'])) {
+    throw new ScheduleLogError('weekly schedule must contain exactly id, kind, prompt, weekday, time, timeZone, and scheduledAt')
+  }
+  const prompt = value['prompt']
+  if (typeof prompt !== 'string' || prompt.length === 0 || prompt.trim() !== prompt) {
+    throw new ScheduleLogError('weekly prompt must be non-empty and already trimmed')
+  }
+  const weekday = value['weekday']
+  if (!Number.isSafeInteger(weekday) || (weekday as number) < 1 || (weekday as number) > 7) {
+    throw new ScheduleLogError('weekly weekday must be an integer from 1 through 7')
+  }
+  const time = value['time']
+  if (typeof time !== 'string' || WEEKLY_TIME.exec(time) === null) {
+    throw new ScheduleLogError('weekly time must be HH:MM with a 24-hour clock')
+  }
+  const timeZone = value['timeZone']
+  if (typeof timeZone !== 'string' || IANA_ZONE.exec(timeZone) === null) {
+    throw new ScheduleLogError('weekly timeZone must be an IANA Area/Location zone')
+  }
+  try {
+    canonicalizeTimeZone(timeZone)
+  } catch {
+    throw new ScheduleLogError('weekly timeZone is not a zone this runtime knows')
+  }
+  return Object.freeze({
+    id: decodeId(value['id']),
+    kind: 'weekly',
+    prompt,
+    weekday: weekday as number,
+    time,
+    timeZone,
+    scheduledAt: decodeInstant(value['scheduledAt']),
+  })
+}
+
 /** Decode one current durable record variant by its exact discriminator. */
 function decodeScheduleRecord(value: unknown): ScheduleRecord {
   if (!isRecord(value)) throw new ScheduleLogError('schedule record must be an object')
@@ -454,7 +589,8 @@ function decodeScheduleRecord(value: unknown): ScheduleRecord {
     case 'after': return decodeAfterRecord(value)
     case 'at': return decodeAtRecord(value)
     case 'every': return decodeEveryRecord(value)
-    default: throw new ScheduleLogError('v1 schedule kind must be "after", "at", or "every"')
+    case 'weekly': return decodeWeeklyRecord(value)
+    default: throw new ScheduleLogError('v1 schedule kind must be "after", "at", "every", or "weekly"')
   }
 }
 
@@ -512,6 +648,17 @@ export function decodeScheduleChange(value: unknown): ScheduleChange {
 }
 
 /**
+ * One resolved recurring decision: the occurrence that came due, and the next
+ * target when the rule still has a representable one.
+ */
+export interface ScheduleOccurrence {
+  /** The latest occurrence at or before the decision time, as an RFC 3339 UTC instant. */
+  readonly occurrenceAt: string
+  /** The next occurrence strictly after the decision time, absent at the calendar's end. */
+  readonly nextScheduledAt?: string
+}
+
+/**
  * Resolve one fixed-rate decision without enumerating missed occurrences.
  * @param record - Active record whose target is the earliest unaccepted occurrence.
  * @param acceptedAt - Wall-clock decision time in epoch milliseconds.
@@ -551,17 +698,62 @@ export function resolveEveryOccurrence(
   })
 }
 
+/**
+ * Resolve one weekly decision: the latest occurrence at or before `acceptedAt`,
+ * and the next one strictly after it.
+ * @param record - Active weekly record whose target is the earliest unaccepted occurrence.
+ * @param acceptedAt - Wall-clock decision time in epoch milliseconds.
+ * @returns The latest due occurrence and the next target, if representable.
+ */
+export function resolveWeeklyOccurrence(
+  record: WeeklyScheduleRecord,
+  acceptedAt: number,
+): ScheduleOccurrence {
+  if (!Number.isSafeInteger(acceptedAt)
+    || acceptedAt < MIN_FOUR_DIGIT_YEAR_MS
+    || acceptedAt > MAX_FOUR_DIGIT_YEAR_MS) {
+    throw new ScheduleLogError('weekly acceptedAt must be a representable four-digit-year instant')
+  }
+  if (acceptedAt < Date.parse(record.scheduledAt)) {
+    throw new ScheduleLogError('weekly dispatch cannot precede the active scheduledAt')
+  }
+  const ruleMillis = weeklyRuleMillis(record.time)
+  const today = localDayStart(localProjection(zoneFormatter(record.timeZone), acceptedAt))
+  let due: number | undefined
+  let dueDay = today
+  for (let step = 0; step <= 7; step += 1) {
+    const day = today - step * LOCAL_DAY_MS
+    if (isoWeekdayOf(day) !== record.weekday) continue
+    const candidate = weeklyOccurrenceInstant(day, ruleMillis, record.timeZone)
+    if (candidate !== undefined && candidate <= acceptedAt) {
+      due = candidate
+      dueDay = day
+      break
+    }
+  }
+  // The walk above covers a full week of local dates and the record's own target
+  // is an occurrence at or before the decision, so it always finds one.
+  /* v8 ignore next -- unreachable fallback: the walk cannot come up empty. */
+  const target = due ?? Date.parse(record.scheduledAt)
+  const occurrenceAt = new Date(target).toISOString()
+  const next = weeklyOccurrenceInstant(dueDay + 7 * LOCAL_DAY_MS, ruleMillis, record.timeZone)
+  if (next === undefined) return Object.freeze({ occurrenceAt })
+  return Object.freeze({ occurrenceAt, nextScheduledAt: new Date(next).toISOString() })
+}
+
 type DecodedDispatch = Extract<ScheduleChange, { operation: 'dispatch' }>
 
 /** Apply one decoded dispatch to its exact active record. */
 function dispatchedRecord(record: ScheduleRecord, change: DecodedDispatch): ScheduleRecord | undefined {
   const hasAcceptedAt = 'acceptedAt' in change
-  if (record.kind !== 'every') {
+  if (record.kind === 'after' || record.kind === 'at') {
     if (hasAcceptedAt) throw new ScheduleLogError('one-shot dispatch must not contain acceptedAt')
     return undefined
   }
-  if (!hasAcceptedAt) throw new ScheduleLogError('every dispatch must contain acceptedAt')
-  const occurrence = resolveEveryOccurrence(record, Date.parse(change.acceptedAt))
+  if (!hasAcceptedAt) throw new ScheduleLogError(`${record.kind} dispatch must contain acceptedAt`)
+  const occurrence = record.kind === 'every'
+    ? resolveEveryOccurrence(record, Date.parse(change.acceptedAt))
+    : resolveWeeklyOccurrence(record, Date.parse(change.acceptedAt))
   return occurrence.nextScheduledAt === undefined
     ? undefined
     : Object.freeze({ ...record, scheduledAt: occurrence.nextScheduledAt })
@@ -785,6 +977,49 @@ export function createEveryScheduleRecord(
 }
 
 /**
+ * Validate a weekly selector and compute its first occurrence strictly after `now`.
+ * @param id - Already allocated session-local id.
+ * @param prompt - Reminder content supplied at creation.
+ * @param weekly - Weekday, local time, and IANA zone supplied at creation.
+ * @param now - Single creation-time wall-clock sample in epoch milliseconds.
+ * @returns Frozen durable weekly record.
+ */
+export function createWeeklyScheduleRecord(
+  id: ScheduleIdType,
+  prompt: string,
+  weekly: WeeklyInput,
+  now: number,
+): WeeklyScheduleRecord {
+  const normalizedPrompt = prompt.trim()
+  if (normalizedPrompt.length === 0) {
+    throw new ScheduleInputError('invalid_prompt', 'prompt must be non-empty after trimming.')
+  }
+  const { weekday } = weekly
+  if (!Number.isSafeInteger(weekday) || weekday < 1 || weekday > 7) {
+    throw new ScheduleInputError('invalid_rule', 'weekday must be an integer from 1 (Monday) through 7 (Sunday).')
+  }
+  const ruleMillis = weeklyRuleMillis(weekly.time)
+  const timeZone = canonicalizeTimeZone(weekly.time_zone)
+  const today = localDayStart(localProjection(zoneFormatter(timeZone), now))
+  for (let step = 0; step <= 7; step += 1) {
+    const day = today + step * LOCAL_DAY_MS
+    if (isoWeekdayOf(day) !== weekday) continue
+    const candidate = weeklyOccurrenceInstant(day, ruleMillis, timeZone)
+    if (candidate === undefined || candidate <= now) continue
+    return Object.freeze({
+      id,
+      kind: 'weekly',
+      prompt: normalizedPrompt,
+      weekday,
+      time: weekly.time,
+      timeZone,
+      scheduledAt: futureInstant(candidate, now),
+    })
+  }
+  throw new ScheduleInputError('time_out_of_range', 'The weekly rule has no representable occurrence.')
+}
+
+/**
  * Derive one execution-local management view.
  * @param record - Active durable record.
  * @param now - Wall-clock sample used for its timing state.
@@ -818,8 +1053,8 @@ export function renderReminderFraming(record: OneShotScheduleRecord): string {
  * @param reminders - Complete admitted batch with one latest occurrence per record.
  * @returns Stable model-visible text whose dynamic payload is canonical JSON.
  */
-export function renderEveryReminderBatchFraming(
-  reminders: readonly { readonly record: EveryScheduleRecord; readonly occurrenceAt: string }[],
+export function renderRecurringReminderBatchFraming(
+  reminders: readonly { readonly record: RecurringScheduleRecord; readonly occurrenceAt: string }[],
 ): string {
   const payload = reminders.map(({ record, occurrenceAt }) => ({
     schedule_id: record.id,

@@ -35,6 +35,24 @@ export interface AtScheduleRecord {
   readonly scheduledAt: string
 }
 
+/** Durable weekly reminder: one weekday at one local wall-clock time in one zone. */
+export interface WeeklyScheduleRecord {
+  /** Session-local stable identity. */
+  readonly id: ScheduleId
+  /** Rule discriminator for a weekly recurring reminder. */
+  readonly kind: 'weekly'
+  /** Trimmed reminder content supplied at creation. */
+  readonly prompt: string
+  /** ISO weekday the reminder fires on: 1 is Monday and 7 is Sunday. */
+  readonly weekday: number
+  /** Local wall-clock time of day, `HH:MM`, with no seconds. */
+  readonly time: string
+  /** IANA Area/Location zone the weekday and time are read in. */
+  readonly timeZone: string
+  /** Earliest occurrence not yet dispatched, as an RFC 3339 UTC instant. */
+  readonly scheduledAt: string
+}
+
 /** Durable fixed-rate reminder whose next target remains creation-anchor-aligned. */
 export interface EveryScheduleRecord {
   /** Session-local stable identity. */
@@ -59,14 +77,27 @@ export interface LocalAtInput {
   readonly time_zone: string
 }
 
+/** Weekly selector accepted by `schedule_create`: a weekday, a local time, and its zone. */
+export interface WeeklyInput {
+  /** ISO weekday, 1 (Monday) through 7 (Sunday). */
+  readonly weekday: number
+  /** Local wall-clock time of day, `HH:MM`. */
+  readonly time: string
+  /** IANA Area/Location zone, e.g. `Europe/Paris`. */
+  readonly time_zone: string
+}
+
 /** Absolute selector accepted by `schedule_create`. */
 export type AtInput = string | LocalAtInput
 
 /** One-shot record variants that terminate on an id-only dispatch. */
 export type OneShotScheduleRecord = AfterScheduleRecord | AtScheduleRecord
 
+/** Recurring records: a fixed rate, or one weekday at a local wall-clock time. */
+export type RecurringScheduleRecord = EveryScheduleRecord | WeeklyScheduleRecord
+
 /** The v1 durable reminder record union. */
-export type ScheduleRecord = OneShotScheduleRecord | EveryScheduleRecord
+export type ScheduleRecord = OneShotScheduleRecord | RecurringScheduleRecord
 
 /** Creates one durable reminder record. */
 export interface ScheduleCreateChange {

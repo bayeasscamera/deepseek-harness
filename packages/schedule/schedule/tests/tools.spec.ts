@@ -153,7 +153,7 @@ describe('Schedule tool protocol', () => {
     expect(value(await execute(test, 'schedule_create', { prompt: 'x', after_seconds: 1, at: 'later' })))
       .toEqual({
         code: 'invalid_selector',
-        message: 'schedule_create accepts exactly one of after_seconds, at, or every_seconds.',
+        message: 'schedule_create accepts exactly one of after_seconds, at, every_seconds, or weekly.',
       })
     expect(value(await execute(test, 'schedule_create', { prompt: 'x', every_seconds: 1.5 })))
       .toEqual({ code: 'invalid_rule', message: 'every_seconds must be a safe integer.' })
@@ -254,6 +254,54 @@ describe('Schedule tool protocol', () => {
         scheduledAt: '2026-08-07T01:30:00.000Z',
       },
     ])
+  })
+
+  it('creates a weekly record and reports its local rule and zone', async () => {
+    const test = await harness()
+    // Wednesday 2026-08-05 12:00 UTC is 14:00 in Paris; the next Monday 09:00
+    // local is 2026-08-10 07:00 UTC.
+    expect(value(await execute(test, 'schedule_create', {
+      prompt: '  weekly report  ',
+      weekly: { weekday: 1, time: '09:00', time_zone: 'Europe/Paris' },
+    }))).toEqual({
+      id: 'schedule-1',
+      kind: 'weekly',
+      prompt: 'weekly report',
+      weekday: 1,
+      time: '09:00',
+      timeZone: 'Europe/Paris',
+      scheduledAt: '2026-08-10T07:00:00.000Z',
+      state: 'scheduled',
+      deliveryMode: 'session-local',
+    })
+    expect(value(await execute(test, 'schedule_list', {}))).toEqual([
+      expect.objectContaining({ id: 'schedule-1', kind: 'weekly', weekday: 1 }),
+    ])
+  })
+
+  it('rejects a weekly selector whose parts cannot become a record', async () => {
+    const test = await harness()
+    const cases: readonly [Record<string, unknown>, string][] = [
+      [{ weekday: 0, time: '09:00', time_zone: 'Europe/Paris' }, 'weekly.weekday must be an integer from 1 through 7.'],
+      [{ weekday: 8, time: '09:00', time_zone: 'Europe/Paris' }, 'weekly.weekday must be an integer from 1 through 7.'],
+      [{ weekday: 1, time: '9:00', time_zone: 'Europe/Paris' }, 'weekly.time must be HH:MM with a 24-hour clock.'],
+    ]
+    for (const [weekly, message] of cases) {
+      expect(value(await execute(test, 'schedule_create', { prompt: 'x', weekly })))
+        .toEqual({ code: 'invalid_rule', message })
+    }
+    // A non-string zone never reaches the tool body: the parameter schema refuses it.
+    expect((await execute(test, 'schedule_create', {
+      prompt: 'x', weekly: { weekday: 1, time: '09:00', time_zone: 7 },
+    })).isError).toBe(true)
+    // A zone the runtime does not know fails inside the record builder.
+    expect(value(await execute(test, 'schedule_create', {
+      prompt: 'x', weekly: { weekday: 1, time: '09:00', time_zone: 'Mars/Olympus' },
+    }))).toMatchObject({ code: 'invalid_time_zone' })
+    // Two selectors at once are refused before anything is written.
+    expect(value(await execute(test, 'schedule_create', {
+      prompt: 'x', every_seconds: 300, weekly: { weekday: 1, time: '09:00', time_zone: 'Europe/Paris' },
+    }))).toMatchObject({ code: 'invalid_selector' })
   })
 
   it('creates and lists a fixed-rate record', async () => {

@@ -55,13 +55,38 @@ interface EveryScheduleRecord {
 ```
 
 ```ts type-equiv
+/** Durable weekly reminder: one weekday at one local wall-clock time in one zone. */
+interface WeeklyScheduleRecord {
+  /** Session-local stable identity. */
+  readonly id: ScheduleId
+  /** Rule discriminator for a weekly recurring reminder. */
+  readonly kind: 'weekly'
+  /** Trimmed reminder content supplied at creation. */
+  readonly prompt: string
+  /** ISO weekday the reminder fires on: 1 is Monday and 7 is Sunday. */
+  readonly weekday: number
+  /** Local wall-clock time of day, `HH:MM`, with no seconds. */
+  readonly time: string
+  /** IANA Area/Location zone the weekday and time are read in. */
+  readonly timeZone: string
+  /** Earliest occurrence not yet dispatched, as an RFC 3339 UTC instant. */
+  readonly scheduledAt: string
+}
+```
+
+```ts type-equiv
 /** One-shot record variants that terminate on an id-only dispatch. */
 type OneShotScheduleRecord = AfterScheduleRecord | AtScheduleRecord
 ```
 
 ```ts type-equiv
+/** Recurring records: a fixed rate, or one weekday at a local wall-clock time. */
+type RecurringScheduleRecord = EveryScheduleRecord | WeeklyScheduleRecord
+```
+
+```ts type-equiv
 /** The v1 durable reminder record union. */
-type ScheduleRecord = OneShotScheduleRecord | EveryScheduleRecord
+type ScheduleRecord = OneShotScheduleRecord | RecurringScheduleRecord
 ```
 
 ## Absolute-time input

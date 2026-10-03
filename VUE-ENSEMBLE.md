@@ -114,7 +114,7 @@ Les six axes voulus pour cette version, avec l'état réel dans le dépôt au 20
 | 3a | PTC (Programmatic Tool Calling) — orchestration TypeScript d'appels d'outils en un bloc | **Livré** | `pnpm run demo:ptc`, preset PTC (`packages/preset/agent-presets`, `display.ts`) |
 | 3b | Mode Minimal — shell persistant + éditeur basique, référence de benchmark | **Partiel** | profil `sdk-minimal` + variante « jsonrpc-agent minimal » (`BENCHMARK.md`) ; pas d'UI éditeur/shell dédiée |
 | 3c | Sous-agents & Agent Teams — agents parallèles sur un même répertoire | **Expérimental** | `packages/experimental/agent-team` (+ `tool-agent-team`, profiles dédiés) ; exclu des releases ; sous-agents classiques stables (`subagent/`) |
-| 4 | Tâches automatisées planifiées + fuseaux horaires (ex. « tous les lundis 9h ») | **Existant, à étendre** | `packages/schedule` : rappels à heure absolue/relative/intervalle, fuseaux gérés (`domain.ts`, `tools.ts`) ; récurrence hebdo type cron à vérifier/ajouter |
+| 4 | Tâches automatisées planifiées + fuseaux horaires (ex. « tous les lundis 9h ») | **Livré** | `packages/schedule` : rappels à heure absolue/relative/intervalle **et règle `weekly`** (ISO 1–7, `HH:MM` local, IANA) — l'occurrence garde l'heure locale à travers les changements d'heure (gap de printemps → premier instant après le trou ; chevauchement d'automne → le premier des deux instants) ; pas d'expression cron multi-jours |
 | 5a | Visualiseur multi-format dans la barre latérale (HTML, PDF, images, Office) | **Livré** (aperçu de contenu, pas de mise en page pour Office) | `packages/client/ui-sidebar-filepreview` : type de tab `preview` en bande `builtin`, lecture `workspaceFiles.readBytes` par fenêtres puis rendu direct (`<img>`, `<iframe sandbox="allow-scripts">`, `<embed>`) ou conversion (CSV/TSV → table ; xlsx → feuilles de lignes ; docx → HTML ; pptx → texte des diapositives, via `fflate` + `DOMParser`) ; plafonds 32 MiB / 500 lignes / 40 colonnes |
 | 5b | Mode PPT — génération .pptx depuis modèles | **Livré** (3 mises en page + 3 modèles intégrés ; pas de gabarit fourni par l'appelant) | `packages/office/tool-slides` : l'outil modèle `write_presentation` + un écrivain OOXML pur (`src/pptx.ts`, ZIP via `fflate`) qui produit le graphe complet (content types, relations, presentation, maître, 3 masques, thème, props, une part par diapositive) ; écriture via `ctx.fs.writeBytes` (phase 1), donc mêmes gardes, verrou et clôture de sandbox — y compris un trou de clôture trouvé par les tests et corrigé dans `fs-sandbox`. Validé par `python-pptx` et Quick Look. |
 | 6a | File d'envoi : Queue / Steer pendant l'exécution | **Partiel** | file d'attente présente dans l'inbox du agent-loop (`inbox.ts`) et API live `agent/*` ; UI de steer/pause côté client non trouvée |
@@ -202,14 +202,13 @@ Les six axes voulus pour cette version, avec l'état réel dans le dépôt au 20
 ### Les 3 prochaines choses (cible version)
 
 1. **Phone Access** — seul axe de la liste encore totalement absent ; s'appuyer sur le tunnel esquissé dans `experimental/webworker-runtime`.
-2. **Récurrence hebdomadaire de `schedule`** (« tous les lundis à 9h ») — touche l'union de records durables, donc une migration de format de session à assumer.
-3. **Gabarits appelant et fidélité** — accepter un gabarit PPT fourni, et éventuellement mammoth/SheetJS pour la mise en page Office (décision de poids de bundle à assumer).
+2. **Gabarits appelant et fidélité** — accepter un gabarit PPT fourni, et éventuellement mammoth/SheetJS pour la mise en page Office (décision de poids de bundle à assumer).
 
 En parallèle, restent ouverts : la sortie de l'expérimental (Agent Teams, Creator Mode), le regroupement parent/enfant des sessions, et le gate de seed desktop.
 
 ### Ce que je veux que tu fasses en premier
 
-**Récurrence hebdomadaire de `schedule`** (« tous les lundis à 9h ») — le format n'est pas un obstacle (la note de mécanisme dit que les ajouts de payload ne changent pas la version), mais l'occurrence doit être calculée juste à travers les passages à l'heure d'été et le contrat de dispatch étendu : un chantier à faire proprement, pas à moitié. **Phone Access** reste refusé par sécurité (`dsh web --host 0.0.0.0`) : l'ouvrir demande une décision de posture. **Vérification du PDF desktop** : impossible dans cet environnement — Electron ne démarre pas ici (son IPC Mach est refusé : `bootstrap_look_up ... Permission denied (1100)`), même hors sandbox ; à refaire sur une machine où l'app peut tourner.
+**Phone Access** reste refusé par sécurité (`dsh web --host 0.0.0.0`) : l'ouvrir demande une décision de posture. **Vérification du PDF desktop** : impossible dans cet environnement — Electron ne démarre pas ici (son IPC Mach est refusé : `bootstrap_look_up ... Permission denied (1100)`), même hors sandbox ; à refaire sur une machine où l'app peut tourner.
 
 ## 8. Règles de travail
 

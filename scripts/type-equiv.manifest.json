@@ -264,6 +264,16 @@
     },
     {
       "doc": "docs/subsystems/schedule.md",
+      "symbol": "WeeklyScheduleRecord",
+      "source": "packages/schedule/schedule/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/schedule.md",
+      "symbol": "RecurringScheduleRecord",
+      "source": "packages/schedule/schedule/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/schedule.md",
       "symbol": "OneShotScheduleRecord",
       "source": "packages/schedule/schedule/src/types.ts"
     },

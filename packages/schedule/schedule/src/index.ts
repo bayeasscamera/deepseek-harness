@@ -26,7 +26,7 @@ export {
   decodeScheduleChange,
   foldScheduleEvents,
   renderReminderFraming,
-  renderEveryReminderBatchFraming,
+  renderRecurringReminderBatchFraming,
   resolveEveryOccurrence,
   scheduleView,
 } from './domain.ts'
