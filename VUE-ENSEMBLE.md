@@ -209,7 +209,7 @@ En parallèle, restent ouverts : la sortie de l'expérimental (Agent Teams, Crea
 
 ### Ce que je veux que tu fasses en premier
 
-**Phone Access** — attention : `dsh web --host 0.0.0.0` est aujourd'hui **refusé par sécurité** (« it would expose remote code execution to the network ») ; l'ouvrir demande une décision de posture (authentification LAN, appairage), puis la vérification du PDF desktop.
+**Récurrence hebdomadaire de `schedule`** (« tous les lundis à 9h ») — le format n'est pas un obstacle (la note de mécanisme dit que les ajouts de payload ne changent pas la version), mais l'occurrence doit être calculée juste à travers les passages à l'heure d'été et le contrat de dispatch étendu : un chantier à faire proprement, pas à moitié. **Phone Access** reste refusé par sécurité (`dsh web --host 0.0.0.0`) : l'ouvrir demande une décision de posture. **Vérification du PDF desktop** : impossible dans cet environnement — Electron ne démarre pas ici (son IPC Mach est refusé : `bootstrap_look_up ... Permission denied (1100)`), même hors sandbox ; à refaire sur une machine où l'app peut tourner.
 
 ## 8. Règles de travail
 
