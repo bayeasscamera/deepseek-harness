@@ -1,6 +1,6 @@
 # Vue d'ensemble de DeepSeek Harness
 
-> Document de travail personnel — état au 2026-10-03, branche `push/session` (HEAD `6574e7ba4e`, poussée sur le fork). Travail en cours non commité, index git préparé : le visualiseur de fichiers `packages/client/ui-sidebar-filepreview` (voir §4) et le mode PPT complet — écriture binaire dans `ctx.fs` puis l'outil `write_presentation` (voir §4, ligne 5b).
+> Document de travail personnel — état au 2026-10-03, branche `push/session`. Tout est commité : le visualiseur de fichiers `packages/client/ui-sidebar-filepreview`, le mode PPT complet (écriture binaire dans `ctx.fs` puis l'outil `write_presentation`), la règle `weekly` du planificateur avec son libellé côté client, le regroupement parent/enfant des branches, et la mise à jour des attentes web sur la fonctionnalité de branching livrée. Rien n'est poussé sur le fork.
 
 ## 1. Objectif
 
@@ -114,10 +114,10 @@ Les six axes voulus pour cette version, avec l'état réel dans le dépôt au 20
 | 3a | PTC (Programmatic Tool Calling) — orchestration TypeScript d'appels d'outils en un bloc | **Livré** | `pnpm run demo:ptc`, preset PTC (`packages/preset/agent-presets`, `display.ts`) |
 | 3b | Mode Minimal — shell persistant + éditeur basique, référence de benchmark | **Partiel** | profil `sdk-minimal` + variante « jsonrpc-agent minimal » (`BENCHMARK.md`) ; pas d'UI éditeur/shell dédiée |
 | 3c | Sous-agents & Agent Teams — agents parallèles sur un même répertoire | **Expérimental** | `packages/experimental/agent-team` (+ `tool-agent-team`, profiles dédiés) ; exclu des releases ; sous-agents classiques stables (`subagent/`) |
-| 4 | Tâches automatisées planifiées + fuseaux horaires (ex. « tous les lundis 9h ») | **Livré** | `packages/schedule` : rappels à heure absolue/relative/intervalle **et règle `weekly`** (ISO 1–7, `HH:MM` local, IANA) — l'occurrence garde l'heure locale à travers les changements d'heure (gap de printemps → premier instant après le trou ; chevauchement d'automne → le premier des deux instants) ; pas d'expression cron multi-jours |
+| 4 | Tâches automatisées planifiées + fuseaux horaires (ex. « tous les lundis 9h ») | **Livré** | `packages/schedule` : rappels à heure absolue/relative/intervalle **et règle `weekly`** (ISO 1–7, `HH:MM` local, IANA) — l'occurrence garde l'heure locale à travers les changements d'heure (gap de printemps → premier instant après le trou ; chevauchement d'automne → le premier des deux instants) ; le catalogue client nomme la règle (« Every Monday at 09:00 », « 每周星期一 09:00 ») ; pas d'expression cron multi-jours |
 | 5a | Visualiseur multi-format dans la barre latérale (HTML, PDF, images, Office) | **Livré** (aperçu de contenu, pas de mise en page pour Office) | `packages/client/ui-sidebar-filepreview` : type de tab `preview` en bande `builtin`, lecture `workspaceFiles.readBytes` par fenêtres puis rendu direct (`<img>`, `<iframe sandbox="allow-scripts">`, `<embed>`) ou conversion (CSV/TSV → table ; xlsx → feuilles de lignes ; docx → HTML ; pptx → texte des diapositives, via `fflate` + `DOMParser`) ; plafonds 32 MiB / 500 lignes / 40 colonnes |
 | 5b | Mode PPT — génération .pptx depuis modèles | **Livré** (3 mises en page + 3 modèles intégrés ; pas de gabarit fourni par l'appelant) | `packages/office/tool-slides` : l'outil modèle `write_presentation` + un écrivain OOXML pur (`src/pptx.ts`, ZIP via `fflate`) qui produit le graphe complet (content types, relations, presentation, maître, 3 masques, thème, props, une part par diapositive) ; écriture via `ctx.fs.writeBytes` (phase 1), donc mêmes gardes, verrou et clôture de sandbox — y compris un trou de clôture trouvé par les tests et corrigé dans `fs-sandbox`. Validé par `python-pptx` et Quick Look. |
-| 6a | File d'envoi : Queue / Steer pendant l'exécution | **Partiel** | file d'attente présente dans l'inbox du agent-loop (`inbox.ts`) et API live `agent/*` ; UI de steer/pause côté client non trouvée |
+| 6a | File d'envoi : Queue / Steer pendant l'exécution | **Livré** | file d'attente dans l'inbox du agent-loop (`inbox.ts`) + API live `agent/*` ; côté client `packages/client/ui-conversation/src/client/queue/QueueDock.tsx` (éditer, supprimer, « Steer queued message » avec raison d'indisponibilité) ; couvert par `steering.e2e.ts` et `queue-actions.e2e.ts` |
 | 6b | Traçabilité append-only (raisonnement, invites système, tool calls) | **Livré** | log `SessionEvent` + snapshots de sessions rejouables |
 
 ### Stable et vérifié
@@ -125,7 +125,7 @@ Les six axes voulus pour cette version, avec l'état réel dans le dépôt au 20
 - Boucle agent, log de session, assembly prompt/tools — couverts par tests unit + snapshots rejouables sans clé (`pnpm run test:snapshot`).
 - UI web, CLI `dsh web` / `--profile headless`, SDK TS/Python (profils `sdk`, `sdk-minimal`).
 - Outils : shell, fs, LSP, web (search/fetch), skills, sous-agents, workflows, todo, plan mode, compaction, guard auto-continue (finir une réponse tronquée `max-tokens` dans le même tour).
-- **Branche de session (Branche)** : fork, copie isolée de fichiers optionnelle, marque du message de bifurcation, handoff brouillon, strings FR — complet, poussé, gates verts.
+- **Branche de session (Branche)** : fork depuis un message utilisateur ou la queue d'un tour terminé, copie isolée de fichiers optionnelle (menu à deux choix), marque du message de bifurcation, décompte des branches (singulier/pluriel), handoff brouillon, regroupement parent/enfant dans la liste, strings FR — complet, gates verts. Les attentes web (goldens ARIA + étapes de fork) ont été rattrapées sur ce comportement livré, et `packages/client/ui-chat/src/client/apply.ts` est repassé à 100 % de couverture par fichier.
 - App desktop macOS : packagée, signée ad-hoc, installée localement ; audits desktop 2026-10 (rôle `editMenu`, icône, profil `~/.dsh`) corrigés et vérifiés.
 
 ### Codé mais pas vérifié / fragile
@@ -134,6 +134,7 @@ Les six axes voulus pour cette version, avec l'état réel dans le dépôt au 20
 - **`packages/experimental/`** : agent-team, inspector, code-runtime-python, webworker — prototypes privés, exclus des releases.
 - **Pipeline de release/signature** : le gate de seed (TeamIdentifier) bloque le pipeline standard en local ; seule la build locale ad-hoc est validée.
 - Plateformes autres que macOS arm64 : Windows/Wine et Linux ne sont validés que côté CI.
+- **Lane web complète** : sur 96 fichiers, 94–95 passent ; les échecs restants changent d'une exécution à l'autre (`queue-actions`, `reference-composer`, `smoke-real`, `github-ready-review`) et repassent tous en isolation — charge et timeouts, pas des attentes périmées. Un passage complet dure ~8 min et exige un `pnpm run build` frais (le digest de `.dsh-build/client-build-environment.json` est comparé, sinon `hmr-live` refuse).
 
 ### En cours
 
@@ -144,9 +145,8 @@ Les six axes voulus pour cette version, avec l'état réel dans le dépôt au 20
 - **Gabarits PPT fournis par l'appelant** — le mode livré offre trois mises en page (titre, section, puces) et trois modèles intégrés (`default`, `dark`, `print`) ; accepter un gabarit d'entreprise (masque, images, notes) est le prolongement naturel.
 - **Fidélité Office** — les aperçus Word/Excel/PowerPoint gardent le texte, pas la mise en page (pas de styles, images, numérotation ; dates en numéros de série) ; une montée en fidélité demanderait mammoth/SheetJS.
 - **Phone Access** (suivi à distance des sessions, Wi-Fi local ou tunnel).
-- **Récurrence cron** dans `schedule` (« tous les lundis à 9h ») au-delà des rappels absolu/intervalle.
+- **Récurrence calendaire riche** dans `schedule` : la règle `weekly` couvre « tous les lundis 9h », mais il n'existe ni plusieurs jours, ni quantième du mois, ni expression cron.
 - **Sortie de l'expérimental** : promouvoir Agent Teams et le Creator Mode (self-modification + inspector) en features produit stables.
-- **UI Queue/Steer** côté client (la file existe dans la boucle, il manque le contrôle visible).
 
 ### À arbitrer (hors version)
 
