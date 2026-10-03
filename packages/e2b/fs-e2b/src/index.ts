@@ -15,6 +15,7 @@ import type {
   FsInfo,
   FsPathInfo,
   FsTarget,
+  FsWriteBytesOutcome,
   FsWriteIntent,
   FsWriteOutcome,
 } from '@deepseek-ai/dsh-fs'
@@ -426,11 +427,7 @@ export class E2BFileSystem extends FileSystem {
     signal?: AbortSignal,
   ): Promise<FsWriteOutcome> {
     return this.withLock(String(target.targetKey), async () => {
-      const existing = await this.probe(String(target.targetKey), target.displayPath, signal)
-      if (existing !== undefined && entryType(existing) !== 'file') {
-        throw new FsError(`cannot write "${target.displayPath}": not a regular file`, 'FS_NOT_REGULAR_FILE')
-      }
-      this.checkWriteIntent(existing, expected, target)
+      const existing = await this.prepareWrite(target, expected, signal)
       const before = existing === undefined ? null : await this.readForDiff(target, signal)
       const version = await this.writeAtomic(
         target,
@@ -444,6 +441,51 @@ export class E2BFileSystem extends FileSystem {
         version,
         before,
         after: normalizeLineEndings(content),
+      }
+    })
+  }
+
+  /**
+   * Probe the target and apply the write intent, for both content kinds.
+   * @param target - the resolved target to write.
+   * @param expected - the caller's write intent; omission means unconditional.
+   * @param signal - cancels the probe.
+   * @returns the probed target, or undefined when nothing is there.
+   */
+  private async prepareWrite(
+    target: FsTarget,
+    expected: FsWriteIntent | undefined,
+    signal?: AbortSignal,
+  ): Promise<EntryInfo | undefined> {
+    const existing = await this.probe(String(target.targetKey), target.displayPath, signal)
+    if (existing !== undefined && entryType(existing) !== 'file') {
+      throw new FsError(`cannot write "${target.displayPath}": not a regular file`, 'FS_NOT_REGULAR_FILE')
+    }
+    this.checkWriteIntent(existing, expected, target)
+    return existing
+  }
+
+  override async writeBytes(
+    target: FsTarget,
+    content: Uint8Array,
+    expected?: FsWriteIntent,
+    signal?: AbortSignal,
+  ): Promise<FsWriteBytesOutcome> {
+    return this.withLock(String(target.targetKey), async () => {
+      const existing = await this.prepareWrite(target, expected, signal)
+      // No diff basis: bytes have no line structure, so the outcome reports the
+      // size written instead of before/after text.
+      const version = await this.writeAtomic(
+        target,
+        content,
+        existing,
+        expected?.kind === 'createIfAbsent',
+        signal,
+      )
+      return {
+        operation: existing === undefined ? 'create' : 'update',
+        version,
+        bytes: content.byteLength,
       }
     })
   }
@@ -555,7 +597,7 @@ export class E2BFileSystem extends FileSystem {
 
   private async writeAtomic(
     target: FsTarget,
-    content: string,
+    content: string | Uint8Array,
     existing: EntryInfo | undefined,
     createIfAbsent: boolean,
     signal?: AbortSignal,
@@ -573,7 +615,10 @@ export class E2BFileSystem extends FileSystem {
       stagingDirectoryCreated = true
       await sandbox.commands.run(`chmod 700 -- ${quoteE2BShellArg(stagingDirectory)}`, commandOpts(signal))
       assertNotAborted(signal, 'write')
-      await sandbox.files.write(temporary, content, {
+      // The sandbox SDK takes an ArrayBuffer, not a view: a byte write hands
+      // over a copy bounded to exactly the content, so a view into a larger
+      // buffer can never publish its neighbours.
+      await sandbox.files.write(temporary, typeof content === 'string' ? content : content.slice().buffer, {
         metadata: { [VERSION_METADATA_KEY]: versionId },
         ...signalOpts(signal),
       })

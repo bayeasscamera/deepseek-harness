@@ -17,11 +17,13 @@ import type {
   FsInfo,
   FsPathInfo,
   FsTarget,
+  FsWriteBytesOutcome,
   FsWriteIntent,
   FsWriteOutcome,
 } from '@deepseek-ai/dsh-fs'
 import {
   applyLiteralEdit,
+  assertWriteIntent,
   listDirectory,
   normalizeLineEndings,
   probe,
@@ -180,20 +182,7 @@ export class LocalFileSystem extends FileSystem {
   ): Promise<FsWriteOutcome> {
     return this.withLock(target.targetKey, async () => {
       const existing = await probe(target.targetKey)
-      if (existing && existing.type !== 'file') {
-        throw new FsError(`cannot write "${target.displayPath}": not a regular file`, 'FS_NOT_REGULAR_FILE')
-      }
-
-      if (expected?.kind === 'replaceIfVersion') {
-        // Stale guard: the file must still exist at the version the owner observed.
-        if (!existing) throw new FsError(`cannot write "${target.displayPath}": file no longer exists`, 'FS_STALE_VERSION')
-        if (existing.version !== expected.version) {
-          throw new FsError(`cannot write "${target.displayPath}": file changed since it was read`, 'FS_STALE_VERSION')
-        }
-      } else if (expected?.kind === 'createIfAbsent' && existing) {
-        // createIfAbsent onto an existing file: a blind overwrite — require a read first.
-        throw new FsError(`cannot overwrite existing "${target.displayPath}" without reading it first`, 'FS_NOT_OBSERVED')
-      }
+      assertWriteIntent(existing, expected, target.displayPath)
       // No expectation means an unconditional but still atomic write.
 
       // Capture an optional contextual-diff basis before the write. The bounded
@@ -206,23 +195,63 @@ export class LocalFileSystem extends FileSystem {
       const before = diffable
         ? await readTextForDiff(target.targetKey, this.config.diffBasisMaxBytes, signal)
         : null
-      await writeFileAtomic(
-        target.targetKey,
-        content,
-        existing?.mode,
-        signal,
-        this.internals,
-        expected?.kind === 'createIfAbsent' ? { displayPath: target.displayPath } : undefined,
-      )
-      const after = await probe(target.targetKey)
+      const version = await this.publish(target, content, existing, expected, signal)
       return {
         operation: existing ? 'update' : 'create',
-        version: this.versionAfterWrite(after, target),
+        version,
         before,
         // LF-normalized to share the diff basis with `before` (also LF): a CRLF
         // overwrite must not read as every line changed. Line-ending restoration
         // is a storage detail the applied-hunk diff ignores.
         after: normalizeLineEndings(content),
+      }
+    })
+  }
+
+  /**
+   * Publish one full-file write through the staging path and report the version
+   * it produced, for both content kinds.
+   * @param target - the resolved target to write.
+   * @param content - the full content to write: text or bytes.
+   * @param existing - the probed target, or null when nothing is there.
+   * @param expected - the caller's write intent; omission means unconditional.
+   * @param signal - aborts before atomic publication takes effect.
+   * @returns the version the write produced.
+   */
+  private async publish(
+    target: FsTarget,
+    content: string | Uint8Array,
+    existing: Awaited<ReturnType<typeof probe>>,
+    expected: FsWriteIntent | undefined,
+    signal: AbortSignal | undefined,
+  ): Promise<FsVersion> {
+    await writeFileAtomic(
+      target.targetKey,
+      content,
+      existing?.mode,
+      signal,
+      this.internals,
+      expected?.kind === 'createIfAbsent' ? { displayPath: target.displayPath } : undefined,
+    )
+    return this.versionAfterWrite(await probe(target.targetKey), target)
+  }
+
+  override async writeBytes(
+    target: FsTarget,
+    content: Uint8Array,
+    expected?: FsWriteIntent,
+    signal?: AbortSignal,
+  ): Promise<FsWriteBytesOutcome> {
+    return this.withLock(target.targetKey, async () => {
+      const existing = await probe(target.targetKey)
+      assertWriteIntent(existing, expected, target.displayPath)
+      // No diff basis: bytes have no line structure, so the outcome reports the
+      // size written instead of before/after text.
+      const version = await this.publish(target, content, existing, expected, signal)
+      return {
+        operation: existing ? 'update' : 'create',
+        version,
+        bytes: content.byteLength,
       }
     })
   }

@@ -74,6 +74,12 @@ describe('read-only', () => {
     expect(existsSync(path)).toBe(false)
   })
 
+  it('denies a binary write, leaving no file on disk', async () => {
+    const path = join(workspace, 'denied.pptx')
+    await expect(fs.writeBytes(await target(path), new Uint8Array([0x50, 0x4b]))).rejects.toMatchObject({ code: 'FS_SANDBOX_DENIED' })
+    expect(existsSync(path)).toBe(false)
+  })
+
   it('denies edit of an existing file (the content is unchanged)', async () => {
     const path = join(workspace, 'file.txt')
     await writeFile(path, 'original')
@@ -200,6 +206,13 @@ describe('danger-full-access', () => {
     await fs.writeText(await target(path), 'free')
     expect(await readFile(path, 'utf8')).toBe('free')
   })
+
+  it('writes bytes anywhere, unfenced', async () => {
+    const path = join(outside, 'free.bin')
+    const outcome = await fs.writeBytes(await target(path), new Uint8Array([1, 2, 3]))
+    expect(outcome).toMatchObject({ operation: 'create', bytes: 3 })
+    expect(new Uint8Array(await readFile(path))).toEqual(new Uint8Array([1, 2, 3]))
+  })
 })
 
 describe('the per-call policy override (escalation)', () => {
@@ -211,6 +224,15 @@ describe('the per-call policy override (escalation)', () => {
     expect(await readFile(path, 'utf8')).toBe('granted')
     // A neighboring plain call still runs under the read-only default.
     await expect(fs.writeText(await target(join(workspace, 'plain.txt')), 'x'))
+      .rejects.toMatchObject({ code: 'FS_SANDBOX_DENIED' })
+  })
+
+  it('a workspace-write stamp lets a contained binary write land for that call only', async () => {
+    await boot('read-only')
+    const path = join(workspace, 'escalated.pptx')
+    await fs.writeBytes(await target(path), new Uint8Array([9]), undefined, undefined, { mode: 'workspace-write', workspaceRoot: workspace })
+    expect(new Uint8Array(await readFile(path))).toEqual(new Uint8Array([9]))
+    await expect(fs.writeBytes(await target(join(workspace, 'plain.pptx')), new Uint8Array([9])))
       .rejects.toMatchObject({ code: 'FS_SANDBOX_DENIED' })
   })
 

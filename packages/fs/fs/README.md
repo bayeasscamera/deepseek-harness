@@ -109,7 +109,7 @@ No direct invalidation; the named consumer owns any request-prefix changes.
 
 These limits define when the contract is a poor fit or needs special operational care. They are current package constraints, not a general filesystem comparison or a task backlog.
 
-- **Text-only mutations by contract** — text reads and both mutations reject binary or non-UTF-8 content with `FS_NOT_TEXT`; `readBytes` and `readByteRange` are the raw-byte primitives, and binary-safe mutations remain deferred.
+- **Text operations are text-only by contract** — `readText`, `streamText`, and `editText` reject binary or non-UTF-8 content with `FS_NOT_TEXT`. `readBytes` and `readByteRange` are the raw-byte read primitives, and `writeBytes` is the raw-byte mutation: it publishes the bytes as they are and reports their size in place of a before/after diff basis, so an artifact that is not text (an image, an archive, a document) is written without ever being decoded as one.
 - **Thirteen primitives only** — no delete, rename, copy, or watch; `listDir` lists a single level, with recursion, globbing, pagination, and search out of scope ([directory-listing note](../../../.agents/notes/archived/architecture/2026-07-03-filesystem-directory-listing-seam.md)).
 - **No I/O deadline** — the seam arms no timeout; cancellation is a best-effort optional `AbortSignal` per primitive ([fs family stance](../README.md)).
 - **Resolve-then-operate costs a remote backend two round-trips per tool call** — folding or caching resolution is left to such a backend.

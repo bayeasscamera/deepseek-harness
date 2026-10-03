@@ -21,6 +21,7 @@ import type {
   FsPathInfo,
   FsTarget,
   FsWriteIntent,
+  FsWriteBytesOutcome,
   FsWriteOutcome,
 } from '@deepseek-ai/dsh-fs'
 import * as FsPolicy from '@deepseek-ai/dsh-fs-observation-policy'
@@ -87,6 +88,13 @@ class FakeFs extends FileSystem {
   override async listDir(_target: FsTarget): Promise<FsDirEntry[]> {
     return []
   }
+  override async writeBytes(target: FsTarget, content: Uint8Array): Promise<FsWriteBytesOutcome> {
+    this.throwIfArmed()
+    const before = this.files.get(target.targetKey) ?? null
+    this.files.set(target.targetKey, new TextDecoder().decode(content))
+    return { operation: before !== null ? 'update' : 'create', version: FsVersion('v2'), bytes: content.byteLength }
+  }
+
   override async writeText(target: FsTarget, content: string, expected?: FsWriteIntent): Promise<FsWriteOutcome> {
     this.throwIfArmed()
     this.writeIntents.push(expected)

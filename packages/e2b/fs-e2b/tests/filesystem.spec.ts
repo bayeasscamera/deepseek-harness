@@ -22,8 +22,9 @@ interface RemoteNode {
   symlinkTarget?: string
 }
 
-function bytes(value: string | readonly number[]): Uint8Array {
-  return typeof value === 'string' ? new TextEncoder().encode(value) : Uint8Array.from(value)
+function bytes(value: string | readonly number[] | ArrayBuffer): Uint8Array {
+  if (typeof value === 'string') return new TextEncoder().encode(value)
+  return value instanceof ArrayBuffer ? new Uint8Array(value) : Uint8Array.from(value)
 }
 
 function commandError(exitCode: number, stderr = ''): CommandExitError {
@@ -32,7 +33,7 @@ function commandError(exitCode: number, stderr = ''): CommandExitError {
 
 class FakeRemote {
   readonly nodes = new Map<string, RemoteNode>()
-  readonly writes: Array<{ path: string; data: string; metadata?: Record<string, string> }> = []
+  readonly writes: Array<{ path: string; data: string | ArrayBuffer; metadata?: Record<string, string> }> = []
   readonly writeParentModes: number[] = []
   readonly renames: Array<{ from: string; to: string }> = []
   readonly links: Array<{ from: string; to: string }> = []
@@ -189,7 +190,11 @@ class FakeRemote {
           .filter(candidate => candidate !== path && dirname(candidate) === path)
           .map(candidate => this.rawInfo(candidate))
       },
-      write: async (path: string, data: string, options?: { metadata?: Record<string, string>; signal?: AbortSignal }): Promise<object> => {
+      write: async (
+        path: string,
+        data: string | ArrayBuffer,
+        options?: { metadata?: Record<string, string>; signal?: AbortSignal },
+      ): Promise<object> => {
         this.checkAbort(options)
         const parent = dirname(path)
         if (!this.nodes.has(parent)) this.dir(parent)
@@ -599,6 +604,31 @@ describe('E2BFileSystem atomic writes and edits', () => {
     expect(posix.dirname(stagingDirectory)).toBe('/workspace')
     expect(remote.removals).toContain(stagingDirectory)
     await expect(fs.stat(target)).resolves.toMatchObject({ version: outcome.version, size: 14 })
+  })
+
+  it('creates a binary file whose published bytes are exactly the content', async () => {
+    const { fs, remote } = await setup()
+    const target = await fs.resolve('deck.pptx')
+    const content = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0xff, 0x00, 0x7f])
+    const outcome = await fs.writeBytes(target, content, { kind: 'createIfAbsent' })
+    expect(outcome).toMatchObject({ operation: 'create', bytes: content.byteLength })
+    expect(Array.from(remote.nodes.get('/workspace/deck.pptx')?.data ?? [])).toEqual(Array.from(content))
+    expect(remote.nodes.get('/workspace/deck.pptx')?.mode).toBe(0o600)
+    await expect(fs.stat(target)).resolves.toMatchObject({ version: outcome.version, size: content.byteLength })
+  })
+
+  it('replaces binary content at the observed version and enforces the write intents', async () => {
+    const remote = new FakeRemote()
+    remote.file('/workspace/file.bin', [1, 2, 3], 0o640)
+    const { fs } = await setup(remote)
+    const target = await fs.resolve('file.bin')
+    const version = (await fs.stat(target))!.version
+    const outcome = await fs.writeBytes(target, new Uint8Array([9]), { kind: 'replaceIfVersion', version })
+    expect(outcome).toMatchObject({ operation: 'update', bytes: 1 })
+    expect(remote.nodes.get('/workspace/file.bin')?.mode).toBe(0o640)
+    await expectCode(fs.writeBytes(target, new Uint8Array([8]), { kind: 'createIfAbsent' }), 'FS_NOT_OBSERVED')
+    await expectCode(fs.writeBytes(target, new Uint8Array([8]), { kind: 'replaceIfVersion', version: FsVersion('stale') }), 'FS_STALE_VERSION')
+    await expectCode(fs.writeBytes(await fs.resolve('.'), new Uint8Array([8])), 'FS_NOT_REGULAR_FILE')
   })
 
   it('preserves replacement mode, normalizes only CRLF for diffs, and changes version on external writes', async () => {

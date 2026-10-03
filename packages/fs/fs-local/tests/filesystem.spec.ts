@@ -643,6 +643,61 @@ describe('writeText', () => {
   })
 })
 
+describe('writeBytes', () => {
+  it('createIfAbsent creates a binary file whose bytes are exactly what was written', async () => {
+    const target = await fs.resolve('deck.pptx')
+    const content = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x00, 0xff, 0x80, 0x7f])
+    const outcome = await fs.writeBytes(target, content, { kind: 'createIfAbsent' })
+    expect(outcome).toMatchObject({ operation: 'create', bytes: content.byteLength })
+    expect(new Uint8Array(await readFile(join(dir, 'deck.pptx')))).toEqual(content)
+  })
+
+  it('replaces an existing file at the observed version and reports the update', async () => {
+    await writeFile(join(dir, 'blob.bin'), 'old')
+    const target = await fs.resolve('blob.bin')
+    const outcome = await fs.writeBytes(target, new Uint8Array([1, 2, 3]), { kind: 'replaceIfVersion', version: await versionOf(target) })
+    expect(outcome).toMatchObject({ operation: 'update', bytes: 3 })
+    expect(new Uint8Array(await readFile(join(dir, 'blob.bin')))).toEqual(new Uint8Array([1, 2, 3]))
+  })
+
+  it('rejects a stale version, and a target that is gone, as FS_STALE_VERSION', async () => {
+    await writeFile(join(dir, 'blob.bin'), 'old')
+    const target = await fs.resolve('blob.bin')
+    const stale = await versionOf(target)
+    await writeFile(join(dir, 'blob.bin'), 'newer')
+    await expect(fs.writeBytes(target, new Uint8Array([1]), { kind: 'replaceIfVersion', version: stale }))
+      .rejects.toMatchObject({ code: 'FS_STALE_VERSION' })
+    await unlink(join(dir, 'blob.bin'))
+    await expect(fs.writeBytes(target, new Uint8Array([1]), { kind: 'replaceIfVersion', version: stale }))
+      .rejects.toMatchObject({ code: 'FS_STALE_VERSION' })
+  })
+
+  it('refuses a blind overwrite of a file the caller never read, and a directory target', async () => {
+    await writeFile(join(dir, 'blob.bin'), 'old')
+    const existing = await fs.resolve('blob.bin')
+    await expect(fs.writeBytes(existing, new Uint8Array([1]), { kind: 'createIfAbsent' }))
+      .rejects.toMatchObject({ code: 'FS_NOT_OBSERVED' })
+    const directory = await fs.resolve('.')
+    await expect(fs.writeBytes(directory, new Uint8Array([1])))
+      .rejects.toMatchObject({ code: 'FS_NOT_REGULAR_FILE' })
+  })
+
+  it('writes bytes with a live cancellation signal', async () => {
+    const target = await fs.resolve('live.bin')
+    const outcome = await fs.writeBytes(target, new Uint8Array([4, 5, 6]), undefined, new AbortController().signal)
+    expect(outcome.bytes).toBe(3)
+    expect(new Uint8Array(await readFile(join(dir, 'live.bin')))).toEqual(new Uint8Array([4, 5, 6]))
+  })
+
+  it('writes unconditionally with no expectation, and aborts before publication', async () => {
+    const target = await fs.resolve('fresh.bin')
+    expect((await fs.writeBytes(target, new Uint8Array([7, 8]))).operation).toBe('create')
+    await expect(fs.writeBytes(target, new Uint8Array([9]), undefined, AbortSignal.abort()))
+      .rejects.toMatchObject({ code: 'FS_ABORTED' })
+    expect(new Uint8Array(await readFile(join(dir, 'fresh.bin')))).toEqual(new Uint8Array([7, 8]))
+  })
+})
+
 describe('editText', () => {
   it('applies a literal edit at the matching version', async () => {
     await writeFile(join(dir, 'a.txt'), 'hello world')

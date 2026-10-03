@@ -16,6 +16,7 @@ import type {
   FsPathInfo,
   FsTarget,
   FsWriteIntent,
+  FsWriteBytesOutcome,
   FsWriteOutcome,
 } from '@deepseek-ai/dsh-fs'
 
@@ -72,6 +73,12 @@ class FakeFileSystem extends FileSystem {
       },
     ]
   }
+  override async writeBytes(target: FsTarget, content: Uint8Array): Promise<FsWriteBytesOutcome> {
+    const before = this.files.get(target.targetKey) ?? null
+    this.files.set(target.targetKey, new TextDecoder().decode(content))
+    return { operation: before !== null ? 'update' : 'create', version: FsVersion('v2'), bytes: content.byteLength }
+  }
+
   override async writeText(target: FsTarget, content: string, _expected?: FsWriteIntent): Promise<FsWriteOutcome> {
     const before = this.files.get(target.targetKey) ?? null
     this.files.set(target.targetKey, content)

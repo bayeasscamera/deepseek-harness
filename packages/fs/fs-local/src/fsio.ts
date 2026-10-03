@@ -12,6 +12,7 @@ import type { BigIntStats, Dirent, Stats } from 'node:fs'
 import { basename, dirname, join, resolve } from 'node:path'
 import { TextDecoder } from 'node:util'
 import { FsError, FsTargetKey, FsVersion } from '@deepseek-ai/dsh-fs'
+import type { FsWriteIntent } from '@deepseek-ai/dsh-fs'
 import { copyFileDaclWin32, replaceFileWin32 } from './win32.ts'
 
 const BINARY_SAMPLE_BYTES = 8192
@@ -554,12 +555,44 @@ async function throwGuardedCreateFailure(
 }
 
 /**
+ * Apply a write intent to a probed target: the guards every full-file write
+ * shares, whatever it carries.
+ *
+ * `replaceIfVersion` checks the observed version before anything is written, so
+ * a write based on an old read reports `FS_STALE_VERSION` rather than clobbering
+ * newer content; `createIfAbsent` refuses a target that exists, because a blind
+ * overwrite of a file the caller never read is exactly what the observation
+ * policy exists to prevent. Omission is an unconditional create-or-replace.
+ * @param existing - the probed target, or null when nothing is there.
+ * @param expected - the caller's intent; omission means unconditional.
+ * @param displayPath - the model-facing path the failure messages name.
+ * @throws FsError `FS_NOT_REGULAR_FILE`, `FS_STALE_VERSION`, or `FS_NOT_OBSERVED`.
+ */
+export function assertWriteIntent(
+  existing: PathInfo | null,
+  expected: FsWriteIntent | undefined,
+  displayPath: string,
+): void {
+  if (existing && existing.type !== 'file') {
+    throw new FsError(`cannot write "${displayPath}": not a regular file`, 'FS_NOT_REGULAR_FILE')
+  }
+  if (expected?.kind === 'replaceIfVersion') {
+    if (!existing) throw new FsError(`cannot write "${displayPath}": file no longer exists`, 'FS_STALE_VERSION')
+    if (existing.version !== expected.version) {
+      throw new FsError(`cannot write "${displayPath}": file changed since it was read`, 'FS_STALE_VERSION')
+    }
+  } else if (expected?.kind === 'createIfAbsent' && existing) {
+    throw new FsError(`cannot overwrite existing "${displayPath}" without reading it first`, 'FS_NOT_OBSERVED')
+  }
+}
+
+/**
  * Atomically replace a file through a private, synced staging file in the same directory.
  * POSIX protects the staging directory and file with `0o700` and `0o600`. A new Windows file
  * inherits the destination directory's DACL; a replacement copies the existing target's DACL
  * onto the empty temp before writing and preserves the target descriptor at publication.
  * @param absolutePath - destination; missing parent directories are created.
- * @param content - the full UTF-8 text to write.
+ * @param content - the full content to write: UTF-8 text, or bytes for a binary file.
  * @param mode - existing destination's POSIX mode to preserve, or `undefined` for a new file;
  * inert as a mode on Windows but identifies replacement security semantics.
  * @param signal - cancellation checked before final publication.
@@ -570,7 +603,7 @@ async function throwGuardedCreateFailure(
  */
 export async function writeFileAtomic(
   absolutePath: string,
-  content: string,
+  content: string | Uint8Array,
   mode: number | undefined,
   signal: AbortSignal | undefined,
   internals: FsIoInternals = {},
@@ -605,7 +638,11 @@ export async function writeFileAtomic(
     if (platform === 'win32' && mode !== undefined) {
       await copyFileDacl(absolutePath, tempPath)
     }
-    await handle.writeFile(content, { encoding: 'utf8', ...signal ? { signal } : {} })
+    // Bytes carry no encoding: a text write keeps the utf8 default, a binary
+    // write hands the buffer over as it is.
+    await handle.writeFile(content, typeof content === 'string'
+      ? { encoding: 'utf8', ...signal ? { signal } : {} }
+      : { ...signal ? { signal } : {} })
     await handle.sync()
     await internals.inspectTemp?.({ stagingDir, tempPath })
     if (mode !== undefined) await handle.chmod(mode)

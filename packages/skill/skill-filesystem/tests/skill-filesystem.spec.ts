@@ -14,6 +14,7 @@ import {
   type FsInfo,
   type FsPathInfo,
   type FsTarget,
+  type FsWriteBytesOutcome,
   type FsWriteOutcome,
 } from '@deepseek-ai/dsh-fs'
 import * as SkillFileSystem from '../src/index.ts'
@@ -195,6 +196,12 @@ class TestFileSystem extends FileSystem {
     await mkdir(dirname(target.displayPath), { recursive: true })
     await writeFile(target.displayPath, content)
     return { operation: 'create', version: FsVersion('test'), before: null, after: content }
+  }
+
+  override async writeBytes(target: FsTarget, content: Uint8Array): Promise<FsWriteBytesOutcome> {
+    await mkdir(dirname(target.displayPath), { recursive: true })
+    await writeFile(target.displayPath, content)
+    return { operation: 'create', version: FsVersion('test'), bytes: content.byteLength }
   }
 
   override async editText(_target: FsTarget, _request: FsEditRequest): Promise<FsEditOutcome> {
