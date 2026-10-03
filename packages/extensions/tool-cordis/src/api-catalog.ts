@@ -1038,6 +1038,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         parameters: [{ name: 'target', description: 'the resolved target to edit.' }, { name: 'edit', description: 'the literal search/replace request.' }, { name: 'expected', description: 'the version guard; omit for an unconditional edit.' }, { name: 'signal', description: 'aborts before atomic publication takes effect.' }, { name: 'sandboxPolicy', description: 'the per-call mode and workspace root this edit runs under; a sandboxing backend fences the edit by it, the bare backend ignores it. Omit to leave the backend its own default.' }],
         returns: 'the outcome, including the version the edit produced.',
       },
+      {
+        signature: 'abstract writeBytes( target: FsTarget, content: Uint8Array, expected?: FsWriteIntent, signal?: AbortSignal, sandboxPolicy?: SandboxExecutionPolicy, ): Promise<FsWriteBytesOutcome>',
+        description: 'Atomically create or replace binary content. Same guards and publication as FileSystem.writeText; there is no diff basis, because bytes have no line structure to present as one.',
+        parameters: [{ name: 'target', description: 'the resolved target to write.' }, { name: 'content', description: 'the full new file content.' }, { name: 'expected', description: 'the write intent guarding the write; omit for unconditional.' }, { name: 'signal', description: 'aborts before atomic publication takes effect.' }, { name: 'sandboxPolicy', description: 'the per-call mode and workspace root this write runs under; a sandboxing backend fences the write by it, the bare backend ignores it. Omit to leave the backend its own default.' }],
+        returns: 'the outcome, including the version the write produced.',
+      },
     ],
   },
   {
@@ -4262,6 +4268,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'FsVersion',
     declaration: 'export type FsVersion = Branded<\'FsVersion\'>;',
+  },
+  {
+    name: 'FsWriteBytesOutcome',
+    declaration: 'export interface FsWriteBytesOutcome {\n    operation: \'create\' | \'update\';\n    version: FsVersion;\n    bytes: number;\n}',
   },
   {
     name: 'FsWriteIntent',

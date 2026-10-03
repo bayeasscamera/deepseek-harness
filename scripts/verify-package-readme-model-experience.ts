@@ -358,6 +358,11 @@ const SENTENCE_MODEL_EXPERIENCE: Readonly<Record<string, SentenceContract>> = {
     reason:
       'Browser-only workspace file tree; registers no tool, prompt section, or session event.',
   },
+  'packages/client/ui-sidebar-filepreview': {
+    kind: 'none',
+    reason:
+      'Browser-only file viewer; registers no tool, prompt section, or session event, and what the user reads never enters a model request.',
+  },
   'packages/client/resources': {
     kind: 'none',
     reason:

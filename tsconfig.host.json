@@ -263,6 +263,7 @@
     { "path": "./packages/fs/fs-observation-policy" },
     { "path": "./packages/fs/fs-sandbox" },
     { "path": "./packages/fs/tool-fs" },
+    { "path": "./packages/office/tool-slides" },
     { "path": "./packages/fs/tool-fs-search" },
     { "path": "./packages/fs/tool-str-replace-editor" },
     { "path": "./packages/compaction/compaction" },

@@ -555,6 +555,37 @@ class WriteOutput(TypedDict):
     before: str | None
     after: str
 
+class WritePresentationArgsSlides(TypedDict):
+    # How the slide is drawn: "bullets" for a heading with bullet lines, "section" for a divider heading.
+    layout: Literal["bullets", "section"]
+    # Heading of the slide.
+    title: str
+    # Bullet lines, one paragraph each; read by the "bullets" layout.
+    bullets: NotRequired[list[str]]
+
+class WritePresentationArgs(TypedDict):
+    # Path of the .pptx to write, resolved by the filesystem backend (a relative path resolves against the session workspace).
+    file_path: str
+    # Title of the presentation, drawn on the first slide.
+    title: str
+    # Subtitle drawn under the title on the first slide.
+    subtitle: NotRequired[str]
+    # Template the deck is built on: "default" (neutral light, the default), "dark" (dark background, light text), or "print" (black on white, serif).
+    template: NotRequired[Literal["default", "dark", "print"]]
+    # Content slides, in order, after the title slide.
+    slides: list[WritePresentationArgsSlides]
+    # Additional keys beyond those declared are allowed.
+
+class WritePresentationOutput(TypedDict):
+    # The path the presentation was written to.
+    path: str
+    # Whether the write created the file or replaced it.
+    operation: Literal["create", "update"]
+    # Size of the written package, in bytes.
+    bytes: float
+    # How many slides the deck holds, title slide included.
+    slides: float
+
 class Tools(Protocol):
     async def bash(self, args: BashArgs) -> BashOutput1 | BashOutput2:
         """Execute a bash command (`bash -c`) and return its stdout/stderr. Each call runs in a fresh shell: no state (cwd, variables, functions) persists between calls — pass `workdir` instead of using `cd`. Non-zero exits are reported as `[exit code: N]`. Current harness environment facts are exposed through managed `$DSH_*` variables; inspect them when needed. Commands may run under a file sandbox; a blocked file operation is reported as `[sandbox: file access denied under <mode> mode]` — a policy denial, not a bug in the command; do not retry another way. Long output is truncated to its tail; the full output is saved to a file whose path is reported when available. Set `run_in_background: true` for long-running commands: the call returns a job id immediately; read its output with `job_output` and stop it with `job_kill`. Attempting a command the sandbox may deny is safe and expected: run it and read the marker rather than assuming the denial. When a command is denied and a wider mode would let it succeed, escalate immediately in the same turn — the one sanctioned exception to a denial: retry the exact same command once with `sandbox_permissions` (the narrowest wider mode that suffices) plus a one-sentence `justification`. Do not detour through chat to ask permission first — the approval prompt raised by that retry is how the user consents. If the session states approval prompts are disabled, there is no exception: a denial is final — do not set `sandbox_permissions`. Never escalate speculatively: ground the request in a real denial — normally the one this command just hit; escalating up front is fine only when this session already denied the same access. A rejected escalation is final for that command — stop and explain, never work around it — but it does not forbid attempting or escalating other commands later."""
@@ -606,6 +637,8 @@ class Tools(Protocol):
         """Run a JavaScript workflow script that orchestrates subagents at scale. Use this for work that fans out across many independent pieces — an audit over many files, a migration, multi-angle research, adversarial verification of findings — where you write the orchestration as a script instead of delegating turn by turn. The workflow's identity rides the `meta` parameter as JSON: required `name` (short kebab-case) and `description` strings, optional `whenToUse` string and `phases` array (`{title, detail?, provider?, model?}`). The `script` parameter is the plain JavaScript body ONLY (NOT TypeScript, and NO `export const meta` statement — meta is a parameter, not code), running with top-level await; end with `return <value>` — the value must be JSON-serializable and is this tool's result. Script-body hooks: - `agent(prompt, opts?): Promise<any>` — run one subagent to completion. Without `opts.schema` it resolves to the child's final text; with `opts.schema` (an object-rooted JSON Schema using ONLY type/properties/required/additionalProperties/items/enum/const/oneOf — no pattern/format/numeric bounds) it resolves to the validated object. Resolves `null` when the child fails (filter with `.filter(Boolean)`). Other opts: `label` (display), `phase` (progress group), and independent `provider`/`model` LLM target overrides (either may be provided alone). Anything else (`effort`/`isolation`/`agentType`) is rejected loudly. - `pipeline(items, ...stages): Promise<any[]>` — run each item through the stages independently with NO barrier between stages (prefer this for multi-stage work). Each stage receives `(prev, item, index)`. An ordinary stage throw drops that ITEM to `null` and skips its remaining stages. - `parallel(thunks): Promise<any[]>` — run zero-argument functions concurrently and await ALL of them (a barrier; use only when a stage genuinely needs every prior result together). A throwing thunk resolves to `null`. - `phase(title)` — start a progress phase; `log(message)` — narrate progress; `args` — the tool call's `args` input, verbatim. Misused hooks (bad arguments, unknown options, unsupported schemas, tripped caps) throw errors that ALWAYS kill the script — they never dissolve into a per-item `null`. Constraints: concurrency and total-agent caps apply; no filesystem, network, timers, or Node.js APIs are provided — the agents do the work, the script only coordinates them. The run executes in the foreground: this call returns when the whole script finishes."""
     async def write(self, args: WriteArgs) -> WriteOutput:
         """Create or fully replace a UTF-8 text file."""
+    async def write_presentation(self, args: WritePresentationArgs) -> WritePresentationOutput:
+        """Write a PowerPoint presentation (.pptx) into the session workspace from a structured outline. Use it when the user asks for slides, a deck, or a presentation. The deck opens with a title slide built from title and subtitle, then one slide per entry: layout \"bullets\" draws a heading with bullet lines, layout \"section\" draws a divider heading. The template picks the deck's colour scheme, fonts, and background: \"default\" (neutral light), \"dark\" (dark background, light text), or \"print\" (black on white, serif, for handouts). The file is written as binary content, overwrites an existing file at that path, and appears in the workspace for the user to open."""
 
 tools: Tools
 ```

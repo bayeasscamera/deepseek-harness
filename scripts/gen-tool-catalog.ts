@@ -60,6 +60,7 @@ import * as ToolSessionQuery from '@deepseek-ai/dsh-tool-session-query'
 import * as ToolTasks from '@deepseek-ai/dsh-tool-jobs'
 import type TeamService from '@deepseek-ai/dsh-experimental-agent-team'
 import * as ToolTeam from '@deepseek-ai/dsh-experimental-tool-agent-team'
+import * as ToolSlides from '@deepseek-ai/dsh-tool-slides'
 import * as ToolTodo from '@deepseek-ai/dsh-tool-todo'
 import * as ToolSubagent from '@deepseek-ai/dsh-tool-subagent'
 import { registerListSubagentModels } from '../packages/subagent/tool-subagent/src/list-models.ts'
@@ -327,6 +328,21 @@ const TOOL_PACKAGES: ToolPackage[] = [
     },
     note:
       'The read-before-write/edit policy is added by `@deepseek-ai/dsh-fs-observation-policy` (an `fs/*` event-gate plugin, no schema change); a deployment that loads these tools is expected to also load it. The image tool is not registered without `ctx.attachments`; its schema is route-independent, and execution refuses unless the exact routed model declares image input.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-tool-slides',
+    dir: 'tool-slides',
+    source: 'packages/office/tool-slides/src/index.ts',
+    requires: ['ctx.tools', 'ctx.fs', 'ctx.sandboxPolicy (optional, read per call)'],
+    writes: ['tool/call', 'fs/observed after the package is written', 'tool/result'],
+    async mount(ctx) {
+      // The tool needs `fs`; the bare provider is sufficient because policy
+      // changes behavior, not schema shape.
+      await ctx.plugin(LocalFileSystem)
+      await ctx.plugin(ToolSlides)
+    },
+    note:
+      'Writes the deck as bytes through `ctx.fs.writeBytes`, so the sandbox fence, the write-intent guards, and the per-target lock apply exactly as they do to a text write; the resolved policy travels with the call and a denial is reported with the shared sandbox marker.',
   },
   {
     pkg: '@deepseek-ai/dsh-tool-fs-search',

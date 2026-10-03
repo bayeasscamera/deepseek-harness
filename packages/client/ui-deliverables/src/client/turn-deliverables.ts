@@ -53,6 +53,8 @@ function mutationPath(name: string, argsRaw: string): string | null {
       return validEditArgs(args) ? pathValue(args.file_path) : null
     case 'str_replace_editor':
       return editorMutationPath(args)
+    case 'write_presentation':
+      return typeof args.title === 'string' ? pathValue(args.file_path) : null
     default:
       return null
   }

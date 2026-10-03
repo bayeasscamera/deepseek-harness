@@ -2103,6 +2103,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     slotInject: 'SidebarRightTabInjected',
     declaredBy: 'an entry in \'rightbar\' (client-ui-sidebar-right), so it exists while that entry is mounted',
     occupants: [
+      'client-ui-sidebar-filepreview FilePreview',
       'client-ui-sidebar-files FilesBody',
       'client-ui-sidebar-right GuideBody',
       'client-ui-sidebar-textpreview TextPreview',

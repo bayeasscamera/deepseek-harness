@@ -429,6 +429,26 @@ interface ToolArgsMap {
     /** Required with sandbox_permissions: one sentence for the user explaining why this exact file operation needs the wider access. */
     justification?: string;
   } & Record<string, JsonValue>;
+  /** Write a PowerPoint presentation (.pptx) into the session workspace from a structured outline. Use it when the user asks for slides, a deck, or a presentation. The deck opens with a title slide built from title and subtitle, then one slide per entry: layout "bullets" draws a heading with bullet lines, layout "section" draws a divider heading. The template picks the deck's colour scheme, fonts, and background: "default" (neutral light), "dark" (dark background, light text), or "print" (black on white, serif, for handouts). The file is written as binary content, overwrites an existing file at that path, and appears in the workspace for the user to open. */
+  write_presentation: {
+    /** Path of the .pptx to write, resolved by the filesystem backend (a relative path resolves against the session workspace). */
+    file_path: string;
+    /** Title of the presentation, drawn on the first slide. */
+    title: string;
+    /** Subtitle drawn under the title on the first slide. */
+    subtitle?: string;
+    /** Template the deck is built on: "default" (neutral light, the default), "dark" (dark background, light text), or "print" (black on white, serif). */
+    template?: "default" | "dark" | "print";
+    /** Content slides, in order, after the title slide. */
+    slides: ({
+      /** How the slide is drawn: "bullets" for a heading with bullet lines, "section" for a divider heading. */
+      layout: "bullets" | "section";
+      /** Heading of the slide. */
+      title: string;
+      /** Bullet lines, one paragraph each; read by the "bullets" layout. */
+      bullets?: string[];
+    })[];
+  } & Record<string, JsonValue>;
 }
 
 interface ToolOutputMap {
@@ -710,6 +730,16 @@ interface ToolOutputMap {
     operation: "create" | "update";
     before: string | null;
     after: string;
+  };
+  write_presentation: {
+    /** The path the presentation was written to. */
+    path: string;
+    /** Whether the write created the file or replaced it. */
+    operation: "create" | "update";
+    /** Size of the written package, in bytes. */
+    bytes: number;
+    /** How many slides the deck holds, title slide included. */
+    slides: number;
   };
 }
 

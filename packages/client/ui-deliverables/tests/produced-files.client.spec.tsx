@@ -218,6 +218,10 @@ describe('produced-file Turn data', () => {
         command: 'insert', path: 'notes/inserted.md', insert_line: 1, new_str: 'line',
       }),
       result(13, 'insert'),
+      call(14, 'deck', 'write_presentation', {
+        file_path: 'reports/weekly.pptx', title: 'Weekly', slides: [],
+      }),
+      result(15, 'deck'),
     ])
 
     expect(producedForClosing(deliverablesOf(value))).toEqual([
@@ -227,6 +231,7 @@ describe('produced-file Turn data', () => {
       'notes/existing.md',
       'notes/deleted-text.md',
       'notes/inserted.md',
+      'reports/weekly.pptx',
     ])
   })
 
@@ -252,6 +257,10 @@ describe('produced-file Turn data', () => {
     {
       caseName: 'edit has a non-boolean replace_all', name: 'edit',
       args: { file_path: 'edit.txt', old_string: 'old', new_string: 'new', replace_all: 'yes' },
+    },
+    {
+      caseName: 'deck omits the title', name: 'write_presentation',
+      args: { file_path: 'deck.pptx', slides: [] },
     },
     {
       caseName: 'editor create omits file_text', name: 'str_replace_editor',

@@ -609,6 +609,74 @@
           "content"
         ]
       }
+    },
+    {
+      "name": "write_presentation",
+      "description": "Write a PowerPoint presentation (.pptx) into the session workspace from a structured outline. Use it when the user asks for slides, a deck, or a presentation. The deck opens with a title slide built from title and subtitle, then one slide per entry: layout \"bullets\" draws a heading with bullet lines, layout \"section\" draws a divider heading. The template picks the deck's colour scheme, fonts, and background: \"default\" (neutral light), \"dark\" (dark background, light text), or \"print\" (black on white, serif, for handouts). The file is written as binary content, overwrites an existing file at that path, and appears in the workspace for the user to open.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_path": {
+            "type": "string",
+            "description": "Path of the .pptx to write, resolved by the filesystem backend (a relative path resolves against the session workspace)."
+          },
+          "title": {
+            "type": "string",
+            "description": "Title of the presentation, drawn on the first slide."
+          },
+          "subtitle": {
+            "type": "string",
+            "description": "Subtitle drawn under the title on the first slide."
+          },
+          "template": {
+            "type": "string",
+            "description": "Template the deck is built on: \"default\" (neutral light, the default), \"dark\" (dark background, light text), or \"print\" (black on white, serif).",
+            "enum": [
+              "default",
+              "dark",
+              "print"
+            ]
+          },
+          "slides": {
+            "type": "array",
+            "description": "Content slides, in order, after the title slide.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "layout": {
+                  "type": "string",
+                  "description": "How the slide is drawn: \"bullets\" for a heading with bullet lines, \"section\" for a divider heading.",
+                  "enum": [
+                    "bullets",
+                    "section"
+                  ]
+                },
+                "title": {
+                  "type": "string",
+                  "description": "Heading of the slide."
+                },
+                "bullets": {
+                  "type": "array",
+                  "description": "Bullet lines, one paragraph each; read by the \"bullets\" layout.",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "layout",
+                "title"
+              ]
+            }
+          }
+        },
+        "required": [
+          "file_path",
+          "title",
+          "slides"
+        ]
+      }
     }
   ],
   "changes": []

@@ -36,6 +36,7 @@
 | `@deepseek-ai/dsh-tool-lsp` | `lsp` | `ctx.tools`、`ctx.lsp`、`ctx.systemPrompt` | `tool/call`、`tool/result` | - | lsp 工具将提供方选择和语言服务器子进程置于 ctx.lsp 之后，因此其模型可见 schema 在更换提供方时保持稳定。运行时要求已注册提供方，例如 `@deepseek-ai/dsh-lsp-stdio`；如果没有提供方，查询会返回结构化 `LSP_UNAVAILABLE` 错误，而不会改变 schema。 |
 | `@deepseek-ai/dsh-tool-ralph` | `ralph` | `ctx.tools`、`ctx.workflowEngine`、`ctx.subagents`、`ctx.systemPrompt`、`a calling Agent (exec.agent parents every fresh round)` | `tool/call`、`tool/result`、`workflow and child session events during execution` | - | 固定的前台工作流会在每个 Round 启动一个全新的结构化子级；模型只能选择不可变目标和可选的 Round 上限。 |
 | `@deepseek-ai/dsh-tool-skill` | `skill` | `ctx.tools`、`ctx.agents`、`ctx.skills` | `tool/call`、`tool/result`、`user/message replacement catalogs via agent.inject()` | - | - |
+| `@deepseek-ai/dsh-tool-slides` | `write_presentation` | `ctx.tools`、`ctx.fs`、`ctx.sandboxPolicy（可选，按调用读取）` | `tool/call`、包写入后的 `fs/observed`、`tool/result` | - | 演示经 `ctx.fs.writeBytes` 以字节写入，因此沙箱围栏、写入意图防护与按目标加锁都与文本写入完全一致；解析出的策略随调用一起传递，拒绝会以共享的沙箱标记报告。 |
 | `@deepseek-ai/dsh-tool-session-query` | `session_event_read`、`session_event_search`、`session_event_trace`、`session_search`、`session_trace` | `ctx.tools`、`ctx.systemPrompt`、`ctx.sessionQuery`、`a calling Agent for workspace authority` | `tool/call`、`tool/result` | - | 这 5 个只读工具会隐藏提供方游标，并根据不可变的调用 agent 会话为每个结果授权。该包需要选择启用；需要强制截止时间或限制行内输出的组合还会挂载通用超时或 spill 策略。 |
 | `@deepseek-ai/dsh-tool-subagent` | `list_subagent_models`、`subagent` | `ctx.tools`、`ctx.subagents`、`ctx.systemPrompt`、`用于模型发现和所选路由校验的 ctx.llm` | `tool/call`、`tool/result`、`child session events through the chosen provider` | `subagent`、`subagent_fork` | 注册的委派工具名称取决于加载时 `toolName` 配置（默认为 `subagent`）；上述默认 schema 关闭模型选择，而发现 schema 则展示为已启用 Session 中可用的固定配套工具。Web preset 会在每个新顶层 Session 创建时读取插件页偏好，并为其子 Session 保留该决定；`subagent_fork` 始终使用固定路由。每个实例通过 `modelSelectionSettings`、`backgroundMode` 与 `enableRunInBackground` 独立控制是否读取模型选择设置及其后台行为。 |
 | `@deepseek-ai/dsh-tool-subagent-control` | `interrupt_agent`、`list_agents`、`send_message` | `ctx.tools`、`ctx.subagents`、`ctx.agents and ctx.sessionProjections (list_agents only)` | `tool/call`、`tool/result`、`child session events through ctx.subagents` | - | 这些是控制可继续后台 subagent 的全局命名工具：绑定提供方的 `tool-subagent` 实例注册不同的委派工具；本包注册一次 `send_message` 和 `interrupt_agent`，另由 `list_agents` 通过单独加载的 `/list-agents` 插件提供，其目录行使用 sessionProjections 和实时 Agent 注册表。 |
@@ -782,6 +783,85 @@ pwsh 工具是 Windows 组合中 bash 执行器 seam 的 PowerShell 方言消费
 来源：[`packages/fs/tool-fs/src/index.ts`](../packages/fs/tool-fs/src/index.ts)
 
 先读后写／编辑策略由 `@deepseek-ai/dsh-fs-observation-policy` 添加；它是一个 `fs/*` 事件门禁插件，不会改变 schema。加载这些工具的部署按预期也应加载该插件。没有 `ctx.attachments` 时图片工具不会注册；其 schema 与路由无关，执行时除非确切路由的模型声明图片输入，否则拒绝。
+
+<a id="deepseek-aidsh-tool-slides"></a>
+
+## `@deepseek-ai/dsh-tool-slides`
+
+### `write_presentation`
+
+依据结构化大纲，把一份 PowerPoint 演示（.pptx）写进会话工作区。当用户要幻灯片、演示稿或 PPT 时使用它。演示以由 title 与 subtitle 构成的标题页开场，随后每个条目一张幻灯片：版式 "bullets" 绘制标题加要点行，版式 "section" 绘制分隔标题。模板决定演示的配色、字体与背景："default"（中性浅色，默认）、"dark"（深色背景、浅色文字）或 "print"（白底黑字、衬线，适合讲义）。文件以二进制内容写入，会覆盖该路径上已存在的文件，并出现在工作区里供用户打开。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "file_path": {
+      "type": "string",
+      "description": "Path of the .pptx to write, resolved by the filesystem backend (a relative path resolves against the session workspace)."
+    },
+    "title": {
+      "type": "string",
+      "description": "Title of the presentation, drawn on the first slide."
+    },
+    "subtitle": {
+      "type": "string",
+      "description": "Subtitle drawn under the title on the first slide."
+    },
+    "template": {
+      "type": "string",
+      "description": "Template the deck is built on: \"default\" (neutral light, the default), \"dark\" (dark background, light text), or \"print\" (black on white, serif).",
+      "enum": [
+        "default",
+        "dark",
+        "print"
+      ]
+    },
+    "slides": {
+      "type": "array",
+      "description": "Content slides, in order, after the title slide.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "layout": {
+            "type": "string",
+            "description": "How the slide is drawn: \"bullets\" for a heading with bullet lines, \"section\" for a divider heading.",
+            "enum": [
+              "bullets",
+              "section"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "description": "Heading of the slide."
+          },
+          "bullets": {
+            "type": "array",
+            "description": "Bullet lines, one paragraph each; read by the \"bullets\" layout.",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "layout",
+          "title"
+        ]
+      }
+    }
+  },
+  "required": [
+    "file_path",
+    "title",
+    "slides"
+  ]
+}
+```
+
+Source: [`packages/office/tool-slides/src/index.ts`](../packages/office/tool-slides/src/index.ts)
+
+演示经 `ctx.fs.writeBytes` 以字节写入，因此沙箱围栏、写入意图防护与按目标加锁都与文本写入完全一致；解析出的策略随调用一起传递，拒绝会以共享的沙箱标记报告。
 
 <a id="deepseek-aidsh-tool-fs-search"></a>
 
