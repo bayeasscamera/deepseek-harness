@@ -12,6 +12,8 @@
 - text: Render this mathematical proof. {{clock}}
 - button "Copy":
   - img
+- button "Branch into a new conversation":
+  - img
 - heading "Math rendering" [level=2]
 - paragraph:
   - text: Inline dollar

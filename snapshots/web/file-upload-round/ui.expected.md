@@ -21,6 +21,8 @@
 - text: Read the attached file with the read tool, reply with exactly the single word it contains, and stop. {{clock}}
 - button "Copy":
   - img
+- button "Branch into a new conversation":
+  - img
 - button "1 tool call":
   - text: 1 tool call
   - img

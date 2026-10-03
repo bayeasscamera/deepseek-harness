@@ -13,8 +13,11 @@
   - tablist:
     - tab "Chat" [selected]
     - tab "Trajectory"
+- button "Branched from event-sourcing researcher"
 - text: Give one concrete event sourcing example. {{clock}}
 - button "Copy":
+  - img
+- button "Branch into a new conversation":
   - img
 - status:
   - strong: This subagent is read-only for now

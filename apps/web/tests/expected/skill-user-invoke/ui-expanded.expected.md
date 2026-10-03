@@ -18,6 +18,8 @@
 - text: /user-invoke-demo and confirm the fixture wiring {{clock}}
 - button "Copy":
   - img
+- button "Branch into a new conversation":
+  - img
 - button "Thought for a while" [expanded]:
   - text: Thought for a while
   - img

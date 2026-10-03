@@ -12,6 +12,8 @@
 - text: Render adjacent CJK strong emphasis. {{clock}}
 - button "Copy":
   - img
+- button "Branch into a new conversation":
+  - img
 - heading "CJK strong emphasis" [level=2]
 - paragraph:
   - strong: 注意：

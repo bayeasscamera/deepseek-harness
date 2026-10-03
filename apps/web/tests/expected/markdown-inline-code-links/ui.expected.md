@@ -12,6 +12,8 @@
 - text: Show the local preview URL. {{clock}}
 - button "Copy":
   - img
+- button "Branch into a new conversation":
+  - img
 - heading "Inline code links" [level=2]
 - paragraph:
   - text: "Preview:"

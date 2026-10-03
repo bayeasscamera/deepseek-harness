@@ -18,6 +18,8 @@
 - text: Reply with a one-sentence description of event sourcing, then stop. {{clock}}
 - button "Copy":
   - img
+- button "Branch into a new conversation":
+  - img
 - button "Thought for a while":
   - text: Thought for a while
   - img

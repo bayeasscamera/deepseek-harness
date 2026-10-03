@@ -41,6 +41,8 @@
 - text: m1 7/25 {{clock}}
 - button "Copy":
   - img
+- button "Branch into a new conversation":
+  - img
 - paragraph: r1
 - button "Copy":
   - img
@@ -55,6 +57,8 @@
   - text: Ran for {{duration}}
 - text: 7/25 {{clock}} m2 7/25 {{clock}}
 - button "Copy":
+  - img
+- button "Branch into a new conversation":
   - img
 - paragraph: r2
 - button "Copy":
@@ -71,6 +75,8 @@
 - text: 7/25 {{clock}} m3 7/25 {{clock}}
 - button "Copy":
   - img
+- button "Branch into a new conversation":
+  - img
 - paragraph: r3
 - button "Copy":
   - img
@@ -85,6 +91,8 @@
   - text: Ran for {{duration}}
 - text: 7/25 {{clock}} m4 7/25 {{clock}}
 - button "Copy":
+  - img
+- button "Branch into a new conversation":
   - img
 - paragraph: r4
 - button "Copy":
@@ -101,6 +109,8 @@
 - text: 7/25 {{clock}} m5 7/25 {{clock}}
 - button "Copy":
   - img
+- button "Branch into a new conversation":
+  - img
 - paragraph: r5
 - button "Copy":
   - img
@@ -115,6 +125,8 @@
   - text: Ran for {{duration}}
 - text: 7/25 {{clock}} m6 7/25 {{clock}}
 - button "Copy":
+  - img
+- button "Branch into a new conversation":
   - img
 - paragraph: r6
 - button "Copy":
@@ -131,6 +143,8 @@
 - text: 7/25 {{clock}} m7 7/25 {{clock}}
 - button "Copy":
   - img
+- button "Branch into a new conversation":
+  - img
 - paragraph: r7
 - button "Copy":
   - img
@@ -145,6 +159,8 @@
   - text: Ran for {{duration}}
 - text: 7/25 {{clock}} m8 7/25 {{clock}}
 - button "Copy":
+  - img
+- button "Branch into a new conversation":
   - img
 - paragraph: r8
 - button "Copy":
@@ -161,6 +177,8 @@
 - text: 7/25 {{clock}} m9 7/25 {{clock}}
 - button "Copy":
   - img
+- button "Branch into a new conversation":
+  - img
 - paragraph: r9
 - button "Copy":
   - img
@@ -175,6 +193,8 @@
   - text: Ran for {{duration}}
 - text: 7/25 {{clock}} m10 7/25 {{clock}}
 - button "Copy":
+  - img
+- button "Branch into a new conversation":
   - img
 - paragraph: r10
 - button "Copy":
@@ -191,6 +211,8 @@
 - text: 7/25 {{clock}} m11 7/25 {{clock}}
 - button "Copy":
   - img
+- button "Branch into a new conversation":
+  - img
 - paragraph: r11
 - button "Copy":
   - img
@@ -205,6 +227,8 @@
   - text: Ran for {{duration}}
 - text: 7/25 {{clock}} m12 7/25 {{clock}}
 - button "Copy":
+  - img
+- button "Branch into a new conversation":
   - img
 - paragraph: r12
 - button "Copy":
@@ -221,6 +245,8 @@
 - text: 7/25 {{clock}} m13 7/25 {{clock}}
 - button "Copy":
   - img
+- button "Branch into a new conversation":
+  - img
 - paragraph: r13
 - button "Copy":
   - img
@@ -235,6 +261,8 @@
   - text: Ran for {{duration}}
 - text: 7/25 {{clock}} m14 7/25 {{clock}}
 - button "Copy":
+  - img
+- button "Branch into a new conversation":
   - img
 - paragraph: r14
 - button "Copy":
@@ -251,6 +279,8 @@
 - text: 7/25 {{clock}} m15 7/25 {{clock}}
 - button "Copy":
   - img
+- button "Branch into a new conversation":
+  - img
 - paragraph: r15
 - button "Copy":
   - img
@@ -265,6 +295,8 @@
   - text: Ran for {{duration}}
 - text: 7/25 {{clock}} m16 7/25 {{clock}}
 - button "Copy":
+  - img
+- button "Branch into a new conversation":
   - img
 - paragraph: r16
 - button "Copy":
@@ -281,6 +313,8 @@
 - text: 7/25 {{clock}} m17 7/25 {{clock}}
 - button "Copy":
   - img
+- button "Branch into a new conversation":
+  - img
 - paragraph: r17
 - button "Copy":
   - img
@@ -295,6 +329,8 @@
   - text: Ran for {{duration}}
 - text: 7/25 {{clock}} m18 7/25 {{clock}}
 - button "Copy":
+  - img
+- button "Branch into a new conversation":
   - img
 - paragraph: r18
 - button "Copy":
@@ -311,6 +347,8 @@
 - text: 7/25 {{clock}} m19 7/25 {{clock}}
 - button "Copy":
   - img
+- button "Branch into a new conversation":
+  - img
 - paragraph: r19
 - button "Copy":
   - img
@@ -325,6 +363,8 @@
   - text: Ran for {{duration}}
 - text: 7/25 {{clock}} m20 7/25 {{clock}}
 - button "Copy":
+  - img
+- button "Branch into a new conversation":
   - img
 - paragraph: r20
 - button "Copy":
@@ -341,6 +381,8 @@
 - text: 7/25 {{clock}} m21 7/25 {{clock}}
 - button "Copy":
   - img
+- button "Branch into a new conversation":
+  - img
 - paragraph: r21
 - button "Copy":
   - img
@@ -355,6 +397,8 @@
   - text: Ran for {{duration}}
 - text: 7/25 {{clock}} m22 7/25 {{clock}}
 - button "Copy":
+  - img
+- button "Branch into a new conversation":
   - img
 - paragraph: r22
 - button "Copy":
@@ -371,6 +415,8 @@
 - text: 7/25 {{clock}} m23 7/25 {{clock}}
 - button "Copy":
   - img
+- button "Branch into a new conversation":
+  - img
 - paragraph: r23
 - button "Copy":
   - img
@@ -385,6 +431,8 @@
   - text: Ran for {{duration}}
 - text: 7/25 {{clock}} m24 7/25 {{clock}}
 - button "Copy":
+  - img
+- button "Branch into a new conversation":
   - img
 - paragraph: r24
 - button "Copy":
@@ -401,6 +449,8 @@
 - text: 7/25 {{clock}} m25 7/25 {{clock}}
 - button "Copy":
   - img
+- button "Branch into a new conversation":
+  - img
 - paragraph: r25
 - button "Copy":
   - img
@@ -415,6 +465,8 @@
   - text: Ran for {{duration}}
 - text: 7/25 {{clock}} m26 7/25 {{clock}}
 - button "Copy":
+  - img
+- button "Branch into a new conversation":
   - img
 - paragraph: r26
 - button "Copy":
@@ -431,6 +483,8 @@
 - text: 7/25 {{clock}} m27 7/25 {{clock}}
 - button "Copy":
   - img
+- button "Branch into a new conversation":
+  - img
 - paragraph: r27
 - button "Copy":
   - img
@@ -445,6 +499,8 @@
   - text: Ran for {{duration}}
 - text: 7/25 {{clock}} m28 7/25 {{clock}}
 - button "Copy":
+  - img
+- button "Branch into a new conversation":
   - img
 - paragraph: r28
 - button "Copy":

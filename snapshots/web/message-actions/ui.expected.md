@@ -20,6 +20,8 @@
 - button "Copy":
   - img
 - tooltip "Copy"
+- button "Branch into a new conversation":
+  - img
 - button "Think The user wants me to read a.txt and b.txt, then reply with \"DONE\". Let me do both reads in parallel.":
   - img
   - img
@@ -50,6 +52,8 @@
   - button "b.txt"
 - text: Now give the final answer. 7/25 {{clock}}
 - button "Copy":
+  - img
+- button "Branch into a new conversation":
   - img
 - paragraph: DONE
 - button "Copy":

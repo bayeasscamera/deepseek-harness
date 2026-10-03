@@ -18,6 +18,8 @@
 - text: Reply with the single word LIGHTHOUSE and stop. {{clock}}
 - button "Copy":
   - img
+- button "Branch into a new conversation":
+  - img
 - button "Thought for a while" [expanded]:
   - text: Thought for a while
   - img

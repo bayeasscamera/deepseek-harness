@@ -14,7 +14,7 @@ Use the write tool to create files or completely replace file contents. Existing
 
 Use the edit tool for targeted changes to existing UTF-8 text files. It replaces literal old_string with new_string; by default old_string must appear exactly once. If old_string appears multiple times, provide a more specific old_string or set replace_all to true. Read the file first (the default fs-observation-policy requires it), unless you just created or edited it in this session.
 
-Use the glob tool — not shell find — to discover files by path pattern. A pattern with no "/" matches basenames at any depth, so "*" matches every file in the tree rather than its top level. Results are files only, never directories, and include hidden and ignored files: a result that fits comes back in modification-time order, while a larger one keeps the modification-time-ordered head.
+Use the glob tool — not shell find — to discover files by path pattern. A pattern with no "/" matches basenames at any depth, so "*" matches every file in the tree rather than its top level. Results are files only, never directories, and include hidden and ignored files: a result that fits comes back in modification-time order, while a larger one is sampled across top-level entries, so it spans the tree instead of one subtree.
 
 Use the grep tool — not shell grep or rg — to search file contents. Use read on a matched file when you need surrounding context.
 
@@ -118,7 +118,7 @@ interface ToolArgsMap {
   } & Record<string, JsonValue>;
   /** Read the current same-session goal, including its exact id/revision, objective, phase, completed continuation rounds, round limit, blocker reason when present, and whether another continuation is armed. Call this before updating a goal. */
   get_goal: Record<string, JsonValue>;
-  /** Find files whose paths match a glob pattern. Returns matching file paths — never directories — including hidden and ignored files (VCS metadata directories are excluded). Up to 100 paths come back in modification-time order; a larger result returns the first 100 paths in modification-time order, says so, and reports where the complete sorted list was saved. This tool does not enumerate directory entries. */
+  /** Find files whose paths match a glob pattern. Returns matching file paths — never directories — including hidden and ignored files (VCS metadata directories are excluded). Up to 100 paths come back in modification-time order; a larger result instead returns 100 paths sampled across top-level entries, says so, and reports where the complete sorted list was saved. This tool does not enumerate directory entries. */
   glob: {
     /** Glob pattern to match file paths against (e.g. "**\/*.ts", "src/**\/*.test.js"). A pattern with no "/" matches the basename at any depth, so "*" and "*.ts" both search the whole tree; include a separator to anchor the depth. */
     pattern: string;
@@ -258,6 +258,26 @@ interface ToolArgsMap {
     sandbox_permissions?: "workspace-write" | "danger-full-access";
     /** Required with sandbox_permissions: one sentence for the user explaining why this exact file operation needs the wider access. */
     justification?: string;
+  } & Record<string, JsonValue>;
+  /** Write a PowerPoint presentation (.pptx) into the session workspace from a structured outline. Use it when the user asks for slides, a deck, or a presentation. The deck opens with a title slide built from title and subtitle, then one slide per entry: layout "bullets" draws a heading with bullet lines, layout "section" draws a divider heading. The template picks the deck's colour scheme, fonts, and background: "default" (neutral light), "dark" (dark background, light text), or "print" (black on white, serif, for handouts). The file is written as binary content, overwrites an existing file at that path, and appears in the workspace for the user to open. */
+  write_presentation: {
+    /** Path of the .pptx to write, resolved by the filesystem backend (a relative path resolves against the session workspace). */
+    file_path: string;
+    /** Title of the presentation, drawn on the first slide. */
+    title: string;
+    /** Subtitle drawn under the title on the first slide. */
+    subtitle?: string;
+    /** Template the deck is built on: "default" (neutral light, the default), "dark" (dark background, light text), or "print" (black on white, serif). */
+    template?: "default" | "dark" | "print";
+    /** Content slides, in order, after the title slide. */
+    slides: ({
+      /** How the slide is drawn: "bullets" for a heading with bullet lines, "section" for a divider heading. */
+      layout: "bullets" | "section";
+      /** Heading of the slide. */
+      title: string;
+      /** Bullet lines, one paragraph each; read by the "bullets" layout. */
+      bullets?: string[];
+    })[];
   } & Record<string, JsonValue>;
 }
 
@@ -523,6 +543,16 @@ interface ToolOutputMap {
     operation: "create" | "update";
     before: string | null;
     after: string;
+  };
+  write_presentation: {
+    /** The path the presentation was written to. */
+    path: string;
+    /** Whether the write created the file or replaced it. */
+    operation: "create" | "update";
+    /** Size of the written package, in bytes. */
+    bytes: number;
+    /** How many slides the deck holds, title slide included. */
+    slides: number;
   };
 }
 

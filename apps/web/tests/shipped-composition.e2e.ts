@@ -58,6 +58,7 @@ const EXPECTED_TOOLS = [
   'web_search',
   'workflow',
   'write',
+  'write_presentation',
 ]
 
 /**
