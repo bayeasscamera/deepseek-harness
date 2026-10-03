@@ -142,11 +142,11 @@ describe('web e2e: assistant IconActions wait for the turn to end', () => {
     await page.locator('[data-streaming="true"]')
       .getByText('partial', { exact: true })
       .waitFor({ timeout: 10_000 })
-    // Only the user bubble owns a footer (clock + copy; user bubbles carry no
-    // branch action): the narration is not the answer yet.
+    // Only the user bubble owns a footer (clock + copy + its own branch point):
+    // the narration is not the answer yet, so no turn tail carries one.
     const copyButtons = page.getByRole('button', { name: 'Copy' })
     await expect.poll(() => copyButtons.count(), { timeout: 10_000 }).toBe(1)
-    expect(await page.getByRole('button', { name: 'Branch into a new conversation' }).count()).toBe(0)
+    expect(await page.getByRole('button', { name: 'Branch into a new conversation' }).count()).toBe(1)
     await copyButtons.first().focus()
     const running = await captureStableAria(page, '[class*="centerCol"]', scaffold!.workspaceCwd)
     await compareOrRefreshGolden(RUNNING_EXPECTED, running, MODE)

@@ -19,6 +19,8 @@
 - button "Copy":
   - img
 - tooltip "Copy"
+- button "Branch into a new conversation":
+  - img
 - button "Context injection @deepseek-ai/dsh-system-prompt":
   - img
   - img

@@ -26,7 +26,7 @@
       - button "编辑 DeepSeek (deepseek-official)": 编辑
       - text: DeepSeek deepseek-official API 密钥
       - textbox "API 密钥":
-        - /placeholder: 已配置——输入新值可替换
+        - /placeholder: 已配置 —— 输入新值可替换
       - group:
         - text: 自定义设置 API 地址
         - textbox "API 地址":
@@ -44,6 +44,12 @@
             - img
           - button "删除模型 1":
             - img
+          - text: 输入类型（文本/图像）
+          - group "输入类型（文本/图像） 1":
+            - checkbox "文本 1" [checked]
+            - text: 文本
+            - checkbox "图像 1"
+            - text: 图像
           - textbox "模型 ID 2":
             - /placeholder: 模型 ID
             - text: deepseek-v4-flash-vision-exp
@@ -54,6 +60,12 @@
             - img
           - button "删除模型 2":
             - img
+          - text: 输入类型（文本/图像）
+          - group "输入类型（文本/图像） 2":
+            - checkbox "文本 2" [checked]
+            - text: 文本
+            - checkbox "图像 2" [checked]
+            - text: 图像
           - textbox "模型 ID 3":
             - /placeholder: 模型 ID
             - text: private-preview
@@ -72,6 +84,12 @@
           - textbox "最大输出 token 数 3":
             - /placeholder: 256K
             - text: 64K
+          - text: 输入类型（文本/图像）
+          - group "输入类型（文本/图像） 3":
+            - checkbox "文本 3" [checked]
+            - text: 文本
+            - checkbox "图像 3"
+            - text: 图像
           - button "添加模型":
             - img
             - text: 添加模型

@@ -106,7 +106,7 @@ describe.skipIf(MODE === 'record')('web e2e: first-run DeepSeek credential setup
     await expect.poll(
       () => configuredInput.getAttribute('placeholder'),
       { timeout: 10_000 },
-    ).toBe('已配置——输入新值可替换')
+    ).toBe('已配置 —— 输入新值可替换')
 
     const secondReloadWarnings = tripwire.warnings.length
     await page.reload({ waitUntil: 'load' })

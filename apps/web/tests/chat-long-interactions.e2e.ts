@@ -306,7 +306,10 @@ describe('web e2e: long Chat interaction contract', () => {
       .toBe(expectedUserText)
 
     await turnTailRow.hover()
+    // The control opens the file-policy menu; the fork is the shared-files
+    // choice, so the click alone creates no child.
     await turnTailRow.getByRole('button', { name: 'Branch into a new conversation', exact: true }).click()
+    await page.getByRole('menuitem', { name: 'Branch (both sessions edit the same files)' }).click()
     await expect.poll(
       () => scaffold.ctx.agents.list().find(agent => agent.session.header.parentSession === SessionId(SESSION_ID)),
       { timeout: 15_000 },

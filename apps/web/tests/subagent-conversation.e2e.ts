@@ -541,6 +541,7 @@ describe('web e2e: persisted subagent conversation and human continuation', () =
     const forkResponse = page.waitForResponse(response =>
       new URL(response.url()).pathname === '/api/session/fork')
     await page.getByRole('button', { name: 'Branch into a new conversation' }).last().click()
+    await page.getByRole('menuitem', { name: 'Branch (both sessions edit the same files)' }).click()
     const forkReceipt = await (await forkResponse).json() as { result: { ok: boolean } }
     expect(forkReceipt.result).toMatchObject({ ok: true })
     await expect.poll(
@@ -569,6 +570,7 @@ describe('web e2e: persisted subagent conversation and human continuation', () =
     const forkResponse = page.waitForResponse(response =>
       new URL(response.url()).pathname === '/api/session/fork')
     await page.getByRole('button', { name: 'Branch into a new conversation' }).last().click()
+    await page.getByRole('menuitem', { name: 'Branch (both sessions edit the same files)' }).click()
     const forkReceipt = await (await forkResponse).json() as {
       result: { ok: true; value: { sessionId: string } } | { ok: false }
     }
