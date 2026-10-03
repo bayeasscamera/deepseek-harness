@@ -14,7 +14,7 @@
    rule read as lineage without a second row of chrome. */
 .nestedSessionRow {
   margin-left: 14px;
-  border-left: 1.5px solid var(--dsw-alias-border-l1);
+  border-left: 0.5px solid var(--dsw-alias-border-l1);
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
 }

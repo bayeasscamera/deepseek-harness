@@ -34,6 +34,10 @@
   flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
+  /* The table header and the retry surface in this sheet are elevated, so every
+     scroller below inherits the l2 thumb pair rather than the l1 default. */
+  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
+  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
 }
 
 /* Pictures are letterboxed inside the pane instead of cropped or scrolled. */

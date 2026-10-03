@@ -109,6 +109,9 @@ async function bench(snapshot: ChatSnapshot) {
     views,
     binding: () => ({ target: () => chat }),
   } as never)
+  // Chat declares the Conversation service for its fork callbacks, which this
+  // bench never drives; the render path reads the registries provided above.
+  ctx.provide('conversation', {} as never)
 
   await runtime.sessions.add({
     id: SID,
