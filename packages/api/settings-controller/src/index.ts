@@ -55,7 +55,7 @@ import type {
   SkillDirectoryOpenValue,
   SkillImportValue,
   SkillListEntry,
-  SkillListValue,
+  SkillInventoryValue,
 } from './types.ts'
 
 export { CredentialsController } from './credentials.ts'
@@ -333,7 +333,7 @@ export class SettingsController extends TypertRemoteService {
    * @throws RemoteError when the registry is mounted but listing fails.
    */
   @Remote
-  async listSkills(): Promise<SkillListValue> {
+  async listSkills(): Promise<SkillInventoryValue> {
     return this.skillListValueOf(await this.listing.list())
   }
 
@@ -356,7 +356,7 @@ export class SettingsController extends TypertRemoteService {
    * @throws RemoteError when the registry is mounted but discovery fails.
    */
   @Remote
-  async refreshSkills(): Promise<SkillListValue> {
+  async refreshSkills(): Promise<SkillInventoryValue> {
     return this.skillListValueOf(await this.listing.refresh())
   }
 
@@ -477,7 +477,7 @@ export class SettingsController extends TypertRemoteService {
 
   /** Project one discovery summary onto the wire entry, dropping internal fields. */
   /** Map one listing observation onto the wire value the Skills tab reads. */
-  private skillListValueOf(listing: SkillListingValue): SkillListValue {
+  private skillListValueOf(listing: SkillListingValue): SkillInventoryValue {
     return { skills: this.entriesOf(listing.skills), skipped: [...listing.skipped] }
   }
 

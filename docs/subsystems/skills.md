@@ -17,6 +17,35 @@ Within one layer, duplicate names resolve by rank, provider order, then local or
 An array returned by `SkillProvider.list()` is complete-discovery shorthand. `SkillProviderObservation` lets a provider expose candidates that remain directly loadable while reporting that the observation is not authoritative.
 
 ```ts type-equiv
+/** Why one catalog-relevant entry yielded no skill. */
+type SkillDiscoverySkipReason =
+  /** A directory holding `SKILL.md` files below its own level, which discovery does not descend into. */
+  | 'nested-skills'
+  /** The file carries frontmatter this runtime cannot parse. */
+  | 'invalid-frontmatter'
+  /** The frontmatter parses but omits `name` or `description`. */
+  | 'missing-name'
+  /** The declared name is not the kebab-case skill grammar. */
+  | 'invalid-name'
+  /** The entry is readable by name but its content could not be read. */
+  | 'unreadable'
+```
+
+```ts type-equiv
+/** One entry a provider could not turn into a skill, reported beside the catalog it did produce. */
+interface SkillDiscoverySkip {
+  /** Absolute path of the entry that yielded no skill. */
+  readonly path: string
+  /** Why it yielded no skill. */
+  readonly reason: SkillDiscoverySkipReason
+  /** Skill files (bundle manifests and flat markdown) counted below the entry, for `nested-skills`. */
+  readonly nested?: number
+  /** Whether the count stopped at the scan bound, so the entry holds more than {@link nested}. */
+  readonly truncated?: boolean
+}
+```
+
+```ts type-equiv
 /** Provider candidates plus whether the current discovery is authoritative. */
 interface SkillProviderObservation {
   /** Candidates available from the current provider discovery. */

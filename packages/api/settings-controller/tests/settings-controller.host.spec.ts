@@ -524,6 +524,25 @@ describe('the deployment-wide skills listing behind the Skills tab', () => {
     return directory
   }
 
+  it('resolves the local roots from the environment when the config names none', async () => {
+    const dshHome = await mkdtemp(join(tmpdir(), 'dsh-home-'))
+    const agentsHome = await mkdtemp(join(tmpdir(), 'agents-home-'))
+    await writeSkill(join(dshHome, 'skills'), 'env-skill', 'Found through the environment.')
+    vi.stubEnv('DSH_HOME', dshHome)
+    vi.stubEnv('DSH_AGENTS_HOME', agentsHome)
+    const ctx = new Context()
+    await ctx.plugin(SkillRegistry)
+    const controller = new SettingsController(ctx)
+
+    // No dshHome, agentsHome, or customSkillDirs in the config: the listing's
+    // own row resolves the roots from the environment, and the deployment's
+    // user skill directory is the environment home's skills folder.
+    await expect(controller.listSkills()).resolves.toMatchObject({
+      skills: [expect.objectContaining({ name: 'env-skill', source: 'user-dsh' })],
+    })
+    vi.unstubAllEnvs()
+  })
+
   it('lists the user-dsh, user-agents, and custom roots with no session running', async () => {
     const dshHome = await mkdtemp(join(tmpdir(), 'dsh-home-'))
     const agentsHome = await mkdtemp(join(tmpdir(), 'agents-home-'))

@@ -930,26 +930,27 @@ async function discoverRoot(
     const locator = skillSourceOf(entry, root.path)
     // Neither a bundle folder nor a flat markdown file: nothing to read.
     if (locator === undefined) continue
-    // A bundle folder is only one when its manifest is there: a folder without
-    // one is a finding only if it holds skills, since an ordinary asset folder
-    // is not a misplaced skill. Presence is checked rather than inferred from a
-    // failed read, which cannot tell a missing file from an unreadable one.
-    if (entry.type === 'directory'
-      && await manifestAbsent(locator.path, ctx, root.trustedHost === true)) {
-      const nested = await countNestedSkillManifests(entry.path, ctx, root.trustedHost === true, signal)
-      if (nested.count > 0) {
-        skipped.push({
-          path: entry.path,
-          reason: 'nested-skills',
-          nested: nested.count,
-          ...(nested.truncated ? { truncated: true } : {}),
-        })
-      }
-      continue
-    }
     const parsed = await parseSkillFile(locator.path, ctx, signal, root.trustedHost === true)
     if (!parsed.ok) {
-      if (parsed.reason !== 'absent') skipped.push({ path: locator.path, reason: parsed.reason })
+      if (parsed.reason === 'absent' && entry.type === 'directory') {
+        // A folder whose manifest is not there is a finding only if it holds
+        // skills, since an ordinary asset folder is not a misplaced skill. The
+        // count walk re-stats this folder's own manifest first, so a manifest
+        // that vanished between listing and reading lands in the walk's
+        // confirmed-absent branch and a folder that only failed to read keeps
+        // counting itself: the walk is the second opinion, not a separate probe.
+        const nested = await countNestedSkillManifests(entry.path, ctx, root.trustedHost === true, signal)
+        if (nested.count > 0) {
+          skipped.push({
+            path: entry.path,
+            reason: 'nested-skills',
+            nested: nested.count,
+            ...(nested.truncated ? { truncated: true } : {}),
+          })
+        }
+      } else if (parsed.reason !== 'absent') {
+        skipped.push({ path: locator.path, reason: parsed.reason })
+      }
       continue
     }
     const skill = parsed.skill
@@ -978,9 +979,9 @@ const NESTED_SKIP_SCAN_MAX_MANIFESTS = 200
 const NESTED_SKIP_SCAN_MAX_DIRECTORIES = 2000
 
 /**
- * Count the `SKILL.md` manifests below one directory discovery does not
- * descend into, so a skill collection placed in a root reports why it
- * contributes nothing. The walk is bounded in depth, manifests, and visited
+ * Count the skill files below one directory discovery does not descend into
+ * (bundle manifests and flat markdown, the shape `findSkillSources` collects),
+ * so a skill collection placed in a root reports why it contributes nothing. The walk is bounded in depth, manifests, and visited
  * directories, and reports truncation rather than walking an unbounded tree.
  * @param directory - absolute path of the undiscovered entry.
  * @param ctx - context carrying the optional filesystem service.
@@ -994,6 +995,14 @@ async function countNestedSkillManifests(
   trustedHost: boolean,
   signal?: AbortSignal,
 ): Promise<{ count: number; truncated: boolean }> {
+  // A folder carrying its own manifest is one skill, not a collection: the
+  // caller read that manifest as absent, so this second opinion decides
+  // whether the folder is a misplaced collection (count the children) or a
+  // bundle whose manifest is there or vanished in the race (report nothing;
+  // a bundle's disappearance is not a placement mistake).
+  if (await hasOwnManifest(join(directory, 'SKILL.md'), ctx, trustedHost)) {
+    return { count: 0, truncated: false }
+  }
   const state = { count: 0, directories: 0, truncated: false }
   await collectNestedManifests(directory, ctx, trustedHost, NESTED_SKIP_SCAN_DEPTH, state, signal)
   return { count: state.count, truncated: state.truncated }
@@ -1039,10 +1048,10 @@ function countManifest(state: { count: number; truncated: boolean }): void {
 }
 
 /**
- * Whether a child of a scanned folder carries its own manifest. This is a
- * count for a diagnostic, so a child the scan cannot stat contributes nothing
- * rather than failing the discovery it merely describes; discovery itself
- * reads a real manifest through {@link manifestAbsent} and reports its failure.
+ * Whether a scanned folder carries its own manifest. This is a count for a
+ * diagnostic, so a child the scan cannot stat contributes nothing rather than
+ * failing the discovery it merely describes; discovery itself reads a real
+ * manifest through {@link readSkillText} and reports its failure.
  * @param path - absolute manifest path of the scanned child.
  * @param ctx - context carrying the optional filesystem service.
  * @param trustedHost - read through Node instead of the filesystem service.
@@ -1058,33 +1067,6 @@ async function hasOwnManifest(path: string, ctx: Context, trustedHost: boolean):
     }
   }
   return await stat(path).then(info => info.isFile(), () => false)
-}
-
-/**
- * Whether a bundle folder has no manifest at all. Only a confirmed absence
- * answers true: a path that exists but cannot be read, and any other failure,
- * answers false so the read path reports the failure instead of the caller
- * mistaking it for a folder that carries no skill.
- * @param path - absolute manifest path.
- * @param ctx - context carrying the optional filesystem service.
- * @param trustedHost - read through Node instead of the filesystem service.
- * @returns true when the manifest is confirmed absent.
- */
-async function manifestAbsent(path: string, ctx: Context, trustedHost: boolean): Promise<boolean> {
-  const fs = optionalFileSystem(ctx)
-  if (fs !== undefined && !trustedHost) {
-    try {
-      return (await fs.stat(await fs.resolve(path))) === undefined
-    } catch (error) {
-      return isAbsentSkillPathError(error)
-    }
-  }
-  try {
-    await stat(path)
-    return false
-  } catch (error) {
-    return isAbsentSkillPathError(error)
-  }
 }
 
 async function listSkillRootEntries(root: SkillRoot, ctx: Context): Promise<SkillRootEntry[]> {

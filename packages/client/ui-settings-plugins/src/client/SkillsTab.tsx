@@ -33,7 +33,7 @@ export interface SkillSkip {
   readonly path: string
   /** Why it yielded no skill. */
   readonly reason: SkillSkipReason
-  /** `SKILL.md` manifests counted below the entry, for `nested-skills`. */
+  /** Skill files (bundle manifests and flat markdown) counted below the entry, for `nested-skills`. */
   readonly nested?: number
   /** Whether the count stopped at its scan bound, so the entry holds more. */
   readonly truncated?: boolean

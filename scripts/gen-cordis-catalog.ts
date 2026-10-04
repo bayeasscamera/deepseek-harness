@@ -617,6 +617,7 @@ export const LINK_MAP: Readonly<Record<string, string>> = {
   AgentPresetDirectoryOpenValue: 'settings.md',
   SkillListEntry: 'settings.md',
   SkillImportValue: 'settings.md',
+  SkillInventoryValue: 'settings.md',
   SkillDirectoryOpenValue: 'settings.md',
   SettingsNamespaceView: 'settings.md',
   SettingsPathOpView: 'settings.md',

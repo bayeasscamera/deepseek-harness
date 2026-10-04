@@ -286,9 +286,9 @@ export const settingsPluginsFr: Record<string, string> = {
   skillsRefresh: 'Actualiser',
   skillsSkipTitle: 'Ces entrées n’ont pas été reconnues comme skills :',
   skillsSkipNested:
-    'contient {count} SKILL.md sous son propre niveau — importez le dossier pour les installer.',
+    'contient {count} skills sous son propre niveau — importez le dossier pour les installer.',
   skillsSkipNestedTruncated:
-    'contient au moins {count} SKILL.md sous son propre niveau — importez le dossier pour les installer.',
+    'contient au moins {count} skills sous son propre niveau — importez le dossier pour les installer.',
   skillsSkipInvalidFrontmatter: 'son frontmatter est absent ou illisible.',
   skillsSkipMissingName: 'son frontmatter ne déclare pas de name ni de description.',
   skillsSkipInvalidName: 'son name n’est pas en kebab-case.',

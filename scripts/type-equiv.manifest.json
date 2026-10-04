@@ -2080,6 +2080,16 @@
       "doc": "packages/client/ui-conversation/README.md",
       "symbol": "ComposerChainProps",
       "source": "packages/client/ui-conversation/src/client/contract/slots.ts"
+    },
+    {
+      "doc": "docs/subsystems/skills.md",
+      "symbol": "SkillDiscoverySkipReason",
+      "source": "packages/skill/skill/src/index.ts"
+    },
+    {
+      "doc": "docs/subsystems/skills.md",
+      "symbol": "SkillDiscoverySkip",
+      "source": "packages/skill/skill/src/index.ts"
     }
   ]
 }

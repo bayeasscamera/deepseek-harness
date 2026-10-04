@@ -35,7 +35,7 @@ agent（智能体）可以使用来自仓库、自定义目录或用户 agent �
 
 skill 可以是被扫描根目录顶层的目录 bundle `<name>/SKILL.md`，也可以是平铺文件 `<name>.md`；刻意不支持发现嵌套的 `**/SKILL.md`。文件以 YAML frontmatter 开头：必填 `name` 与 `description`，另有可选 `whenToUse`、`metadata`、`disable-model-invocation` 与 `user-invocable`。
 
-未能产出 skill 的根目录条目会作为 skip 报告在观测上，而不是无声消失：发现不会下探的文件夹会统计其下 `SKILL.md` 的数量（在深度、清单数与访问目录数三方面都有上限，触达上限时报告 `truncated`），而 frontmatter、name 或文本无法读取的清单会带上原因报告。完全不含 skill 的文件夹不算发现，而在列出与读取之间消失的清单属于扫描竞态，不对任何人报告。该计数与 `findSkillSources` 从同一文件夹安装的结果一致，因此报告本身就在暗示「导入它」这一修复方式。
+未能产出 skill 的根目录条目会作为 skip 报告在观测上，而不是无声消失：发现不会下探的文件夹会统计其下 skill 文件的数量（在深度、清单数与访问目录数三方面都有上限，触达上限时报告 `truncated`），而 frontmatter、name 或文本无法读取的清单会带上原因报告。完全不含 skill 的文件夹不算发现，而在列出与读取之间消失的清单不会报告任何内容——除非该文件夹仍含有其他 skill 文件（此时它是一个嵌套集合）。该计数与 `findSkillSources` 从同一文件夹找到的结果一致，因此报告本身就在暗示「导入它」这一修复方式。
 
 `disable-model-invocation: true` 会把 skill 从面向模型的目录和 loader 中排除；`user-invocable: false` 会把它从面向用户的命令中排除，省略的字段默认允许对应接口调用。这两个键接受 YAML 布尔值，以及不区分大小写的 `true`/`false`、`yes`/`no`、`on`/`off` 和 `1`/`0` 形式；被拒绝的拼写或非布尔值会让整个 skill 随警告一起被丢弃，而不会静默允许某个接口。
 

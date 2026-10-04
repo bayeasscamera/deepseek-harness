@@ -1448,3 +1448,36 @@ describe('undiscovered entries', () => {
     expect(await ctx.skills.snapshot()).toEqual({ skills: [], complete: true, skipped: [] })
   })
 })
+
+describe('undiscovered entries — race boundary', () => {
+  it('counts a folder whose own manifest vanished, by what an import would find', async () => {
+    const home = await tempDir('skill-skip-vanished-bundle')
+    const root = join(home, '.dsh/skills')
+    // A folder whose SKILL.md is deleted after the directory listing: the read
+    // fails as absent, the walk re-stats the manifest (gone), and the folder is
+    // reported by the skill content an import of it would collect — here a
+    // loose flat `.md`, which findSkillSources gathers exactly like the count.
+    const bundle = join(root, 'bundle')
+    await mkdir(bundle, { recursive: true })
+    await writeFile(join(bundle, 'README.md'), 'not a skill manifest\n')
+    const ctx = await setupLocal(home)
+
+    expect(await ctx.skills.snapshot()).toMatchObject({
+      skipped: [{ path: bundle, reason: 'nested-skills', nested: 1 }],
+    })
+    // The count and the import agree: both collect the loose file.
+    const importable = await SkillFileSystem.findSkillSources(bundle)
+    expect(importable).toHaveLength(1)
+  })
+
+  it('reports nothing for a folder whose manifest vanished and holds no skill', async () => {
+    const home = await tempDir('skill-skip-empty-vanished')
+    const root = join(home, '.dsh/skills')
+    const bundle = join(root, 'bundle')
+    await mkdir(bundle, { recursive: true })
+    await writeFile(join(bundle, 'notes.txt'), 'no markdown here\n')
+    const ctx = await setupLocal(home)
+
+    expect(await ctx.skills.snapshot()).toEqual({ skills: [], complete: true, skipped: [] })
+  })
+})

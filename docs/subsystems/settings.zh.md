@@ -353,7 +353,7 @@ Host service backing the generated `ctx.remote.settings` namespace. Every remote
  * @returns all discovered skills; empty means the deployment composes no skill registry.
  * @throws RemoteError when the registry is mounted but listing fails.
  */
-@Remote async listSkills(): Promise<SkillListValue>
+@Remote async listSkills(): Promise<SkillInventoryValue>
 
 /**
  * Open the user skill directory in the native file manager, or return its path.
@@ -370,7 +370,7 @@ Host service backing the generated `ctx.remote.settings` namespace. Every remote
  * @returns all discovered skills after the rescan.
  * @throws RemoteError when the registry is mounted but discovery fails.
  */
-@Remote async refreshSkills(): Promise<SkillListValue>
+@Remote async refreshSkills(): Promise<SkillInventoryValue>
 
 /**
  * Install every skill a picked folder or file carries, read the way
@@ -389,8 +389,6 @@ Host service backing the generated `ctx.remote.settings` namespace. Every remote
  */
 @Remote async importSkills(source: string): Promise<SkillImportValue[]>
 ```
-
-Types: [SkillListValue](skills.zh.md)
 
 Source: [`packages/api/settings-controller/src/index.ts`](../../packages/api/settings-controller/src/index.ts)
 
