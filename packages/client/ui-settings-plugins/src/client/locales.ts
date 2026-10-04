@@ -76,6 +76,14 @@ export type PluginsSettingsLocaleKey =
   | 'skillsImportInvalid'
   | 'skillsImportExists'
   | 'skillsRefresh'
+  | 'skillsSkipTitle'
+  | 'skillsSkipNested'
+  | 'skillsSkipNestedTruncated'
+  | 'skillsSkipInvalidFrontmatter'
+  | 'skillsSkipMissingName'
+  | 'skillsSkipInvalidName'
+  | 'skillsSkipUnreadable'
+  | 'skillsSkipMore'
 
 /** English copy. */
 export const en: Record<PluginsSettingsLocaleKey, string> = {
@@ -152,6 +160,14 @@ export const en: Record<PluginsSettingsLocaleKey, string> = {
     'A skill file needs a name (kebab-case) and a description in its frontmatter.',
   skillsImportExists: 'A skill with this name is already installed.',
   skillsRefresh: 'Refresh',
+  skillsSkipTitle: 'These entries were not discovered:',
+  skillsSkipNested: 'holds {count} SKILL.md below its own level — import the folder to install them.',
+  skillsSkipNestedTruncated: 'holds at least {count} SKILL.md below its own level — import the folder to install them.',
+  skillsSkipInvalidFrontmatter: 'its frontmatter is missing or cannot be parsed.',
+  skillsSkipMissingName: 'its frontmatter declares no name or description.',
+  skillsSkipInvalidName: 'its name is not kebab-case.',
+  skillsSkipUnreadable: 'it could not be read as text.',
+  skillsSkipMore: 'and {count} more.',
   skillsOpened: 'Opened in file manager.',
   skillsOpenFailed: 'Could not open the folder automatically.',
   skillsCopyPath: 'Copy path',
@@ -232,6 +248,14 @@ export const zh: Record<PluginsSettingsLocaleKey, string> = {
   skillsImportInvalid: 'skill 文件的 frontmatter 需要合法的 kebab-case name 和 description。',
   skillsImportExists: '同名 skill 已存在。',
   skillsRefresh: '刷新',
+  skillsSkipTitle: '以下条目未被识别为 Skill：',
+  skillsSkipNested: '其下层还有 {count} 个 SKILL.md——导入该文件夹即可安装。',
+  skillsSkipNestedTruncated: '其下层至少有 {count} 个 SKILL.md——导入该文件夹即可安装。',
+  skillsSkipInvalidFrontmatter: 'frontmatter 缺失或无法解析。',
+  skillsSkipMissingName: 'frontmatter 未声明 name 或 description。',
+  skillsSkipInvalidName: 'name 不是 kebab-case。',
+  skillsSkipUnreadable: '无法按文本读取。',
+  skillsSkipMore: '还有 {count} 条。',
   skillsOpened: '已在文件管理器中打开。',
   skillsOpenFailed: '无法自动打开文件夹。',
   skillsCopyPath: '复制路径',

@@ -228,7 +228,7 @@ describe('SkillRegistry registry', () => {
         list: () => Promise.resolve(output as readonly SkillCandidate[] | SkillProviderObservation),
         get: () => Promise.resolve(undefined),
       })
-      await expect(badList.skills.list()).rejects.toThrow('list() must return an array or { candidates, complete } observation')
+      await expect(badList.skills.list()).rejects.toThrow('list() must return an array or { candidates, complete, skipped? } observation')
     }
 
     const cases: { patch: Partial<SkillCandidate>; expected: string }[] = [
@@ -850,6 +850,7 @@ describe('SkillRegistry registry', () => {
         source: 'memory',
       }],
       complete: false,
+      skipped: [],
     })
     expect(listCalls).toBe(2)
 
@@ -1267,5 +1268,84 @@ describe('SkillRegistry scoped layers', () => {
     control?.invalidate()
     expect(await ctx.skills.list({ scope })).toEqual([])
     await preset.dispose()
+  })
+})
+
+describe('SkillRegistry discovery skips', () => {
+  it('carries provider skips beside the catalog without turning them into skills', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SkillRegistry)
+    let listCalls = 0
+    registerProvider(ctx, {
+      name: 'reporting',
+      list: () => {
+        listCalls += 1
+        return Promise.resolve({
+          candidates: [{ ...memorySkill('kept', 'Kept skill', 1), provider: 'reporting' }],
+          complete: true,
+          skipped: [{ path: '/skills/collection', reason: 'nested-skills', nested: 3 }],
+        })
+      },
+      get: () => Promise.resolve(undefined),
+    })
+
+    expect(await ctx.skills.snapshot()).toEqual({
+      skills: [{
+        name: 'kept',
+        description: 'Kept skill',
+        invocation: { modelInvocable: true, userInvocable: true },
+        provider: 'reporting',
+        source: 'memory',
+      }],
+      complete: true,
+      skipped: [{ path: '/skills/collection', reason: 'nested-skills', nested: 3 }],
+    })
+    // A skip is part of the cached observation, not a per-read probe.
+    expect((await ctx.skills.snapshot()).skipped).toHaveLength(1)
+    expect(listCalls).toBe(1)
+    expect(await ctx.skills.list()).toHaveLength(1)
+  })
+
+  it('reports one finding when two layers skip the same path', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SkillRegistry)
+    const report = {
+      candidates: [],
+      complete: true,
+      skipped: [{ path: '/skills/collection', reason: 'nested-skills' as const, nested: 2 }],
+    }
+    registerProvider(ctx, { name: 'host-row', list: () => Promise.resolve(report), get: () => Promise.resolve(undefined) })
+    const scope = createScope(ctx, {})
+    const scoped = scopedSkills(scope.ctx)
+    scoped.registerProvider(() => ({
+      name: 'preset-row',
+      list: () => Promise.resolve(report),
+      get: () => Promise.resolve(undefined),
+    }))
+
+    expect((await ctx.skills.snapshot({ scope: scopeOf(scope.ctx) })).skipped)
+      .toEqual([{ path: '/skills/collection', reason: 'nested-skills', nested: 2 }])
+  })
+
+  it('rejects every malformed skip shape', async () => {
+    const malformed: unknown[] = [
+      'not-an-array',
+      [null],
+      [{}],
+      [{ path: '/a', reason: 'unknown-reason' }],
+      [{ path: '/a', reason: 'nested-skills', nested: '3' }],
+      [{ path: '/a', reason: 'nested-skills', nested: 1.5 }],
+      [{ path: '/a', reason: 'nested-skills', truncated: 'yes' }],
+    ]
+    for (const [index, skipped] of malformed.entries()) {
+      const ctx = new Context()
+      await ctx.plugin(SkillRegistry)
+      registerProvider(ctx, {
+        name: `malformed-skips-${index}`,
+        list: () => Promise.resolve({ candidates: [], complete: true, skipped } as never),
+        get: () => Promise.resolve(undefined),
+      })
+      await expect(ctx.skills.list()).rejects.toThrow('list() must return an array or { candidates, complete, skipped? } observation')
+    }
   })
 })

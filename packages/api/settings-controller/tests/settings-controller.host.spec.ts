@@ -545,20 +545,21 @@ describe('the deployment-wide skills listing behind the Skills tab', () => {
 
     const entries = await controller.listSkills()
 
-    expect(entries).toHaveLength(3)
-    expect(entries).toContainEqual({
+    expect(entries.skills).toHaveLength(3)
+    expect(entries.skipped).toEqual([])
+    expect(entries.skills).toContainEqual({
       name: 'user-skill',
       description: 'A user-dsh skill.',
       source: 'user-dsh',
       path: userDir,
     })
-    expect(entries).toContainEqual({
+    expect(entries.skills).toContainEqual({
       name: 'agent-skill',
       description: 'A user-agents skill.',
       source: 'user-agents',
       path: agentDir,
     })
-    expect(entries).toContainEqual({
+    expect(entries.skills).toContainEqual({
       name: 'custom-skill',
       description: 'A custom skill.',
       source: 'custom',
@@ -582,12 +583,12 @@ describe('the deployment-wide skills listing behind the Skills tab', () => {
       customSkillDirs: [],
     })
 
-    await expect(controller.listSkills()).resolves.toEqual([
-      { name: 'runtime-skill', description: 'Registered at runtime.', source: 'runtime' },
-    ])
-    await expect(controller.listSkills()).resolves.toEqual([
-      { name: 'runtime-skill', description: 'Registered at runtime.', source: 'runtime' },
-    ])
+    const runtimeOnly = {
+      skills: [{ name: 'runtime-skill', description: 'Registered at runtime.', source: 'runtime' }],
+      skipped: [],
+    }
+    await expect(controller.listSkills()).resolves.toEqual(runtimeOnly)
+    await expect(controller.listSkills()).resolves.toEqual(runtimeOnly)
   })
 
   it('installs a validated skill folder whole and leaves no staging folder behind', async () => {
@@ -618,11 +619,14 @@ describe('the deployment-wide skills listing behind the Skills tab', () => {
       readFile(join(dshHome, 'skills', 'imported-skill', 'assets', 'notes.md'), 'utf8'),
     ).resolves.toBe('side file\n')
     await expect(readdir(join(dshHome, 'skills'))).resolves.toEqual(['imported-skill'])
-    await expect(controller.refreshSkills()).resolves.toContainEqual({
-      name: 'imported-skill',
-      description: 'An imported skill.',
-      source: 'user-dsh',
-      path: join(dshHome, 'skills', 'imported-skill'),
+    await expect(controller.refreshSkills()).resolves.toEqual({
+      skills: [{
+        name: 'imported-skill',
+        description: 'An imported skill.',
+        source: 'user-dsh',
+        path: join(dshHome, 'skills', 'imported-skill'),
+      }],
+      skipped: [],
     })
   })
 
@@ -656,13 +660,11 @@ describe('the deployment-wide skills listing behind the Skills tab', () => {
       { imported: false, reason: 'invalid-frontmatter', detail: 'invalid-frontmatter' },
       { imported: true, name: 'nested-skill', path: join(dshHome, 'skills', 'nested-skill') },
     ])
-    await expect(controller.refreshSkills()).resolves.toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ name: 'grouped-skill', source: 'user-dsh' }),
-        expect.objectContaining({ name: 'nested-skill', source: 'user-dsh' }),
-        expect.objectContaining({ name: 'flat-skill', source: 'user-dsh' }),
-      ]),
-    )
+    const rescanned = await controller.refreshSkills()
+    expect(rescanned.skipped).toEqual([])
+    expect(rescanned.skills.map(skill => skill.name))
+      .toEqual(['flat-skill', 'grouped-skill', 'nested-skill'])
+    expect(rescanned.skills.every(skill => skill.source === 'user-dsh')).toBe(true)
     await expect(readdir(join(dshHome, 'skills'))).resolves.toEqual([
       'flat-skill.md',
       'grouped-skill',
@@ -694,9 +696,10 @@ describe('the deployment-wide skills listing behind the Skills tab', () => {
       },
     ])
     await expect(readdir(join(dshHome, 'skills'))).resolves.toEqual(['picked-skill.md'])
-    await expect(controller.refreshSkills()).resolves.toEqual([
-      expect.objectContaining({ name: 'picked-skill', source: 'user-dsh' }),
-    ])
+    await expect(controller.refreshSkills()).resolves.toEqual({
+      skills: [expect.objectContaining({ name: 'picked-skill', source: 'user-dsh' })],
+      skipped: [],
+    })
   })
 
   it('keeps the installed skill whole when a later import claims its name', async () => {
@@ -872,16 +875,48 @@ describe('the deployment-wide skills listing behind the Skills tab', () => {
     })
     await writeSkill(join(dshHome, 'skills'), 'first-skill', 'First skill.')
 
-    await expect(controller.listSkills()).resolves.toHaveLength(1)
+    await expect(controller.listSkills()).resolves.toMatchObject({ skills: [expect.objectContaining({ name: 'first-skill' })] })
     await writeSkill(join(dshHome, 'skills'), 'second-skill', 'Second skill.')
 
-    await expect(controller.refreshSkills()).resolves.toHaveLength(2)
+    await expect(controller.refreshSkills()).resolves.toMatchObject({
+      skills: [
+        expect.objectContaining({ name: 'first-skill' }),
+        expect.objectContaining({ name: 'second-skill' }),
+      ],
+    })
+  })
+
+  it('reports the entries discovery could not read beside the catalog', async () => {
+    const dshHome = await mkdtemp(join(tmpdir(), 'dsh-home-'))
+    const agentsHome = await mkdtemp(join(tmpdir(), 'agents-home-'))
+    const skillsRoot = join(dshHome, 'skills')
+    await writeSkill(skillsRoot, 'readable-skill', 'A directly discoverable skill.')
+    await writeSkill(join(skillsRoot, 'collection/skills'), 'first', 'First nested skill.')
+    await writeSkill(join(skillsRoot, 'collection/skills'), 'second', 'Second nested skill.')
+    await writeSkill(join(skillsRoot, 'broken'), 'broken', 'Broken.')
+    await writeFile(join(skillsRoot, 'broken', 'SKILL.md'), 'Prose without frontmatter.\n')
+    const ctx = new Context()
+    await ctx.plugin(SkillRegistry)
+    const controller = new SettingsController(ctx, { dshHome, agentsHome, customSkillDirs: [] })
+
+    await expect(controller.listSkills()).resolves.toEqual({
+      skills: [{
+        name: 'readable-skill',
+        description: 'A directly discoverable skill.',
+        source: 'user-dsh',
+        path: join(skillsRoot, 'readable-skill'),
+      }],
+      skipped: [
+        { path: join(skillsRoot, 'broken', 'SKILL.md'), reason: 'invalid-frontmatter' },
+        { path: join(skillsRoot, 'collection'), reason: 'nested-skills', nested: 2 },
+      ],
+    })
   })
 
   it('answers an empty listing when the deployment composes no skill registry', async () => {
     const controller = new SettingsController(new Context())
 
-    await expect(controller.listSkills()).resolves.toEqual([])
+    await expect(controller.listSkills()).resolves.toEqual({ skills: [], skipped: [] })
   })
 
   it('rejects when a mounted registry fails to list', async () => {
@@ -894,7 +929,7 @@ describe('the deployment-wide skills listing behind the Skills tab', () => {
       customSkillDirs: [],
     })
     await controller.listSkills()
-    vi.spyOn(ctx.skills, 'list').mockRejectedValueOnce(new Error('listing exploded'))
+    vi.spyOn(ctx.skills, 'snapshot').mockRejectedValueOnce(new Error('listing exploded'))
 
     await expect(controller.listSkills()).rejects.toThrow('listing exploded')
   })

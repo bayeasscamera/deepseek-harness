@@ -31,7 +31,7 @@ kind: "package-reference"
 
 `settings.openSettingsDocument()` 准备 provider 持有的文档，并用原生文本编辑器意图将其打开。`settings.canOpenAgentPresetDirectory()` 在 preset 页面显示时报告原生打开能力。`settings.openAgentPresetDirectory(id)` 只解析用户创作的 preset，并在原生打开不可用时返回目录路径；两个打开方法都不接受浏览器提供的文件系统目标。
 
-`settings.listSkills()` 返回部署在没有会话时安装的 skills，`settings.refreshSkills()` 在磁盘上的目录变化后重新扫描本地根目录。`settings.importSkills(pick)` 按发现的规则安装选中的文件夹或 markdown 文件携带的每一个 skill，并为发现的每个 skill 回答一个结果：已安装的名称与路径，或主机拒绝它的原因。选中的文件夹会先暂存到目标旁边，再用一步移动到位，因此目录表只会看到完整的 skill。
+`settings.listSkills()` 返回部署在没有会话时安装的 skills，并附带发现无法读取的条目（`skipped`：含有嵌套清单的文件夹，或 frontmatter、name、文本读取失败的清单），`settings.refreshSkills()` 在磁盘上的目录变化后重新扫描本地根目录。`settings.importSkills(pick)` 按发现的规则安装选中的文件夹或 markdown 文件携带的每一个 skill，并为发现的每个 skill 回答一个结果：已安装的名称与路径，或主机拒绝它的原因。选中的文件夹会先暂存到目标旁边，再用一步移动到位，因此目录表只会看到完整的 skill。
 
 -----
 

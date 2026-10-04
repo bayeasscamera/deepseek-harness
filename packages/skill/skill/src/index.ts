@@ -229,12 +229,43 @@ export function escapeText(value: string): string {
   return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
 }
 
+/** Why one catalog-relevant entry yielded no skill. */
+export type SkillDiscoverySkipReason =
+  /** A directory holding `SKILL.md` files below its own level, which discovery does not descend into. */
+  | 'nested-skills'
+  /** The file carries frontmatter this runtime cannot parse. */
+  | 'invalid-frontmatter'
+  /** The frontmatter parses but omits `name` or `description`. */
+  | 'missing-name'
+  /** The declared name is not the kebab-case skill grammar. */
+  | 'invalid-name'
+  /** The entry is readable by name but its content could not be read. */
+  | 'unreadable'
+
+/** One entry a provider could not turn into a skill, reported beside the catalog it did produce. */
+export interface SkillDiscoverySkip {
+  /** Absolute path of the entry that yielded no skill. */
+  readonly path: string
+  /** Why it yielded no skill. */
+  readonly reason: SkillDiscoverySkipReason
+  /** `SKILL.md` manifests counted below the entry, for `nested-skills`. */
+  readonly nested?: number
+  /** Whether the count stopped at the scan bound, so the entry holds more than {@link nested}. */
+  readonly truncated?: boolean
+}
+
 /** One catalog observation plus whether discovery completed within a stable catalog revision. */
 export interface SkillCatalogSnapshot {
   /** Sorted invocation-neutral summaries collected in this observation. */
   readonly skills: SkillSummary[]
   /** Whether every registered provider completed without a concurrent catalog revision. */
   readonly complete: boolean
+  /**
+   * Entries the providers could not turn into skills, in layer then provider
+   * order. This is a user-facing diagnostic for a skill the operator placed
+   * where discovery cannot read it; the model catalog never carries it.
+   */
+  readonly skipped: readonly SkillDiscoverySkip[]
 }
 
 /** Provider candidates plus whether the current discovery is authoritative. */
@@ -243,6 +274,11 @@ export interface SkillProviderObservation {
   readonly candidates: readonly SkillCandidate[]
   /** Whether discovery completed and these candidates may be cached. */
   readonly complete: boolean
+  /**
+   * Entries this provider could not turn into skills, when it reports them. A
+   * skipped entry is not a candidate: it is the reason one is missing.
+   */
+  readonly skipped?: readonly SkillDiscoverySkip[]
 }
 
 /** Provider interface for one source of skills, such as local directories or a remote registry. */
@@ -317,12 +353,20 @@ interface RegisteredProvider {
 
 interface LayerCollectResult {
   entries: IndexedCandidate[]
+  skipped: SkillDiscoverySkip[]
   cacheable: boolean
 }
 
 interface CollectResult {
   entries: Map<string, IndexedCandidate>
+  skipped: readonly SkillDiscoverySkip[]
   cacheable: boolean
+}
+
+/** One completed catalog observation, cached per cwd and scope chain. */
+interface CollectedCatalog {
+  entries: Map<string, IndexedCandidate>
+  skipped: readonly SkillDiscoverySkip[]
 }
 
 /** One scope's complete skill-registry contribution. */
@@ -365,7 +409,7 @@ export class SkillRegistry extends Service {
     scope => new SkillLayer(scope),
     () => { this.invalidateCache() },
   )
-  private readonly collectCache = new Map<string, Map<string, IndexedCandidate>>()
+  private readonly collectCache = new Map<string, CollectedCatalog>()
   private revision = 0
   private nextProviderOrder = 0
   /** Stable identities for cache keys; scope keys are opaque identity-compared objects. */
@@ -487,6 +531,7 @@ export class SkillRegistry extends Service {
         .map(entry => toSummary(entry.candidate))
         .sort(compareSkillSummary),
       complete: collected.cacheable,
+      skipped: collected.skipped,
     }
   }
 
@@ -528,7 +573,7 @@ export class SkillRegistry extends Service {
       // and only a chain-bearing key makes the next read see the new preset.
       const key = this.collectCacheKey(options.cwd, scopeChainOf(options.scope), revision)
       const cached = this.collectCache.get(key)
-      if (cached !== undefined) return { entries: cached, cacheable: true }
+      if (cached !== undefined) return { ...cached, cacheable: true }
 
       const result = await this.collectFresh(options)
       throwIfAborted(options.signal)
@@ -537,10 +582,10 @@ export class SkillRegistry extends Service {
           attempt += 1
           continue
         }
-        return { entries: result.entries, cacheable: false }
+        return { entries: result.entries, skipped: result.skipped, cacheable: false }
       }
       if (result.cacheable) {
-        this.collectCache.set(key, result.entries)
+        this.collectCache.set(key, { entries: result.entries, skipped: result.skipped })
         if (this.collectCache.size > this.collectCacheMaxEntries) {
           const oldest = this.collectCache.keys().next() as IteratorYieldResult<string>
           this.collectCache.delete(oldest.value)
@@ -557,13 +602,17 @@ export class SkillRegistry extends Service {
     // duplicates only within one layer.
     const layers = [this.layers.global, ...this.layers.chainLayers(options.scope)]
     const merged = new Map<string, IndexedCandidate>()
+    const skipped = new Map<string, SkillDiscoverySkip>()
     let cacheable = true
     for (const layer of layers) {
       const collected = await this.collectLayer(layer, options)
       if (!collected.cacheable) cacheable = false
       for (const entry of collected.entries) merged.set(entry.candidate.name, entry)
+      // The same provider mounted in two layers reports the same paths; the
+      // nearest layer's row is not a second finding.
+      for (const skip of collected.skipped) skipped.set(`${skip.reason}\u0000${skip.path}`, skip)
     }
-    return { entries: merged, cacheable }
+    return { entries: merged, skipped: [...skipped.values()], cacheable }
   }
 
   private async collectLayer(layer: SkillLayer, options: SkillLookupOptions): Promise<LayerCollectResult> {
@@ -580,12 +629,13 @@ export class SkillRegistry extends Service {
       seen.add(skill.name)
       result.push(entry)
     }
-    return { entries: result, cacheable: collected.cacheable }
+    return { entries: result, skipped: collected.skipped, cacheable: collected.cacheable }
   }
 
   private async listLayerCandidates(layer: SkillLayer, options: SkillLookupOptions): Promise<LayerCollectResult> {
     throwIfAborted(options.signal)
     const candidates: IndexedCandidate[] = []
+    const skipped: SkillDiscoverySkip[] = []
     let cacheable = true
     let runtimeOrder = 0
     for (const skill of [...layer.runtime.values()].sort((a, b) => compareCodePoints(a.name, b.name))) {
@@ -616,8 +666,9 @@ export class SkillRegistry extends Service {
         candidates.push({ candidate, provider, providerOrder: order, localOrder, layer })
         localOrder += 1
       }
+      for (const skip of observation.skipped ?? []) skipped.push(skip)
     }
-    return { entries: candidates, cacheable }
+    return { entries: candidates, skipped, cacheable }
   }
 
   private invalidateCache(): void {
@@ -672,11 +723,37 @@ function normalizeProviderObservation(output: unknown, providerName: string): Sk
   if (!Array.isArray(observation.candidates) || typeof observation.complete !== 'boolean') {
     throw invalidProviderObservation(providerName)
   }
+  if (observation.skipped !== undefined) validateSkips(observation.skipped, providerName)
   return observation as SkillProviderObservation
 }
 
+/** Reject a malformed diagnostic payload: a wrong skip shape is a provider defect, not a catalog fact. */
+function validateSkips(skipped: unknown, providerName: string): void {
+  if (!Array.isArray(skipped)) {
+    throw invalidProviderObservation(providerName)
+  }
+  for (const entry of skipped) {
+    if (entry === null || typeof entry !== 'object') throw invalidProviderObservation(providerName)
+    const skip = entry as Partial<SkillDiscoverySkip>
+    if (typeof skip.path !== 'string' || !isSkipReason(skip.reason)) {
+      throw invalidProviderObservation(providerName)
+    }
+    if (skip.nested !== undefined && (typeof skip.nested !== 'number' || !Number.isInteger(skip.nested))) {
+      throw invalidProviderObservation(providerName)
+    }
+    if (skip.truncated !== undefined && typeof skip.truncated !== 'boolean') {
+      throw invalidProviderObservation(providerName)
+    }
+  }
+}
+
+function isSkipReason(value: unknown): value is SkillDiscoverySkipReason {
+  return value === 'nested-skills' || value === 'invalid-frontmatter' || value === 'missing-name'
+    || value === 'invalid-name' || value === 'unreadable'
+}
+
 function invalidProviderObservation(providerName: string): TypeError {
-  return new TypeError(`skill provider "${providerName}" list() must return an array or { candidates, complete } observation`)
+  return new TypeError(`skill provider "${providerName}" list() must return an array or { candidates, complete, skipped? } observation`)
 }
 
 const RUNTIME_SKILL_PROVIDER: SkillProvider = {

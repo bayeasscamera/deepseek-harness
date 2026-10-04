@@ -152,3 +152,53 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Undiscovered entries: a report, not an error — the tab still lists what it
+   did find, and the notice names each entry with the reason it yielded none. */
+.skipNotice {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 12px 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary);
+  background: var(--dsw-alias-bg-layer-2);
+  border: 0.5px solid var(--dsw-alias-border-l1);
+  border-radius: 6px;
+  /* The list is elevated here, so its scroller rebinds the thumb pair. */
+  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
+  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
+}
+
+.skipTitle {
+  color: var(--dsw-alias-label-primary);
+}
+
+.skipList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.skipItem {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.skipPath {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--dsw-font-mono, ui-monospace, monospace);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.skipReason {
+  flex: 1 1 auto;
+}

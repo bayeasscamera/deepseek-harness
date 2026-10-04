@@ -23,6 +23,11 @@ interface SkillProviderObservation {
   readonly candidates: readonly SkillCandidate[]
   /** Whether discovery completed and these candidates may be cached. */
   readonly complete: boolean
+  /**
+   * Entries this provider could not turn into skills, when it reports them. A
+   * skipped entry is not a candidate: it is the reason one is missing.
+   */
+  readonly skipped?: readonly SkillDiscoverySkip[]
 }
 ```
 
@@ -134,8 +139,16 @@ interface SkillCatalogSnapshot {
   readonly skills: SkillSummary[]
   /** Whether every registered provider completed without a concurrent catalog revision. */
   readonly complete: boolean
+  /**
+   * Entries the providers could not turn into skills, in layer then provider
+   * order. This is a user-facing diagnostic for a skill the operator placed
+   * where discovery cannot read it; the model catalog never carries it.
+   */
+  readonly skipped: readonly SkillDiscoverySkip[]
 }
 ```
+
+`skipped` carries the entries a provider could not turn into skills: a folder holding `SKILL.md` files below its own level, a manifest whose frontmatter does not parse, one that declares no name or description, one whose name is not kebab-case, or one that cannot be read as text. The registry merges them in layer then provider order and reports a path once when two layers skip it. They are a user-facing diagnostic — the model catalog never carries them, because the model cannot act on them — and the settings Skills tab renders them beside the catalog it did find, which is what turns "my skill is missing" into a stated reason.
 
 `SkillCandidate` is the provider-to-registry shape. `locator` is opaque provider state; the registry only stores it and gives it back to the winning provider's `get()`.
 

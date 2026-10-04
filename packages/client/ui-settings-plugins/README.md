@@ -31,6 +31,12 @@ Open the Plugins section in Settings and select the **Plugin configuration** tab
 
 The tab reads which settings namespaces the Host serves and dispatches one slot key per namespace, so what renders is the intersection of two ledgers: the namespaces a live Host plugin registered, and the cards registered under those keys. A served namespace no card claims renders nothing, and a card whose namespace this deployment does not serve is never dispatched. The empty line waits for the Host's first answer, so an unanswered read never reads as "this deployment configures no plugin".
 
+### The Skills tab
+
+The **Skills** tab lists every skill the deployment installs without a session, with its description, source, and folder, and offers three actions: import a picked folder or file, rescan the roots, and open the user skill directory. A folder the operator drops into a root themselves is discovered on the next scan; a folder carrying several skills must be imported, because discovery reads one level deep.
+
+Above the catalog, the tab names the entries discovery could not read: a folder holding `SKILL.md` files below its own level (with the count an import would install), a manifest whose frontmatter, name, or text could not be read. A folder holding no skill is not reported, and the catalog still lists everything that was found — the notice explains a missing skill rather than replacing the list.
+
 ### Editing and saving
 
 A card stages what the user types and writes it only when they save. Each control renders staged text, so what is on screen is exactly what a save would store; **Discard** drops the drafts, and a card holding unsaved edits says so on its header even while collapsed. A successful save collapses the card after the read-back confirms the writes; a failed save keeps the card open, reports the failure, and retains the drafts for correction. A reset stages the composed default rather than writing immediately, and a draft the field does not accept blocks the save instead of being dropped. The Host is the only authority on whether a value was accepted.

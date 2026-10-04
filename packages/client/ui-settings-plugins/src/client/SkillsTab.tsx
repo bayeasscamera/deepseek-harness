@@ -19,6 +19,34 @@ export interface SkillEntry {
   readonly path?: string
 }
 
+/** Why one entry in the skill roots yielded no skill; mirrors the host's wire type. */
+export type SkillSkipReason =
+  | 'nested-skills'
+  | 'invalid-frontmatter'
+  | 'missing-name'
+  | 'invalid-name'
+  | 'unreadable'
+
+/** One entry the skill roots hold that discovery could not turn into a skill. */
+export interface SkillSkip {
+  /** Absolute path of the entry that yielded no skill. */
+  readonly path: string
+  /** Why it yielded no skill. */
+  readonly reason: SkillSkipReason
+  /** `SKILL.md` manifests counted below the entry, for `nested-skills`. */
+  readonly nested?: number
+  /** Whether the count stopped at its scan bound, so the entry holds more. */
+  readonly truncated?: boolean
+}
+
+/** One catalog observation: the skills it found and the entries it could not read. */
+export interface SkillListing {
+  /** Every discovered skill, in catalog order. */
+  readonly skills: readonly SkillEntry[]
+  /** Entries that yielded no skill, so the tab can say why one is missing. */
+  readonly skipped: readonly SkillSkip[]
+}
+
 /** Why the host refused a skill import; mirrors the settings controller's wire type. */
 export type SkillImportRejection = 'missing-skill-file' | 'invalid-frontmatter' | 'exists'
 
@@ -35,10 +63,10 @@ export interface SkillImportReport {
 
 /** Remote-driven injected face for the skills tab. */
 export interface SkillsTabInjected {
-  /** List all globally registered skills. */
-  listSkills: () => Promise<readonly SkillEntry[]>
+  /** List all globally registered skills and the entries that yielded none. */
+  listSkills: () => Promise<SkillListing>
   /** Re-scan the local skill roots and resolve with the fresh catalog. */
-  refreshSkills: () => Promise<readonly SkillEntry[]>
+  refreshSkills: () => Promise<SkillListing>
   /** Open the user skills directory; resolves with an opened/fallback result. */
   openDirectory: (signal: AbortSignal) => Promise<{ opened: boolean; path?: string }>
   /**
@@ -57,7 +85,7 @@ export type SkillsTabProps = PropsRuntime<'settings.plugins.tab'> &
 type LoadState =
   | { kind: 'idle' }
   | { kind: 'loading' }
-  | { kind: 'loaded'; skills: readonly SkillEntry[] }
+  | { kind: 'loaded'; skills: readonly SkillEntry[]; skipped: readonly SkillSkip[] }
   | { kind: 'failed'; message: string }
 
 type OpenState =
@@ -72,6 +100,18 @@ type ImportState =
   | { kind: 'importing' }
   | { kind: 'done'; installed: readonly string[]; refused: SkillImportRejection | undefined }
   | { kind: 'failed' }
+
+/** Locale key for the reason one entry yielded no skill. */
+const SKIP_REASON_KEY = {
+  'nested-skills': 'skillsSkipNested',
+  'invalid-frontmatter': 'skillsSkipInvalidFrontmatter',
+  'missing-name': 'skillsSkipMissingName',
+  'invalid-name': 'skillsSkipInvalidName',
+  unreadable: 'skillsSkipUnreadable',
+} as const
+
+/** Entries the notice names before it summarizes the rest. */
+const SKIP_NOTICE_MAX_ENTRIES = 10
 
 /** Locale key for each host rejection cause. */
 const IMPORT_REASON_KEY = {
@@ -117,14 +157,16 @@ export function SkillsTab({
   }
 
   /** Load the catalog through `fetch`, ignoring a superseded request. */
-  const runCatalog = (fetch: () => Promise<readonly SkillEntry[]>): void => {
+  const runCatalog = (fetch: () => Promise<SkillListing>): void => {
     abortRef.current?.abort()
     const controller = new AbortController()
     abortRef.current = controller
     setLoad({ kind: 'loading' })
     fetch()
-      .then((skills) => {
-        if (!controller.signal.aborted) setLoad({ kind: 'loaded', skills })
+      .then((listing) => {
+        if (!controller.signal.aborted) {
+          setLoad({ kind: 'loaded', skills: listing.skills, skipped: listing.skipped })
+        }
       })
       .catch((err: unknown) => {
         if (!controller.signal.aborted) {
@@ -306,6 +348,31 @@ export function SkillsTab({
           >
             {t('skillsRetry')}
           </button>
+        </div>
+      )}
+      {load.kind === 'loaded' && load.skipped.length > 0 && (
+        <div className={css.skipNotice} role="status">
+          <span className={css.skipTitle}>{t('skillsSkipTitle')}</span>
+          <ul className={css.skipList}>
+            {load.skipped.slice(0, SKIP_NOTICE_MAX_ENTRIES).map(skip => (
+              <li key={`${skip.reason}:${skip.path}`} className={css.skipItem}>
+                <span className={css.skipPath} title={skip.path}>{skip.path}</span>
+                <span className={css.skipReason}>
+                  {skip.reason === 'nested-skills'
+                    ? t(
+                      skip.truncated === true ? 'skillsSkipNestedTruncated' : SKIP_REASON_KEY[skip.reason],
+                      { count: skip.nested ?? 0 },
+                    )
+                    : t(SKIP_REASON_KEY[skip.reason])}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {load.skipped.length > SKIP_NOTICE_MAX_ENTRIES && (
+            <span className={css.skipReason}>
+              {t('skillsSkipMore', { count: load.skipped.length - SKIP_NOTICE_MAX_ENTRIES })}
+            </span>
+          )}
         </div>
       )}
       {load.kind === 'loaded' && load.skills.length === 0 && (

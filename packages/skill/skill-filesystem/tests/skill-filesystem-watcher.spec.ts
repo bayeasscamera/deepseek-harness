@@ -180,7 +180,7 @@ describe('skill-filesystem watcher failures', () => {
       watch: true,
       watchPollIntervalMs: 10,
     })
-    expect(await ctx.skills.snapshot()).toEqual({ skills: [], complete: true })
+    expect(await ctx.skills.snapshot()).toEqual({ skills: [], complete: true, skipped: [] })
     expect(watcherHarness.watchFiles).toHaveLength(2)
     let invalidations = 0
     ctx.on('skills/change', () => { invalidations += 1 })
@@ -338,7 +338,7 @@ describe('skill-filesystem watcher failures', () => {
     await rm(root, { recursive: true })
     original.emitter.emit('unlink', join(original.path, 'old-skill/SKILL.md'))
     await settle()
-    expect(await ctx.skills.snapshot()).toEqual({ skills: [], complete: true })
+    expect(await ctx.skills.snapshot()).toEqual({ skills: [], complete: true, skipped: [] })
 
     const missingRoot = watcherHarness.watchFiles.find(control => control.path === original.path)
     expect(missingRoot).toBeDefined()

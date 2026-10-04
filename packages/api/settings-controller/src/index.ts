@@ -48,13 +48,14 @@ import { Remote, RemoteError, TypertRemoteService } from '@deepseek-ai/dsh-typer
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import { z } from 'zod'
 import { CredentialsController } from './credentials.ts'
-import { SkillListing } from './skill-listing.ts'
+import { SkillListing, type SkillListingValue } from './skill-listing.ts'
 import type {
   AgentPresetDirectoryOpenValue,
   SettingsDocumentOpenValue,
   SkillDirectoryOpenValue,
   SkillImportValue,
   SkillListEntry,
+  SkillListValue,
 } from './types.ts'
 
 export { CredentialsController } from './credentials.ts'
@@ -332,8 +333,8 @@ export class SettingsController extends TypertRemoteService {
    * @throws RemoteError when the registry is mounted but listing fails.
    */
   @Remote
-  async listSkills(): Promise<SkillListEntry[]> {
-    return this.entriesOf(await this.listing.list())
+  async listSkills(): Promise<SkillListValue> {
+    return this.skillListValueOf(await this.listing.list())
   }
 
   /**
@@ -355,8 +356,8 @@ export class SettingsController extends TypertRemoteService {
    * @throws RemoteError when the registry is mounted but discovery fails.
    */
   @Remote
-  async refreshSkills(): Promise<SkillListEntry[]> {
-    return this.entriesOf(await this.listing.refresh())
+  async refreshSkills(): Promise<SkillListValue> {
+    return this.skillListValueOf(await this.listing.refresh())
   }
 
   /**
@@ -475,6 +476,11 @@ export class SettingsController extends TypertRemoteService {
   }
 
   /** Project one discovery summary onto the wire entry, dropping internal fields. */
+  /** Map one listing observation onto the wire value the Skills tab reads. */
+  private skillListValueOf(listing: SkillListingValue): SkillListValue {
+    return { skills: this.entriesOf(listing.skills), skipped: [...listing.skipped] }
+  }
+
   private entriesOf(list: readonly SkillSummary[]): SkillListEntry[] {
     return list.map((s) => {
       const path = s.resourceBase?.kind === 'directory' ? s.resourceBase.path : undefined

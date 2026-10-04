@@ -62,6 +62,7 @@ async function writeFlatSkill(
 
 class TestFileSystem extends FileSystem {
   listDirCalls = 0
+  listDirOverrides = new Map<string, (path: string) => FsDirEntry[]>()
   failResolvePaths = new Set<string>()
   failStatPaths = new Set<string>()
   failListDirPaths = new Set<string>()
@@ -168,6 +169,8 @@ class TestFileSystem extends FileSystem {
   override async listDir(target: FsTarget): Promise<FsDirEntry[]> {
     this.listDirCalls += 1
     if (this.failListDirPaths.has(target.displayPath)) throw new Error('list temporarily failed')
+    const synthetic = this.listDirOverrides.get(target.displayPath)
+    if (synthetic !== undefined) return synthetic(target.displayPath)
     const entries = await readdir(target.displayPath, { withFileTypes: true, encoding: 'utf8' })
     const result: FsDirEntry[] = []
     for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name))) {
@@ -626,7 +629,7 @@ describe('FileSystemSkillProvider', () => {
       { kind: 'present', version: FsVersion('failed-read') },
       { name: 'edit' },
     )
-    expect(await ctx.skills.snapshot()).toEqual({ skills: [], complete: false })
+    expect(await ctx.skills.snapshot()).toEqual({ skills: [], complete: false, skipped: [] })
 
     fs.failListDirPaths.clear()
     expect(await ctx.skills.snapshot()).toMatchObject({
@@ -668,7 +671,7 @@ describe('FileSystemSkillProvider', () => {
 
     fs.missingReadPaths.add(path)
     invalidate()
-    expect(await ctx.skills.snapshot()).toEqual({ skills: [], complete: true })
+    expect(await ctx.skills.snapshot()).toEqual({ skills: [], complete: true, skipped: [] })
     fs.missingReadPaths.clear()
     invalidate()
     expect(await ctx.skills.snapshot()).toMatchObject({
@@ -683,7 +686,7 @@ describe('FileSystemSkillProvider', () => {
     await mkdir(join(root, 'broken-skill/SKILL.md'), { recursive: true })
     const ctx = await setupLocal(home)
 
-    expect(await ctx.skills.snapshot()).toEqual({ skills: [], complete: false })
+    expect(await ctx.skills.snapshot()).toEqual({ skills: [], complete: false, skipped: [] })
   })
 
   it('forwards cancellation to filesystem reads while loading a skill', async () => {
@@ -1139,6 +1142,10 @@ describe('validateSkillDocument', () => {
     expect(SkillFileSystem.validateSkillDocument('---\nname: [unclosed\n---\n')).toEqual({
       error: 'invalid-frontmatter',
     })
+    // A picked file that never opens a frontmatter block declares no skill.
+    expect(SkillFileSystem.validateSkillDocument('Just prose, no frontmatter.\n')).toEqual({
+      error: 'invalid-frontmatter',
+    })
     expect(
       SkillFileSystem.validateSkillDocument(
         '---\nname: policy-skill\ndescription: Policy.\nmodelInvocable: true\n---\n',
@@ -1224,5 +1231,220 @@ describe('findSkillSources', () => {
 
     await expect(SkillFileSystem.findSkillSources(file)).resolves.toEqual([])
     await expect(SkillFileSystem.findSkillSources(join(root, 'absent'))).resolves.toEqual([])
+  })
+})
+
+describe('undiscovered entries', () => {
+  it('reports a folder holding nested manifests instead of skipping it silently', async () => {
+    const home = await tempDir('skill-skip-nested')
+    const root = join(home, '.dsh/skills')
+    await writeSkill(join(root, 'collection/skills'), 'first', 'First nested skill')
+    await writeSkill(join(root, 'collection/skills'), 'second', 'Second nested skill')
+    await writeSkill(join(root, 'collection'), 'outer', 'Nested one level down')
+    // A build-residue folder inside a collection is not a skill either.
+    await writeSkill(join(root, 'collection/.cache'), 'ignored', 'Hidden from the count')
+    await writeSkill(root, 'plain', 'A directly discoverable skill')
+    const ctx = await setupLocal(home)
+
+    const snapshot = await ctx.skills.snapshot()
+    expect(snapshot.skills.map(skill => skill.name)).toEqual(['plain'])
+    expect(snapshot.complete).toBe(true)
+    expect(snapshot.skipped).toEqual([{
+      path: join(root, 'collection'),
+      reason: 'nested-skills',
+      nested: 3,
+    }])
+  })
+
+  it('stays silent for a folder that holds no skill at all', async () => {
+    const home = await tempDir('skill-skip-empty-folder')
+    const root = join(home, '.dsh/skills')
+    await mkdir(join(root, 'assets/icons'), { recursive: true })
+    await writeFile(join(root, 'assets/icons/logo.txt'), 'not a skill\n')
+    await writeFile(join(root, 'notes.txt'), 'not markdown\n')
+    const ctx = await setupLocal(home)
+
+    expect(await ctx.skills.snapshot()).toEqual({ skills: [], complete: true, skipped: [] })
+  })
+
+  it('names the reason each malformed manifest was dropped', async () => {
+    const home = await tempDir('skill-skip-reasons')
+    const root = join(home, '.dsh/skills')
+    await mkdir(join(root, 'no-frontmatter'), { recursive: true })
+    await writeFile(join(root, 'no-frontmatter/SKILL.md'), 'Just prose, no frontmatter.\n')
+    await mkdir(join(root, 'broken-yaml'), { recursive: true })
+    await writeFile(join(root, 'broken-yaml/SKILL.md'), '---\nname: [unclosed\ndescription: x\n---\n\nBody.\n')
+    await mkdir(join(root, 'nameless'), { recursive: true })
+    await writeFile(join(root, 'nameless/SKILL.md'), '---\ndescription: No name here.\n---\n\nBody.\n')
+    await mkdir(join(root, 'Bad-Name'), { recursive: true })
+    await writeFile(join(root, 'Bad-Name/SKILL.md'), '---\nname: Bad-Name\ndescription: Not kebab-case.\n---\n\nBody.\n')
+    const ctx = await setupLocal(home)
+
+    const snapshot = await ctx.skills.snapshot()
+    expect(snapshot.skills).toEqual([])
+    expect(snapshot.skipped).toEqual([
+      { path: join(root, 'Bad-Name/SKILL.md'), reason: 'invalid-name' },
+      { path: join(root, 'broken-yaml/SKILL.md'), reason: 'invalid-frontmatter' },
+      { path: join(root, 'nameless/SKILL.md'), reason: 'missing-name' },
+      { path: join(root, 'no-frontmatter/SKILL.md'), reason: 'invalid-frontmatter' },
+    ])
+  })
+
+  it('bounds the nested count and says so instead of walking an unbounded tree', async () => {
+    const home = await tempDir('skill-skip-bound')
+    const root = join(home, '.dsh/skills')
+    for (let index = 0; index < 205; index += 1) {
+      await writeSkill(join(root, 'bulk'), `bulk-${String(index)}`, `Bulk skill ${String(index)}`)
+    }
+    const ctx = await setupLocal(home)
+
+    expect(await ctx.skills.snapshot()).toMatchObject({
+      skills: [],
+      complete: true,
+      skipped: [{ path: join(root, 'bulk'), reason: 'nested-skills', nested: 200, truncated: true }],
+    })
+  })
+
+  it('counts what an import of the same folder would install', async () => {
+    const home = await tempDir('skill-skip-depth')
+    const root = join(home, '.dsh/skills')
+    await mkdir(join(root, 'mixed/deep'), { recursive: true })
+    await writeFile(join(root, 'mixed/loose.md'), 'Loose markdown inside a collection.\n')
+    await writeSkill(join(root, 'mixed/deep'), 'reachable', 'Reachable by an import')
+    await writeSkill(join(root, 'mixed/deep/deeper/deepest/too-far'), 'unreachable', 'Far below the entry')
+    // Past the scan depth: neither an import nor the count descends into it.
+    await writeSkill(join(root, 'mixed/deep/deeper/deepest/empty/packaged/deeper-still'), 'past-the-depth', 'Past the scan')
+    const ctx = await setupLocal(home)
+
+    const importable = await SkillFileSystem.findSkillSources(join(root, 'mixed'))
+    expect(importable).toHaveLength(3)
+    expect(await ctx.skills.snapshot()).toMatchObject({
+      skipped: [{ path: join(root, 'mixed'), reason: 'nested-skills', nested: importable.length }],
+    })
+  })
+
+  it('reports a manifest it cannot read as text', async () => {
+    const home = await tempDir('skill-skip-unreadable')
+    const root = join(home, '.dsh/skills')
+    await mkdir(join(root, 'binary'), { recursive: true })
+    await writeFile(join(root, 'binary/SKILL.md'), '---\nname: binary\ndescription: Not text.\n---\n\n\uFFFD\n')
+    const ctx = new Context()
+    await ctx.plugin(TestFileSystem)
+    await ctx.plugin(SkillRegistry)
+    await ctx.plugin(SkillFileSystem, {
+      dshHome: join(home, '.dsh'),
+      agentsHome: join(home, '.agents'),
+      watch: false,
+    })
+
+    expect(await ctx.skills.snapshot()).toEqual({
+      skills: [],
+      complete: true,
+      skipped: [{ path: join(root, 'binary/SKILL.md'), reason: 'unreadable' }],
+    })
+  })
+
+  it('stops counting once the manifest ceiling is reached, even across folders', async () => {
+    const home = await tempDir('skill-skip-ceiling')
+    const root = join(home, '.dsh/skills')
+    for (let index = 0; index < 205; index += 1) {
+      await writeSkill(join(root, 'collection/deep'), `deep-${String(index)}`, `Deep ${String(index)}`)
+    }
+    await mkdir(join(root, 'collection/after'), { recursive: true })
+    await writeSkill(join(root, 'collection/after'), 'unreached', 'Below the ceiling')
+    const ctx = await setupLocal(home)
+
+    expect(await ctx.skills.snapshot()).toMatchObject({
+      skipped: [{ path: join(root, 'collection'), reason: 'nested-skills', nested: 200, truncated: true }],
+    })
+  })
+
+  it('stops walking once the directory budget is spent', async () => {
+    const home = await tempDir('skill-skip-budget')
+    const root = join(home, '.dsh/skills')
+    await mkdir(join(root, 'wide'), { recursive: true })
+    const ctx = new Context()
+    await ctx.plugin(TestFileSystem)
+    const fs = ctx.fs as TestFileSystem
+    const children = Array.from({ length: 2100 }, (_, index) => `child-${String(index)}`)
+    fs.listDirOverrides.set(join(root, 'wide'), path => children.map(name => ({
+      name,
+      type: 'directory' as const,
+      target: { targetKey: join(path, name) as never, displayPath: join(path, name) },
+      version: FsVersion('synthetic'),
+    })))
+    // Two of the synthetic children carry a manifest, so the count has
+    // something to report when the directory budget stops the walk.
+    for (const name of children.slice(0, 2)) {
+      fs.statOverrides.set(join(root, 'wide', name, 'SKILL.md'), {
+        version: FsVersion('synthetic'),
+        type: 'file',
+        size: 10,
+      })
+    }
+    await ctx.plugin(SkillRegistry)
+    await ctx.plugin(SkillFileSystem, {
+      dshHome: join(home, '.dsh'),
+      agentsHome: join(home, '.agents'),
+      watch: false,
+    })
+
+    expect(await ctx.skills.snapshot()).toEqual({
+      skills: [],
+      complete: true,
+      skipped: [{ path: join(root, 'wide'), reason: 'nested-skills', nested: 2, truncated: true }],
+    })
+  })
+
+  it('counts a nested collection through the filesystem service, stat failure included', async () => {
+    const home = await tempDir('skill-skip-service')
+    const root = join(home, '.dsh/skills')
+    await writeSkill(join(root, 'collection/skills'), 'first', 'First nested skill')
+    await writeSkill(join(root, 'collection/skills'), 'second', 'Second nested skill')
+
+    const mount = async (failStat: string | undefined): Promise<Context> => {
+      const ctx = new Context()
+      await ctx.plugin(TestFileSystem)
+      if (failStat !== undefined) (ctx.fs as TestFileSystem).errorStatPaths.add(failStat)
+      await ctx.plugin(SkillRegistry)
+      await ctx.plugin(SkillFileSystem, {
+        dshHome: join(home, '.dsh'),
+        agentsHome: join(home, '.agents'),
+        watch: false,
+      })
+      return ctx
+    }
+
+    expect(await (await mount(undefined)).skills.snapshot()).toMatchObject({
+      complete: true,
+      skipped: [{ path: join(root, 'collection'), reason: 'nested-skills', nested: 2 }],
+    })
+
+    // A manifest the diagnostic cannot stat is not lost: the walk descends
+    // into the folder it could not identify and counts the manifest there, so
+    // neither the count nor the discovery changes.
+    expect(await (await mount(join(root, 'collection/skills/first/SKILL.md'))).skills.snapshot())
+      .toMatchObject({
+        complete: true,
+        skipped: [{ path: join(root, 'collection'), reason: 'nested-skills', nested: 2 }],
+      })
+  })
+
+  it('reports a manifest that disappears mid-scan to nobody', async () => {
+    const home = await tempDir('skill-skip-race')
+    const root = join(home, '.dsh/skills')
+    await writeSkill(root, 'vanishing', 'Gone before it is read')
+    const ctx = new Context()
+    await ctx.plugin(TestFileSystem)
+    const fs = ctx.fs as TestFileSystem
+    await ctx.plugin(SkillRegistry)
+    await ctx.plugin(SkillFileSystem, {
+      dshHome: join(home, '.dsh'),
+      agentsHome: join(home, '.agents'),
+      watch: false,
+    })
+
+    fs.missingReadPaths.add(join(root, 'vanishing/SKILL.md'))
+    expect(await ctx.skills.snapshot()).toEqual({ skills: [], complete: true, skipped: [] })
   })
 })

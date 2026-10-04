@@ -2100,7 +2100,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         throws: ['RemoteError when the preset is missing, read-only, invalid, or cannot be opened.'],
       },
       {
-        signature: '@Remote async listSkills(): Promise<SkillListEntry[]>',
+        signature: '@Remote async listSkills(): Promise<SkillListValue>',
         description: 'List the skills this deployment installs without a session: the skill registry\'s global rows plus the settings scope\'s local roots (`user-dsh`, `user-agents`, `custom`), discovered in a scope no agent reads.',
         parameters: [],
         returns: 'all discovered skills; empty means the deployment composes no skill registry.',
@@ -2114,7 +2114,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         throws: ['RemoteError when the native open fails or is aborted.'],
       },
       {
-        signature: '@Remote async refreshSkills(): Promise<SkillListEntry[]>',
+        signature: '@Remote async refreshSkills(): Promise<SkillListValue>',
         description: 'Re-scan the local skill roots and return the merged catalog, replacing the cached discovery. Used by the Skills tab\'s refresh action after skill folders changed on disk while no file watcher was mounted.',
         parameters: [],
         returns: 'all discovered skills after the rescan.',
@@ -5587,7 +5587,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'SkillCatalogSnapshot',
-    declaration: 'export interface SkillCatalogSnapshot {\n    readonly skills: SkillSummary[];\n    readonly complete: boolean;\n}',
+    declaration: 'export interface SkillCatalogSnapshot {\n    readonly skills: SkillSummary[];\n    readonly complete: boolean;\n    readonly skipped: readonly SkillDiscoverySkip[];\n}',
   },
   {
     name: 'SkillDefinition',
@@ -5598,8 +5598,12 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type SkillDirectoryOpenValue = {\n    readonly opened: true;\n} | {\n    readonly opened: false;\n    readonly path: string;\n};',
   },
   {
-    name: 'SkillEntry',
-    declaration: 'export interface SkillEntry {\n    readonly name: string;\n    readonly description: string;\n    readonly whenToUse?: string;\n    readonly modelInvocable: boolean;\n}',
+    name: 'SkillDiscoverySkip',
+    declaration: 'export interface SkillDiscoverySkip {\n    readonly path: string;\n    readonly reason: SkillDiscoverySkipReason;\n    readonly nested?: number;\n    readonly truncated?: boolean;\n}',
+  },
+  {
+    name: 'SkillDiscoverySkipReason',
+    declaration: 'export type SkillDiscoverySkipReason = \'nested-skills\' | \'invalid-frontmatter\' | \'missing-name\' | \'invalid-name\' | \'unreadable\';',
   },
   {
     name: 'SkillImportRejection',
@@ -5614,16 +5618,8 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface SkillInvocationPolicy {\n    readonly modelInvocable: boolean;\n    readonly userInvocable: boolean;\n}',
   },
   {
-    name: 'SkillListEntry',
-    declaration: 'export interface SkillListEntry {\n    readonly name: string;\n    readonly description: string;\n    readonly source: string;\n    readonly path?: string;\n}',
-  },
-  {
     name: 'SkillListRequest',
     declaration: 'export interface SkillListRequest {\n    readonly sessionId: SessionId;\n}',
-  },
-  {
-    name: 'SkillListValue',
-    declaration: 'export interface SkillListValue {\n    readonly skills: readonly SkillEntry[];\n}',
   },
   {
     name: 'SkillLookupOptions',
@@ -5639,7 +5635,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'SkillProviderObservation',
-    declaration: 'export interface SkillProviderObservation {\n    readonly candidates: readonly SkillCandidate[];\n    readonly complete: boolean;\n}',
+    declaration: 'export interface SkillProviderObservation {\n    readonly candidates: readonly SkillCandidate[];\n    readonly complete: boolean;\n    readonly skipped?: readonly SkillDiscoverySkip[];\n}',
   },
   {
     name: 'SkillRegistration',

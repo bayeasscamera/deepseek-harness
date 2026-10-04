@@ -23,6 +23,11 @@ interface SkillProviderObservation {
   readonly candidates: readonly SkillCandidate[]
   /** Whether discovery completed and these candidates may be cached. */
   readonly complete: boolean
+  /**
+   * Entries this provider could not turn into skills, when it reports them. A
+   * skipped entry is not a candidate: it is the reason one is missing.
+   */
+  readonly skipped?: readonly SkillDiscoverySkip[]
 }
 ```
 
@@ -134,8 +139,16 @@ interface SkillCatalogSnapshot {
   readonly skills: SkillSummary[]
   /** Whether every registered provider completed without a concurrent catalog revision. */
   readonly complete: boolean
+  /**
+   * Entries the providers could not turn into skills, in layer then provider
+   * order. This is a user-facing diagnostic for a skill the operator placed
+   * where discovery cannot read it; the model catalog never carries it.
+   */
+  readonly skipped: readonly SkillDiscoverySkip[]
 }
 ```
+
+`skipped` 承载提供方无法转换为 skill 的条目：自身层级之下含有 `SKILL.md` 的文件夹、frontmatter 无法解析的文件、未声明 name 或 description 的文件、name 不符合 kebab-case 的文件，以及无法按文本读取的文件。注册表按「层级、再按提供方」顺序合并这些条目，并在两层跳过同一路径时只报告一次。它们是面向用户的诊断信息——模型目录从不携带，因为模型无法据此行动——设置中的 Skills 标签页会把它们显示在已发现的目录旁边，这正是把「我的 skill 不见了」变成一条明确原因的地方。
 
 `SkillCandidate` 是提供方到注册表的形状。`locator` 是提供方的不透明状态；注册表只存储它并在调用获胜提供方的 `get()` 时传回。
 

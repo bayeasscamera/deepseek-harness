@@ -110,7 +110,7 @@ function declareRoot(slots: SlotRegistry): () => void {
 
 describe('ui-settings-plugins apply', () => {
   it('keeps the host Loader entry inert', () => {
-    expect(hostApply).not.toThrow()
+    expect(() => { hostApply() }).not.toThrow()
   })
 
   it('declares the services it uses', () => {
@@ -334,7 +334,20 @@ describe('ui-settings-plugins apply', () => {
     )()
     listSkills.mockResolvedValue({
       ok: true,
-      value: [
+      value: {
+        skills: [
+          {
+            name: 'local-skill',
+            description: 'A custom-root skill.',
+            source: 'custom',
+            path: '/skills/local-skill',
+          },
+        ],
+        skipped: [{ path: '/skills/collection', reason: 'nested-skills', nested: 4 }],
+      },
+    })
+    await expect(face.listSkills()).resolves.toEqual({
+      skills: [
         {
           name: 'local-skill',
           description: 'A custom-root skill.',
@@ -342,15 +355,8 @@ describe('ui-settings-plugins apply', () => {
           path: '/skills/local-skill',
         },
       ],
+      skipped: [{ path: '/skills/collection', reason: 'nested-skills', nested: 4 }],
     })
-    await expect(face.listSkills()).resolves.toEqual([
-      {
-        name: 'local-skill',
-        description: 'A custom-root skill.',
-        source: 'custom',
-        path: '/skills/local-skill',
-      },
-    ])
 
     const signal = new AbortController().signal
     openUserSkillsDirectory.mockResolvedValue({
@@ -410,7 +416,20 @@ describe('ui-settings-plugins apply', () => {
 
     refreshSkills.mockResolvedValue({
       ok: true,
-      value: [
+      value: {
+        skills: [
+          {
+            name: 'my-skill',
+            description: 'Picked.',
+            source: 'user-dsh',
+            path: '/home/u/.dsh/skills/my-skill',
+          },
+        ],
+        skipped: [],
+      },
+    })
+    await expect(face.refreshSkills()).resolves.toEqual({
+      skills: [
         {
           name: 'my-skill',
           description: 'Picked.',
@@ -418,38 +437,35 @@ describe('ui-settings-plugins apply', () => {
           path: '/home/u/.dsh/skills/my-skill',
         },
       ],
+      skipped: [],
     })
-    await expect(face.refreshSkills()).resolves.toEqual([
-      {
-        name: 'my-skill',
-        description: 'Picked.',
-        source: 'user-dsh',
-        path: '/home/u/.dsh/skills/my-skill',
-      },
-    ])
   })
 
   it('surfaces a Remote failure from the Skills tab face', async () => {
-    const { ctx, slots, listSkills, openUserSkillsDirectory } = await bench()
+    const { ctx, slots, listSkills, refreshSkills, importSkills, openUserSkillsDirectory, pick } =
+      await bench()
     declareRoot(slots)
     await ctx.plugin({ inject: [...inject], apply }).await()
     const tab = slots.entries('settings.plugins.tab').find(entry => entry.options.id === 'skills')!
     const face = (
       tab.inject as unknown as () => {
         listSkills: () => Promise<unknown>
+        refreshSkills: () => Promise<unknown>
         openDirectory: (signal: AbortSignal) => Promise<unknown>
+        importSkills: (signal: AbortSignal) => Promise<unknown>
       }
     )()
-    listSkills.mockResolvedValue({
-      ok: false,
-      error: new RemoteError('gateway/internal', 'no provider', {}),
-    })
-    openUserSkillsDirectory.mockResolvedValue({
-      ok: false,
-      error: new RemoteError('gateway/internal', 'no provider', {}),
-    })
+    const failure = { ok: false, error: new RemoteError('gateway/internal', 'no provider', {}) }
+    listSkills.mockResolvedValue(failure)
+    refreshSkills.mockResolvedValue(failure)
+    importSkills.mockResolvedValue(failure)
+    openUserSkillsDirectory.mockResolvedValue(failure)
+    pick.mockResolvedValue({ ok: true, value: '/picked/my-skill' })
 
     await expect(face.listSkills()).rejects.toThrow(/settings\.listSkills: gateway\/internal/)
+    await expect(face.refreshSkills()).rejects.toThrow(/settings\.refreshSkills: gateway\/internal/)
+    await expect(face.importSkills(new AbortController().signal))
+      .rejects.toThrow(/settings\.importSkills: gateway\/internal/)
     await expect(face.openDirectory(new AbortController().signal)).rejects.toThrow(
       /settings\.openUserSkillsDirectory: gateway\/internal/,
     )

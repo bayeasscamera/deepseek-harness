@@ -50,6 +50,39 @@ export interface SkillListEntry {
   readonly path?: string
 }
 
+/** Why one discovered entry yielded no skill; mirrors the provider's reason vocabulary. */
+export type SkillSkipReason =
+  /** A directory holding `SKILL.md` files below its own level, which discovery does not descend into. */
+  | 'nested-skills'
+  /** The file carries frontmatter this runtime cannot parse. */
+  | 'invalid-frontmatter'
+  /** The frontmatter parses but omits `name` or `description`. */
+  | 'missing-name'
+  /** The declared name is not the kebab-case skill grammar. */
+  | 'invalid-name'
+  /** The entry is readable by name but its content could not be read. */
+  | 'unreadable'
+
+/** One entry the skill roots hold that discovery could not turn into a skill. */
+export interface SkillSkipEntry {
+  /** Absolute path of the entry that yielded no skill. */
+  readonly path: string
+  /** Why it yielded no skill. */
+  readonly reason: SkillSkipReason
+  /** `SKILL.md` manifests counted below the entry, for `nested-skills`. */
+  readonly nested?: number
+  /** Whether the count stopped at its scan bound, so the entry holds more. */
+  readonly truncated?: boolean
+}
+
+/** The deployment's skill catalog plus the entries discovery could not read. */
+export interface SkillListValue {
+  /** Every discovered skill, in catalog order. */
+  readonly skills: readonly SkillListEntry[]
+  /** Entries that yielded no skill, so the tab can say why one is missing. */
+  readonly skipped: readonly SkillSkipEntry[]
+}
+
 /** Result of opening the user skill directory in the native file manager. */
 export type SkillDirectoryOpenValue =
   | { readonly opened: true }

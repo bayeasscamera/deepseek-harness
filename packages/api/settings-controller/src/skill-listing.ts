@@ -17,7 +17,7 @@ import { join } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
 import { createScope, type Scope, type ScopeKey } from '@deepseek-ai/dsh-scope'
-import type { SkillSummary } from '@deepseek-ai/dsh-skill'
+import type { SkillDiscoverySkip, SkillSummary } from '@deepseek-ai/dsh-skill'
 import type { Config as SkillFilesystemConfig } from '@deepseek-ai/dsh-skill-filesystem'
 
 /** Local roots the settings skill listing discovers, overriding provider defaults. */
@@ -30,6 +30,14 @@ export interface SkillListingConfig {
   readonly customSkillDirs?: string[]
 }
 
+/** One listing observation: the catalog plus the entries that yielded no skill. */
+export interface SkillListingValue {
+  /** Every discovered skill, in catalog order. */
+  readonly skills: readonly SkillSummary[]
+  /** Entries that yielded no skill, so the tab can say why one is missing. */
+  readonly skipped: readonly SkillDiscoverySkip[]
+}
+
 /** Settings-owned skill discovery, isolated from every agent scope. */
 export class SkillListing {
   private key: ScopeKey = {}
@@ -37,7 +45,7 @@ export class SkillListing {
   private readonly config: SkillListingConfig
   private row: Promise<void> | undefined
   private scope: Scope | undefined
-  private refreshing: Promise<readonly SkillSummary[]> | undefined
+  private refreshing: Promise<SkillListingValue> | undefined
 
   /**
    * @param ctx - the settings controller's context; it owns the listing scope.
@@ -52,13 +60,15 @@ export class SkillListing {
    * List every skill this deployment installs without a session: the global
    * rows (repository plugins, runtime registrations) plus the settings scope's
    * local roots.
-   * @returns merged, sorted skill summaries; empty when the deployment composes no skill registry.
+   * @returns merged, sorted skill summaries and the entries discovery could not
+   *   read; both empty when the deployment composes no skill registry.
    */
-  async list(): Promise<readonly SkillSummary[]> {
+  async list(): Promise<SkillListingValue> {
     const skills = this.ctx.get('skills')
-    if (skills === undefined) return []
+    if (skills === undefined) return { skills: [], skipped: [] }
     await this.mountRow()
-    return await skills.list({ scope: this.key })
+    const snapshot = await skills.snapshot({ scope: this.key })
+    return { skills: snapshot.skills, skipped: snapshot.skipped }
   }
 
   /**
@@ -77,7 +87,7 @@ export class SkillListing {
    * the settings UI's refresh action; watching stays off between calls.
    * @returns the freshly discovered skill summaries.
    */
-  async refresh(): Promise<readonly SkillSummary[]> {
+  async refresh(): Promise<SkillListingValue> {
     return (this.refreshing ??= (async () => {
       try {
         const previous = this.scope

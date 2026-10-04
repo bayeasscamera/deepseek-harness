@@ -17,8 +17,8 @@ const skill: SkillEntry = {
 /** The tab with every injected face replaced by a spy the test drives. */
 function harness(overrides: Partial<Record<keyof SkillsTabProps, unknown>> = {}): SkillsTabProps {
   return {
-    listSkills: vi.fn().mockResolvedValue([skill]),
-    refreshSkills: vi.fn().mockResolvedValue([skill]),
+    listSkills: vi.fn().mockResolvedValue({ skills: [skill], skipped: [] }),
+    refreshSkills: vi.fn().mockResolvedValue({ skills: [skill], skipped: [] }),
     openDirectory: vi.fn().mockResolvedValue({ opened: true }),
     importSkills: vi.fn().mockResolvedValue({
       outcomes: [{ kind: 'imported', name: 'imported-skill', path: '/p' }],
@@ -49,7 +49,7 @@ describe('SkillsTab', () => {
   })
 
   it('reports an empty deployment and a failed catalog with a retry', async () => {
-    const empty = harness({ listSkills: vi.fn().mockResolvedValue([]) })
+    const empty = harness({ listSkills: vi.fn().mockResolvedValue({ skills: [], skipped: [] }) })
     const { unmount } = render(<SkillsTab {...empty} />)
     await settle()
     expect(screen.getByText('skillsEmpty')).toBeDefined()
@@ -58,7 +58,7 @@ describe('SkillsTab', () => {
     const listSkills = vi
       .fn()
       .mockRejectedValueOnce(new Error('registry exploded'))
-      .mockResolvedValue([skill])
+      .mockResolvedValue({ skills: [skill], skipped: [] })
     const failed = harness({ listSkills })
     render(<SkillsTab {...failed} />)
     await settle()
@@ -68,6 +68,52 @@ describe('SkillsTab', () => {
     await settle()
     expect(listSkills).toHaveBeenCalledTimes(2)
     expect(screen.getAllByText('imported-skill')).toHaveLength(2)
+  })
+
+  it('names every undiscovered entry and its reason beside the catalog', async () => {
+    const skipped = [
+      { path: '/home/u/.dsh/skills/collection', reason: 'nested-skills' as const, nested: 636 },
+      // A provider may report a collection without a count: the reason still
+      // reaches the user, and the count reads as zero rather than breaking.
+      { path: '/home/u/.dsh/skills/uncounted', reason: 'nested-skills' as const },
+      { path: '/home/u/.dsh/skills/bulk', reason: 'nested-skills' as const, nested: 200, truncated: true },
+      { path: '/home/u/.dsh/skills/broken/SKILL.md', reason: 'invalid-frontmatter' as const },
+      { path: '/home/u/.dsh/skills/nameless/SKILL.md', reason: 'missing-name' as const },
+      { path: '/home/u/.dsh/skills/Bad/SKILL.md', reason: 'invalid-name' as const },
+      { path: '/home/u/.dsh/skills/binary/SKILL.md', reason: 'unreadable' as const },
+    ]
+    const props = harness({
+      listSkills: vi.fn().mockResolvedValue({ skills: [skill], skipped }),
+    })
+    render(<SkillsTab {...props} />)
+    await settle()
+
+    // The catalog still lists what was found; the notice explains the rest.
+    expect(screen.getAllByText('imported-skill')).toHaveLength(2)
+    expect(screen.getByText('skillsSkipTitle')).toBeDefined()
+    expect(screen.getAllByText('skillsSkipNested')).toHaveLength(2)
+    expect(screen.getByText('skillsSkipNestedTruncated')).toBeDefined()
+    expect(screen.getByText('skillsSkipInvalidFrontmatter')).toBeDefined()
+    expect(screen.getByText('skillsSkipMissingName')).toBeDefined()
+    expect(screen.getByText('skillsSkipInvalidName')).toBeDefined()
+    expect(screen.getByText('skillsSkipUnreadable')).toBeDefined()
+    expect(screen.getByText('/home/u/.dsh/skills/collection')).toBeDefined()
+    expect(screen.getByText('/home/u/.dsh/skills/uncounted')).toBeDefined()
+  })
+
+  it('summarizes the entries a long report does not name', async () => {
+    const skipped = Array.from({ length: 12 }, (_, index) => ({
+      path: `/home/u/.dsh/skills/broken-${String(index)}/SKILL.md`,
+      reason: 'invalid-frontmatter' as const,
+    }))
+    const props = harness({
+      listSkills: vi.fn().mockResolvedValue({ skills: [], skipped }),
+    })
+    render(<SkillsTab {...props} />)
+    await settle()
+
+    expect(screen.getAllByText('skillsSkipInvalidFrontmatter')).toHaveLength(10)
+    expect(screen.getByText('skillsSkipMore')).toBeDefined()
   })
 
   it('rescans the roots through the host instead of the cached listing', async () => {

@@ -25,6 +25,8 @@ import {
   isSkillName,
   type SkillCandidate,
   type SkillDefinition,
+  type SkillDiscoverySkip,
+  type SkillDiscoverySkipReason,
   type SkillInvocationPolicy,
   type SkillLookupOptions,
   type SkillProvider,
@@ -110,6 +112,32 @@ interface ParsedSkill {
   invocation: SkillInvocationPolicy
   metadata?: Record<string, unknown>
   content: string
+}
+
+/** Content read of one candidate manifest, before any frontmatter parsing. */
+type SkillTextRead =
+  | { readonly kind: 'text'; readonly text: string }
+  | { readonly kind: 'absent' }
+  | { readonly kind: 'not-text' }
+
+/** The read that produced no text because the file is not a text file. */
+const NOT_TEXT_SKILL_READ: SkillTextRead = { kind: 'not-text' }
+/** The read that produced no text because the path is gone. */
+const ABSENT_SKILL_TEXT: SkillTextRead = { kind: 'absent' }
+
+/**
+ * Parse outcome for one candidate manifest. `absent` is a scan race rather
+ * than a placement mistake, so discovery reports every other reason and drops
+ * this one.
+ */
+type ParseOutcome =
+  | { readonly ok: true; readonly skill: ParsedSkill }
+  | { readonly ok: false; readonly reason: SkillDiscoverySkipReason | 'absent' }
+
+/** One root's discovery: its candidates plus the entries that yielded no skill. */
+interface RootDiscovery {
+  readonly candidates: SkillCandidate[]
+  readonly skipped: SkillDiscoverySkip[]
 }
 
 interface LocalLocator {
@@ -200,12 +228,16 @@ export class FileSystemSkillProvider implements SkillProvider {
       complete = false
     }
     const candidates: SkillCandidate[] = []
+    const skipped: SkillDiscoverySkip[] = []
     for (const root of roots) {
-      for (const skill of await discoverRoot(root, this.ctx, this.name)) {
-        candidates.push(skill)
-      }
+      const discovered = await discoverRoot(root, this.ctx, this.name, options.signal)
+      candidates.push(...discovered.candidates)
+      skipped.push(...discovered.skipped)
     }
-    return complete ? candidates : { candidates, complete }
+    // The complete-array shorthand stays for a root set that yields nothing to
+    // report; a skip makes the observation explicit even when discovery completed.
+    if (complete && skipped.length === 0) return candidates
+    return { candidates, complete, skipped }
   }
 
   /**
@@ -225,18 +257,19 @@ export class FileSystemSkillProvider implements SkillProvider {
       options.signal,
       candidate.source === 'bundled',
     )
-    if (parsed === undefined) return undefined
+    if (!parsed.ok) return undefined
+    const skill = parsed.skill
     return {
-      name: parsed.name,
-      description: parsed.description,
-      ...(parsed.whenToUse !== undefined ? { whenToUse: parsed.whenToUse } : {}),
-      invocation: parsed.invocation,
+      name: skill.name,
+      description: skill.description,
+      ...(skill.whenToUse !== undefined ? { whenToUse: skill.whenToUse } : {}),
+      invocation: skill.invocation,
       source: candidate.source,
       provider: this.name,
       resourceBase: { kind: 'directory', path: locator.directory },
       path: locator.path,
-      ...(parsed.metadata !== undefined ? { metadata: parsed.metadata } : {}),
-      content: parsed.content,
+      ...(skill.metadata !== undefined ? { metadata: skill.metadata } : {}),
+      content: skill.content,
     }
   }
 
@@ -887,45 +920,204 @@ async function discoverRoot(
   root: SkillRoot,
   ctx: Context,
   provider: string,
-): Promise<SkillCandidate[]> {
-  const skills: SkillCandidate[] = []
+  signal?: AbortSignal,
+): Promise<RootDiscovery> {
+  const candidates: SkillCandidate[] = []
+  const skipped: SkillDiscoverySkip[] = []
   const entries = await listSkillRootEntries(root, ctx)
   for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
     if (root.skipSystem && entry.name === '.system') continue
     const locator = skillSourceOf(entry, root.path)
+    // Neither a bundle folder nor a flat markdown file: nothing to read.
     if (locator === undefined) continue
-    const parsed = await parseSkillFile(locator.path, ctx, undefined, root.trustedHost === true)
-    if (parsed === undefined) continue
-    skills.push({
-      name: parsed.name,
-      description: parsed.description,
-      ...(parsed.whenToUse !== undefined ? { whenToUse: parsed.whenToUse } : {}),
-      invocation: parsed.invocation,
+    // A bundle folder is only one when its manifest is there: a folder without
+    // one is a finding only if it holds skills, since an ordinary asset folder
+    // is not a misplaced skill. Presence is checked rather than inferred from a
+    // failed read, which cannot tell a missing file from an unreadable one.
+    if (entry.type === 'directory'
+      && await manifestAbsent(locator.path, ctx, root.trustedHost === true)) {
+      const nested = await countNestedSkillManifests(entry.path, ctx, root.trustedHost === true, signal)
+      if (nested.count > 0) {
+        skipped.push({
+          path: entry.path,
+          reason: 'nested-skills',
+          nested: nested.count,
+          ...(nested.truncated ? { truncated: true } : {}),
+        })
+      }
+      continue
+    }
+    const parsed = await parseSkillFile(locator.path, ctx, signal, root.trustedHost === true)
+    if (!parsed.ok) {
+      if (parsed.reason !== 'absent') skipped.push({ path: locator.path, reason: parsed.reason })
+      continue
+    }
+    const skill = parsed.skill
+    candidates.push({
+      name: skill.name,
+      description: skill.description,
+      ...(skill.whenToUse !== undefined ? { whenToUse: skill.whenToUse } : {}),
+      invocation: skill.invocation,
       provider,
       source: root.source,
       rank: root.rank,
       locator,
       resourceBase: { kind: 'directory', path: locator.directory },
       path: locator.path,
-      ...(parsed.metadata !== undefined ? { metadata: parsed.metadata } : {}),
+      ...(skill.metadata !== undefined ? { metadata: skill.metadata } : {}),
     })
   }
-  return skills
+  return { candidates, skipped }
+}
+
+/** Deepest level the nested-skip count descends, matching what an import would install. */
+const NESTED_SKIP_SCAN_DEPTH = SKILL_SOURCE_SCAN_DEPTH
+/** Manifests the nested-skip count collects before it reports a bounded count. */
+const NESTED_SKIP_SCAN_MAX_MANIFESTS = 200
+/** Directories the nested-skip count visits before it reports a bounded count. */
+const NESTED_SKIP_SCAN_MAX_DIRECTORIES = 2000
+
+/**
+ * Count the `SKILL.md` manifests below one directory discovery does not
+ * descend into, so a skill collection placed in a root reports why it
+ * contributes nothing. The walk is bounded in depth, manifests, and visited
+ * directories, and reports truncation rather than walking an unbounded tree.
+ * @param directory - absolute path of the undiscovered entry.
+ * @param ctx - context carrying the optional filesystem service.
+ * @param trustedHost - read through Node instead of the filesystem service.
+ * @param signal - caller lifetime; aborts the walk.
+ * @returns the counted manifests and whether the walk stopped at a bound.
+ */
+async function countNestedSkillManifests(
+  directory: string,
+  ctx: Context,
+  trustedHost: boolean,
+  signal?: AbortSignal,
+): Promise<{ count: number; truncated: boolean }> {
+  const state = { count: 0, directories: 0, truncated: false }
+  await collectNestedManifests(directory, ctx, trustedHost, NESTED_SKIP_SCAN_DEPTH, state, signal)
+  return { count: state.count, truncated: state.truncated }
+}
+
+async function collectNestedManifests(
+  directory: string,
+  ctx: Context,
+  trustedHost: boolean,
+  remainingDepth: number,
+  state: { count: number; directories: number; truncated: boolean },
+  signal?: AbortSignal,
+): Promise<void> {
+  signal?.throwIfAborted()
+  if (state.directories >= NESTED_SKIP_SCAN_MAX_DIRECTORIES) {
+    state.truncated = true
+    return
+  }
+  state.directories += 1
+  const entries = await listSkillDirEntries(directory, ctx, trustedHost)
+  for (const entry of entries) {
+    if (state.truncated) return
+    if (entry.name.startsWith('.')) continue
+    if (entry.type !== 'directory') {
+      if (entry.type === 'file' && entry.name.endsWith('.md')) countManifest(state)
+      continue
+    }
+    if (await hasOwnManifest(join(entry.path, 'SKILL.md'), ctx, trustedHost)) {
+      countManifest(state)
+      continue
+    }
+    // Depth counts directory levels below the entry, so the walk stops where
+    // an import of the same folder stops.
+    if (remainingDepth <= 0) continue
+    await collectNestedManifests(entry.path, ctx, trustedHost, remainingDepth - 1, state, signal)
+  }
+}
+
+/** Count one manifest and mark the count bounded once it reaches its ceiling. */
+function countManifest(state: { count: number; truncated: boolean }): void {
+  state.count += 1
+  if (state.count >= NESTED_SKIP_SCAN_MAX_MANIFESTS) state.truncated = true
+}
+
+/**
+ * Whether a child of a scanned folder carries its own manifest. This is a
+ * count for a diagnostic, so a child the scan cannot stat contributes nothing
+ * rather than failing the discovery it merely describes; discovery itself
+ * reads a real manifest through {@link manifestAbsent} and reports its failure.
+ * @param path - absolute manifest path of the scanned child.
+ * @param ctx - context carrying the optional filesystem service.
+ * @param trustedHost - read through Node instead of the filesystem service.
+ * @returns true when the child's manifest is a readable file.
+ */
+async function hasOwnManifest(path: string, ctx: Context, trustedHost: boolean): Promise<boolean> {
+  const fs = optionalFileSystem(ctx)
+  if (fs !== undefined && !trustedHost) {
+    try {
+      return (await fs.stat(await fs.resolve(path)))?.type === 'file'
+    } catch {
+      return false
+    }
+  }
+  return await stat(path).then(info => info.isFile(), () => false)
+}
+
+/**
+ * Whether a bundle folder has no manifest at all. Only a confirmed absence
+ * answers true: a path that exists but cannot be read, and any other failure,
+ * answers false so the read path reports the failure instead of the caller
+ * mistaking it for a folder that carries no skill.
+ * @param path - absolute manifest path.
+ * @param ctx - context carrying the optional filesystem service.
+ * @param trustedHost - read through Node instead of the filesystem service.
+ * @returns true when the manifest is confirmed absent.
+ */
+async function manifestAbsent(path: string, ctx: Context, trustedHost: boolean): Promise<boolean> {
+  const fs = optionalFileSystem(ctx)
+  if (fs !== undefined && !trustedHost) {
+    try {
+      return (await fs.stat(await fs.resolve(path))) === undefined
+    } catch (error) {
+      return isAbsentSkillPathError(error)
+    }
+  }
+  try {
+    await stat(path)
+    return false
+  } catch (error) {
+    return isAbsentSkillPathError(error)
+  }
 }
 
 async function listSkillRootEntries(root: SkillRoot, ctx: Context): Promise<SkillRootEntry[]> {
+  return await listSkillDirEntries(root.path, ctx, root.trustedHost === true)
+}
+
+/**
+ * List one directory's entries through the filesystem service when the
+ * deployment has one, so remote and sandboxed workspaces never fall back to
+ * the host boundary.
+ * @param path - absolute directory path.
+ * @param ctx - context carrying the optional filesystem service.
+ * @param trustedHost - read through Node instead of the filesystem service.
+ * @returns entries in provider order; an absent directory lists as empty.
+ */
+async function listSkillDirEntries(
+  path: string,
+  ctx: Context,
+  trustedHost: boolean,
+): Promise<SkillRootEntry[]> {
   const fs = optionalFileSystem(ctx)
-  if (fs !== undefined && root.trustedHost !== true)
-    return await listSkillRootEntriesFromFileSystem(root, fs)
-  return await listSkillRootEntriesFromNode(root, ctx)
+  if (fs !== undefined && !trustedHost) {
+    return await listSkillRootEntriesFromFileSystem(path, fs)
+  }
+  return await listSkillRootEntriesFromNode(path, ctx)
 }
 
 async function listSkillRootEntriesFromFileSystem(
-  root: SkillRoot,
+  path: string,
   fs: FileSystem,
 ): Promise<SkillRootEntry[]> {
   try {
-    return (await fsListDir(fs, root.path)).map(entryFromFs)
+    return (await fsListDir(fs, path)).map(entryFromFs)
   } catch (error) {
     if (isAbsentSkillPathError(error)) return []
     throw error
@@ -942,12 +1134,12 @@ function entryFromFs(entry: FsDirEntry): SkillRootEntry {
 }
 
 async function listSkillRootEntriesFromNode(
-  root: SkillRoot,
+  path: string,
   ctx: Context,
 ): Promise<SkillRootEntry[]> {
   let entries
   try {
-    entries = await readdir(root.path, { withFileTypes: true, encoding: 'utf8' })
+    entries = await readdir(path, { withFileTypes: true, encoding: 'utf8' })
   } catch (error) {
     /* v8 ignore else -- Native non-absence directory failures are provider-dependent; the ctx.fs path pins incomplete discovery. */
     if (isAbsentSkillPathError(error)) return []
@@ -957,9 +1149,9 @@ async function listSkillRootEntriesFromNode(
 
   const result: SkillRootEntry[] = []
   for (const entry of entries) {
-    const path = join(root.path, entry.name)
-    const type = await nodeEntryKind(path, entry, ctx)
-    result.push({ name: entry.name, type: type ?? 'other', path })
+    const entryPath = join(path, entry.name)
+    const type = await nodeEntryKind(entryPath, entry, ctx)
+    result.push({ name: entry.name, type: type ?? 'other', path: entryPath })
   }
   return result
 }
@@ -969,32 +1161,36 @@ async function parseSkillFile(
   ctx: Context,
   signal?: AbortSignal,
   trustedHost = false,
-): Promise<ParsedSkill | undefined> {
-  const raw = await readSkillText(ctx, path, signal, trustedHost)
+): Promise<ParseOutcome> {
+  const read = await readSkillText(ctx, path, signal, trustedHost)
   signal?.throwIfAborted()
-  if (raw === undefined) {
-    return undefined
+  if (read.kind === 'absent') {
+    // The entry was listed a moment ago and is gone now: a scan race, not a
+    // placement mistake, so it is reported to nobody.
+    return { ok: false, reason: 'absent' }
   }
+  if (read.kind === 'not-text') return { ok: false, reason: 'unreadable' }
+  const raw = read.text
   let parsed
   try {
     parsed = parseFrontmatter(raw)
   } catch (error) {
     ctx.logger.warn(`skill file ${path} ignored: invalid YAML frontmatter: ${errorMessage(error)}`)
-    return undefined
+    return { ok: false, reason: 'invalid-frontmatter' }
   }
   if (!parsed) {
     ctx.logger.warn(`skill file ${path} ignored: missing YAML frontmatter`)
-    return undefined
+    return { ok: false, reason: 'invalid-frontmatter' }
   }
   const name = stringField(parsed.data, 'name')
   const description = stringField(parsed.data, 'description')
   if (name === undefined || description === undefined) {
     ctx.logger.warn(`skill file ${path} ignored: frontmatter requires name and description`)
-    return undefined
+    return { ok: false, reason: 'missing-name' }
   }
   if (!isSkillName(name)) {
     ctx.logger.warn(`skill file ${path} ignored: invalid skill name "${name}"`)
-    return undefined
+    return { ok: false, reason: 'invalid-name' }
   }
   let invocation
   try {
@@ -1003,15 +1199,18 @@ async function parseSkillFile(
     ctx.logger.warn(
       `skill file ${path} ignored: invalid invocation frontmatter: ${errorMessage(error)}`,
     )
-    return undefined
+    return { ok: false, reason: 'invalid-frontmatter' }
   }
   return {
-    name,
-    description,
-    ...optionalString(parsed.data, 'whenToUse'),
-    invocation,
-    ...optionalMetadata(parsed.data),
-    content: parsed.body.trim(),
+    ok: true,
+    skill: {
+      name,
+      description,
+      ...optionalString(parsed.data, 'whenToUse'),
+      invocation,
+      ...optionalMetadata(parsed.data),
+      content: parsed.body.trim(),
+    },
   }
 }
 
@@ -1024,17 +1223,17 @@ async function readSkillText(
   path: string,
   signal?: AbortSignal,
   trustedHost = false,
-): Promise<string | undefined> {
+): Promise<SkillTextRead> {
   signal?.throwIfAborted()
   const fs = optionalFileSystem(ctx)
   if (fs !== undefined && !trustedHost) {
     return await readSkillTextFromFileSystem(ctx, fs, path, signal)
   }
   try {
-    return await readFile(path, { encoding: 'utf8', signal })
+    return { kind: 'text', text: await readFile(path, { encoding: 'utf8', signal }) }
   } catch (error) {
     signal?.throwIfAborted()
-    if (isAbsentSkillPathError(error)) return undefined
+    if (isAbsentSkillPathError(error)) return ABSENT_SKILL_TEXT
     throw error
   }
 }
@@ -1044,14 +1243,14 @@ async function readSkillTextFromFileSystem(
   fs: FileSystem,
   path: string,
   signal?: AbortSignal,
-): Promise<string | undefined> {
+): Promise<SkillTextRead> {
   // A missing or temporarily inaccessible skill file is not fatal to discovery.
   signal?.throwIfAborted()
   let target
   try {
     target = await fs.resolve(path)
   } catch (error) {
-    if (isAbsentSkillPathError(error)) return undefined
+    if (isAbsentSkillPathError(error)) return ABSENT_SKILL_TEXT
     throw error
   }
   signal?.throwIfAborted()
@@ -1060,18 +1259,18 @@ async function readSkillTextFromFileSystem(
     info = await fs.stat(target, signal)
   } catch (error) {
     signal?.throwIfAborted()
-    if (isAbsentSkillPathError(error)) return undefined
+    if (isAbsentSkillPathError(error)) return ABSENT_SKILL_TEXT
     throw error
   }
-  if (info === undefined || info.type !== 'file') return undefined
+  if (info === undefined || info.type !== 'file') return ABSENT_SKILL_TEXT
   try {
-    return await fs.readText(target, signal)
+    return { kind: 'text', text: await fs.readText(target, signal) }
   } catch (error) {
     signal?.throwIfAborted()
-    if (isAbsentSkillPathError(error)) return undefined
+    if (isAbsentSkillPathError(error)) return ABSENT_SKILL_TEXT
     if (!hasErrorCode(error, 'FS_NOT_TEXT')) throw error
     ctx.logger.warn(`skill file ${path} ignored: ${fsReadErrorMessage(target, error)}`)
-    return undefined
+    return NOT_TEXT_SKILL_READ
   }
 }
 

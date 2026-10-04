@@ -284,6 +284,16 @@ export const settingsPluginsFr: Record<string, string> = {
     'Le frontmatter d’un fichier de skill doit déclarer un name (kebab-case) et une description valides.',
   skillsImportExists: 'Une skill porte déjà ce nom.',
   skillsRefresh: 'Actualiser',
+  skillsSkipTitle: 'Ces entrées n’ont pas été reconnues comme skills :',
+  skillsSkipNested:
+    'contient {count} SKILL.md sous son propre niveau — importez le dossier pour les installer.',
+  skillsSkipNestedTruncated:
+    'contient au moins {count} SKILL.md sous son propre niveau — importez le dossier pour les installer.',
+  skillsSkipInvalidFrontmatter: 'son frontmatter est absent ou illisible.',
+  skillsSkipMissingName: 'son frontmatter ne déclare pas de name ni de description.',
+  skillsSkipInvalidName: 'son name n’est pas en kebab-case.',
+  skillsSkipUnreadable: 'il n’a pas pu être lu comme du texte.',
+  skillsSkipMore: 'et {count} autres.',
   skillsCopyPath: 'Copier le chemin',
   skillsName: 'Nom',
   skillsDescription: 'Description',

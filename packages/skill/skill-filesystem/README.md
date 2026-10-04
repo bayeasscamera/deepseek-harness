@@ -35,6 +35,8 @@ Use this provider when skills live on disk — in the repository, a custom direc
 
 A skill is either a directory bundle `<name>/SKILL.md` or a flat file `<name>.md` at the top level of a scanned root; nested `**/SKILL.md` files are deliberately not discovered. The file starts with YAML frontmatter: required `name` and `description`, plus optional `whenToUse`, `metadata`, `disable-model-invocation`, and `user-invocable`.
 
+A root entry that yields no skill is reported as a skip on the observation instead of disappearing: a folder discovery does not descend into is counted for the `SKILL.md` files below it (bounded in depth, in manifests, and in visited directories, reporting `truncated` when a bound stops the walk), and a manifest whose frontmatter, name, or text cannot be read is reported with the reason. A folder holding no skill at all is not a finding, and a manifest that vanished between listing and reading is a scan race that nobody is told about. The count matches what `findSkillSources` would install from the same folder, so "import it" is the fix the report implies.
+
 `disable-model-invocation: true` keeps the skill out of model-facing catalogs and loaders; `user-invocable: false` keeps it out of human-facing commands, and omitted fields default to permitting their surface. The two keys accept YAML booleans plus the case-insensitive `true`/`false`, `yes`/`no`, `on`/`off`, and `1`/`0` forms; a rejected spelling or a non-boolean value drops the whole skill with a warning rather than silently permitting a surface.
 
 The catalog and the body have separate lifecycles: discovery parses frontmatter into the catalog entry, and every load re-reads the current file, so editing a skill body needs no versioning or cache invalidation.
@@ -145,9 +147,9 @@ Watcher invalidation can cause the named consumer to append a replacement catalo
 
 These limits define when the provider is a poor fit or needs special operational care. They are current package constraints, not a task backlog.
 
-- **Discovery is one level deep** — only `<root>/<name>/SKILL.md` and `<root>/<name>.md` are recognized; nested skill trees and package manifests are ignored.
+- **Discovery is one level deep** — only `<root>/<name>/SKILL.md` and `<root>/<name>.md` are recognized; nested skill trees and package manifests are reported as skips with the count an import would install, never read in place.
 - **Project scope is the nearest `.git` ancestor** — workspaces without that marker fall back to the supplied cwd, with no alternate project-root marker or monorepo subproject selection.
-- **Malformed entries disappear with a warning** — the model catalog receives no per-skill diagnostic and cannot distinguish an absent skill from an invalid one; unexpected I/O failures preserve the last-good catalog instead.
+- **Malformed entries leave the model catalog with a warning** — the model cannot distinguish an absent skill from an invalid one, so the reason is reported to the user-facing surface (`skipped`) rather than to the model; unexpected I/O failures preserve the last-good catalog instead.
 - **Missing-root observation polls one path segment** — roots absent at startup use `fs.watchFile` at `watchPollIntervalMs` until Chokidar can attach, trading bounded detection latency for reliable creation detection across IDE, Git, and shell workflows.
 - **No body revision protocol** — a loaded body is ordinary retained tool history; later file edits affect later calls but neither rewrite old results nor announce that the body changed.
 
